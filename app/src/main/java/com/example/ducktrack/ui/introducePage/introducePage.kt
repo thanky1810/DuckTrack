@@ -19,10 +19,10 @@ import com.example.ducktrack.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun introducePage(
-    onLogin: () -> Unit = {},
+fun introduceScreen(
     onForgotPassword: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
+    onGoLogin: () -> Unit = {}
 ) {
     Scaffold { inner ->
         Column(
@@ -72,7 +72,7 @@ fun introducePage(
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
-                    .offset(y = (-20).dp),
+                    .offset(y = (-40).dp),
                 style = LocalTextStyle.current.copy(
                     shadow = Shadow( // nhẹ để chữ nổi hơn
                         color = Color(0x22000000),
@@ -83,10 +83,10 @@ fun introducePage(
 
             Spacer(Modifier.height(24.dp))
 
-            // Nút Đăng nhập
+
             Button(
 
-                onClick = onLogin,
+                onClick = onGoLogin,
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF3F8D53), // xanh nút
@@ -97,7 +97,7 @@ fun introducePage(
                     .fillMaxWidth()
                     .height(65.dp)
             ) {
-                Text("Đăng nhập", fontSize = 40.sp, fontWeight = FontWeight.SemiBold)
+                Text("Bắt đầu", fontSize = 40.sp, fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(Modifier.height(12.dp))
