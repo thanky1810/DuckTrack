@@ -8,9 +8,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
-import androidx.navigation.compose.rememberNavController
+
 import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
+import com.example.ducktrack.ui.signup.SignUpScreen
 
 @Composable
 fun AppRoot(){
@@ -29,10 +30,15 @@ fun AppRoot(){
             }
             composable(Routes.Login){
                 LoginScreen (
-                    onGoHome = {nav.navigateSingleTop(Routes.Home)}
+                    onGoHome = {nav.navigateSingleTop(Routes.Home)},
+                    onGoSignUp = {nav.navigateSingleTop(Routes.SignUp)}
                 )
             }
-
+            composable(Routes.SignUp){
+                SignUpScreen(
+                    onGoLogin = {nav.navigateSingleTop(Routes.Login)}
+                )
+            }
         }
     }
 }
