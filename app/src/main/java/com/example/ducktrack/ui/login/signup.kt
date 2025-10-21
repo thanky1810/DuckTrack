@@ -2,6 +2,7 @@
 
 package com.example.ducktrack.ui.signup
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -31,129 +33,107 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
+import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.components.fields.PillTextField
 
 
 @Composable
 fun SignUpScreen(
-    onSignUp: () -> Unit = {},
-    onGoLogin: () -> Unit = {}
+    onGoLogin: () -> Unit = {},
+    viewModel: AuthViewModel
 ) {
+    val green = Color(0xFF135013)
+    val fieldGreen = Color(0xFF2E8B57)
+    val context = LocalContext.current
+
     var username by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var confirm by rememberSaveable { mutableStateOf("") }
-    var showPwd by rememberSaveable { mutableStateOf(false) }
-    var showConfirm by rememberSaveable { mutableStateOf(false) }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
-    val green = Color(0xFF3F8D53)
-    val fieldGreen = Color(0xFF6FB36C)
-
-
-    Scaffold(
-        contentWindowInsets = WindowInsets(0.dp) // tuỳ chọn: tự kiểm soát insets
-    ) { inner ->
-        Column(
+    Scaffold { inner ->
+        Box(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(inner)
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
         ) {
-            // LOGO 230dp, bỏ padding bottom lớn
-            Image(
-                painter = painterResource(R.drawable.logo),
-                contentDescription = "Logo",
-                contentScale = ContentScale.Fit,
+            Column(
                 modifier = Modifier
-                    .size(230.dp)
-                    .padding(top = 8.dp, bottom = 8.dp)
-                    .offset(y = (-10).dp)
-            )
-
-            // ==== NGUYÊN KHỐI FORM ĐƯỢC NÂNG LÊN ====
-            Column(modifier = Modifier.offset(y = (-45).dp)) {
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 // Tiêu đề
-                Text(
-                    "Đăng ký",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.logo), // Thay R.drawable.logo bằng logo của bạn
+                    contentDescription = "App Logo",
+                    modifier = Modifier.height(100.dp),
+                    contentScale = ContentScale.Fit
                 )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Tạo tài khoản",
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = green
+                )
+                Spacer(Modifier.height(30.dp))
 
-                // Ô: Tên người dùng
+                // Các trường nhập liệu
                 PillTextField(
                     value = username,
                     onValueChange = { username = it },
                     placeholder = "Tên người dùng",
                     leading = { Icon(Icons.Default.Person, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     containerColor = fieldGreen,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(12.dp))
-
-                // Ô: Email
+                Spacer(Modifier.height(18.dp))
                 PillTextField(
                     value = email,
                     onValueChange = { email = it },
                     placeholder = "Email",
                     leading = { Icon(Icons.Default.Email, contentDescription = null) },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                     containerColor = fieldGreen,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(12.dp))
-
-                // Ô: Mật khẩu
+                Spacer(Modifier.height(18.dp))
                 PillTextField(
                     value = password,
                     onValueChange = { password = it },
                     placeholder = "Mật khẩu",
                     leading = { Icon(Icons.Default.Lock, contentDescription = null) },
                     trailing = {
-                        IconButton(onClick = { showPwd = !showPwd }) {
-                            Icon(
-                                imageVector = if (showPwd) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (showPwd) "Ẩn mật khẩu" else "Hiện mật khẩu"
-                            )
+                        val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(imageVector = image, null)
                         }
                     },
-                    visualTransformation = if (showPwd) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Next
-                    ),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
                     containerColor = fieldGreen,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(12.dp))
-
-                // Ô: Xác thực lại mật khẩu
+                Spacer(Modifier.height(18.dp))
                 PillTextField(
-                    value = confirm,
-                    onValueChange = { confirm = it },
-                    placeholder = "Xác thực lại mật khẩu",
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    placeholder = "Nhập lại mật khẩu",
                     leading = { Icon(Icons.Default.Lock, contentDescription = null) },
                     trailing = {
-                        IconButton(onClick = { showConfirm = !showConfirm }) {
-                            Icon(
-                                imageVector = if (showConfirm) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (showConfirm) "Ẩn mật khẩu" else "Hiện mật khẩu"
-                            )
+                        val image = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            Icon(imageVector = image, null)
                         }
                     },
-                    visualTransformation = if (showConfirm) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    ),
+                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     containerColor = fieldGreen,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -161,7 +141,23 @@ fun SignUpScreen(
 
                 // Nút Đăng ký
                 Button(
-                    onClick = onSignUp,
+                    onClick = {
+                        if (username.isBlank() || email.isBlank() || password.isBlank()) {
+                            Toast.makeText(context, "Vui lòng nhập đủ thông tin", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (password != confirmPassword) {
+                            Toast.makeText(context, "Mật khẩu không khớp", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        val success = viewModel.signUp(username, email, password)
+                        if (success) {
+                            Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
+                            onGoLogin()
+                        } else {
+                            Toast.makeText(context, "Tên người dùng đã tồn tại", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = green,
@@ -191,4 +187,3 @@ fun SignUpScreen(
     }
 
 }
-
