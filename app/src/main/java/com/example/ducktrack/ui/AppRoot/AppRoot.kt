@@ -13,19 +13,30 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+<<<<<<< HEAD
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.forgotpassword.ForgotPasswordScreen
+=======
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
 import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
 import com.example.ducktrack.ui.main.MainScreen
 import com.example.ducktrack.ui.permission.PermissionScreen
 import com.example.ducktrack.ui.signup.SignUpScreen
+<<<<<<< HEAD
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+=======
+import com.example.ducktrack.ui.permission.PermissionScreen
+import com.example.ducktrack.ui.home.HomeScreen
+import com.example.ducktrack.ui.home.HomeViewModel
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
 
 // Factory để truyền Context vào ViewModel
 class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
@@ -52,7 +63,7 @@ private fun hasUsageAccessPermission(context: Context): Boolean {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AppRoot(){
+fun AppRoot() {
     val nav = rememberNavController()
 
     val appContext = LocalContext.current.applicationContext
@@ -85,6 +96,7 @@ fun AppRoot(){
     Scaffold { inner ->
         NavHost(
             navController = nav,
+<<<<<<< HEAD
             startDestination = startDestination, // Sử dụng biến động
             modifier = Modifier.padding(inner)
         ){
@@ -93,10 +105,19 @@ fun AppRoot(){
                     onForgotPassword = { nav.navigate(Routes.ForgotPassword) },
                     onCreateAccount = { nav.navigate(Routes.SignUp) },
                     onGoLogin = { nav.navigate(Routes.Login) }
+=======
+            startDestination = Routes.Introduce,
+            modifier = Modifier.padding(inner)
+        ) {
+            composable(Routes.Introduce) {
+                introduceScreen(
+                    onGoLogin = { nav.navigateSingleTop(Routes.Login) }
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
                 )
             }
 
             composable(Routes.Login) {
+<<<<<<< HEAD
                 LoginScreen(
                     viewModel = authViewModel,
                     // Luồng: Sau khi đăng nhập, PHẢI đi tới trang Permission
@@ -111,11 +132,19 @@ fun AppRoot(){
                         }
                     },
                     onForgotPassword = { nav.navigate(Routes.ForgotPassword) }
+=======
+                // BẤM LOGIN → đi thẳng đến màn xin quyền
+                LoginScreen(
+                    onLogin = { nav.navigateSingleTop(Routes.Permission) },
+                    onGoHome = { nav.navigateSingleTop(Routes.Home) }, // (không dùng, nhưng giữ cho tiện)
+                    onGoSignUp = { nav.navigateSingleTop(Routes.SignUp) }
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
                 )
             }
 
             composable(Routes.SignUp) {
                 SignUpScreen(
+<<<<<<< HEAD
                     viewModel = authViewModel,
                     onGoLogin = {
                         nav.navigate(Routes.Login) {
@@ -170,8 +199,39 @@ fun AppRoot(){
                             popUpTo(Routes.Main) { inclusive = true }
                         }
                     }
+=======
+                    onGoLogin = { nav.navigateSingleTop(Routes.Login) }
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
                 )
+            }
+
+            // MÀN XIN QUYỀN → khi đã có quyền hoặc bấm nút xác nhận → vào Home
+            composable(Routes.Permission) {
+                PermissionScreen(
+                    onGranted = {
+                        nav.navigateSingleTop(Routes.Home)
+                    }
+                )
+            }
+
+            // HOME
+            composable(Routes.Home) {
+                val vm: HomeViewModel = viewModel()
+                HomeScreen(vm)
             }
         }
     }
+<<<<<<< HEAD
 }
+=======
+}
+
+// Giữ helper điều hướng singleTop như bạn đã có
+private fun androidx.navigation.NavHostController.navigateSingleTop(route: String) {
+    navigate(route) {
+        launchSingleTop = true
+        restoreState = true
+        popUpTo(graph.startDestinationId) { saveState = true }
+    }
+}
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)

@@ -135,6 +135,10 @@ fun LoginScreen(
 
             Spacer(Modifier.height(20.dp))
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
             Button(
                 onClick = {
                     if (username.isBlank() || password.isBlank()) {

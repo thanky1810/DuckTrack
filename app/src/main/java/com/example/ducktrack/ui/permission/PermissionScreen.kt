@@ -1,5 +1,6 @@
 package com.example.ducktrack.ui.permission
 
+<<<<<<< HEAD
 // CÁC IMPORT MỚI ĐƯỢC THÊM
 import android.app.AppOpsManager
 import android.content.Context
@@ -223,3 +224,59 @@ private fun PermissionInfoCard(text: String) {
         )
     }
 }
+=======
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.example.ducktrack.utils.hasUsageAccess
+import com.example.ducktrack.utils.openUsageAccessSettings
+
+@Composable
+fun PermissionScreen(onGranted: () -> Unit) {
+    val ctx = LocalContext.current
+    val granted = remember { mutableStateOf(hasUsageAccess(ctx)) }
+
+    if (granted.value) {
+        onGranted()
+        return
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Ứng dụng cần quyền “Quyền truy cập dữ liệu sử dụng”.")
+            Text("Vui lòng cấp quyền để hiển thị thời gian sử dụng ứng dụng.")
+        }
+        Column {
+            Button(
+                onClick = { openUsageAccessSettings(ctx) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text("Mở Cài đặt & Cấp quyền")
+            }
+            TextButton(
+                onClick = {
+                    granted.value = hasUsageAccess(ctx)
+                    if (granted.value) onGranted()
+                }
+            ) {
+                Text("Tôi đã cấp quyền ✓")
+            }
+        }
+    }
+}
+>>>>>>> 7333551 (WIP: keep my local changes before syncing)
