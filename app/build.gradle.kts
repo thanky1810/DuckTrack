@@ -40,6 +40,18 @@ android {
 }
 
 dependencies {
+
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // ViewModel + lifecycle
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+
+    // DataStore để lưu giới hạn mỗi app
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // WorkManager để nhắc vượt giới hạn
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.core.ktx)
@@ -52,6 +64,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.ui.unit)
+    implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
