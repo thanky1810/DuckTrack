@@ -47,7 +47,8 @@ import java.util.Locale
 fun MainScreen(
     mainNavController: NavHostController,
     hasPermission: Boolean,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+
 ) {
 
 
@@ -220,10 +221,8 @@ private fun DashboardScreen(
 
         // Danh sách app usage (AppUsageRow bạn đã có)
         items(vm.usages, key = { it.packageName }) { u ->
-            // Thẻ bo góc + bóng nhẹ theo cảm giác mockup
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 shadowElevation = 2.dp,
                 color = Color.White
@@ -231,6 +230,7 @@ private fun DashboardScreen(
                 AppUsageRow(
                     usage = u,
                     limitMinutes = vm.limits[u.packageName],
+                    appIcon = vm.iconFor(u),         // ← truyền icon
                     onSetLimit = { minutes -> vm.setLimit(u.packageName, minutes) }
                 )
             }
