@@ -24,7 +24,7 @@ fun DashboardScreen(
     onGoToPermission: () -> Unit // <-- Nhận hành động
 ) {
     if (hasPermission) {
-        // --- GIAO DIỆN KHI ĐÃ CÓ QUYỀN ---
+        // --- GIAO DIỆN KHI ĐÃ CÓ QUYỀN (Phần 1) ---
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -35,18 +35,18 @@ fun DashboardScreen(
             // TODO: Hiển thị giao diện dashboard thật ở đây
         }
     } else {
-        // --- GIAO DIỆN KHI CHƯA CÓ QUYỀN (GIỮ NGUYÊN) ---
+        // --- GIAO DIỆN KHI CHƯA CÓ QUYỀN (Phần 2) ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF7F7F7)) // Màu nền xám nhạt
-                .padding(horizontal = 24.dp),
+                .background(Color.White)
+                .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Hình ảnh con vịt
+            // Image
             Image(
-                painter = painterResource(id = R.drawable.logo), // Giả sử dùng logo
+                painter = painterResource(id = R.drawable.ic_duck_logo), // Thay thế bằng tên file ảnh thực tế
                 contentDescription = "Yêu cầu quyền",
                 modifier = Modifier.size(150.dp)
             )
@@ -77,7 +77,7 @@ fun DashboardScreen(
 
             // Nút bấm
             Button(
-                onClick = onGoToPermission, // <-- Gọi lambda
+                onClick = onGoToPermission, // <-- Hành động: đi tới màn hình cấp quyền
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),

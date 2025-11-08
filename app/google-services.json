@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "886538399027",
+    "project_id": "ducktrack-8324b",
+    "storage_bucket": "ducktrack-8324b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:886538399027:android:30c3288f25343939792246",
+        "android_client_info": {
+          "package_name": "com.example.ducktrack"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "886538399027-lqsqjbeijsn9vvmtkcd6cf7cb79ics59.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ducktrack",
+            "certificate_hash": "2fddc1dae84af6e73e4e386d35881d2a926fe6f8"
+          }
+        },
+        {
+          "client_id": "886538399027-1k53hhfqpphkcptdu8pfia4bnvim1jmb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCahesAjpkyaTAoLBSjshucH2t6e5O9UZY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "886538399027-1k53hhfqpphkcptdu8pfia4bnvim1jmb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

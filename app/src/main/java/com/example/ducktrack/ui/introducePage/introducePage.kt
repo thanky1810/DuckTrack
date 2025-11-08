@@ -1,123 +1,128 @@
 package com.example.ducktrack.ui.introducePage
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
+import com.example.ducktrack.ui.theme.AppColors
+
+// --- ĐỊNH NGHĨA FONT FAMILY TÙY CHỈNH ---
+val JostFontFamily = FontFamily(
+    Font(R.font.jost_extrabold, FontWeight.ExtraBold)
+)
+// ------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun introduceScreen(
-    onForgotPassword: () -> Unit = {},
-    onCreateAccount: () -> Unit = {},
     onGoLogin: () -> Unit = {}
 ) {
     Scaffold { inner ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(AppColors.BackgroundWhite)
                 .padding(inner)
-                .padding(top = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            // SỬA: Đổi thành Arrangement.Top để đẩy nội dung lên
+            verticalArrangement = Arrangement.Top
         ) {
+            // SỬA: Giảm Spacer trên cùng để đẩy nội dung lên cao
+            Spacer(Modifier.height(60.dp))
 
-            Spacer(Modifier.height(24.dp))
-
-            // Khối hình: nền bong bóng + logo vịt chồng lên
+            // Logo và hình nền bong bóng
             Box(
                 modifier = Modifier
-                    .padding(top =40.dp)
                     .fillMaxWidth()
-                    .height(250.dp),
+                    .height(350.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.img), // nền bong bóng
+                    painter = painterResource(id = R.drawable.ic_bubble_background),
                     contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.fillMaxSize().scale(1.1f),
                     contentScale = ContentScale.Fit
                 )
-
                 Image(
-                    painter = painterResource(id = R.drawable.logo),  // logo vịt
+                    painter = painterResource(id = R.drawable.ic_duck_logo),
                     contentDescription = "DuckTrack Logo",
-                    modifier = Modifier
-                        .fillMaxWidth(1f)
-                        .size(250.dp)
-                        .offset(y = (-55).dp),
+                    modifier = Modifier.size(250.dp),
                     contentScale = ContentScale.Fit
                 )
             }
 
-            // Headline
-            Text(
-                text = "Plant your Forest\nGrow your Focus",
-                color = Color(0xFF294E2D), // xanh đậm
-                fontSize = 45.sp,
-                lineHeight = 40.sp,
+            // SỬA: Giảm khoảng cách
+            Spacer(Modifier.height(24.dp))
+
+            // --- CHỮ (Giữ nguyên style) ---
+            val textStyleWithShadow = TextStyle(
+                fontFamily = JostFontFamily,
                 fontWeight = FontWeight.ExtraBold,
+                fontSize = 40.sp,
+                color = AppColors.TextGreen,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-                    .offset(y = (-40).dp),
-                style = LocalTextStyle.current.copy(
-                    shadow = Shadow( // nhẹ để chữ nổi hơn
-                        color = Color(0x22000000),
-                        blurRadius = 6f
-                    )
+                lineHeight = 48.sp,
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.2f),
+                    offset = androidx.compose.ui.geometry.Offset(4f, 4f),
+                    blurRadius = 8f
                 )
             )
 
-            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "Plant your Forest,",
+                style = textStyleWithShadow,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Grow your Focus.",
+                style = textStyleWithShadow,
+                modifier = Modifier.fillMaxWidth()
+            )
+            // ---------------------------------
 
+            // SỬA: Giảm khoảng cách
+            Spacer(Modifier.height(40.dp))
 
+            // Nút "Đăng nhập"
             Button(
-
                 onClick = onGoLogin,
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF3F8D53), // xanh nút
+                    containerColor = AppColors.ButtonGreen,
                     contentColor = Color.White
                 ),
                 modifier = Modifier
-                    .padding(horizontal = 40.dp)
                     .fillMaxWidth()
-                    .height(65.dp)
+                    .height(80.dp)
+                    .padding(horizontal = 40.dp)
             ) {
-                Text("Bắt đầu", fontSize = 40.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Đăng nhập",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            // Hàng link phụ
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onForgotPassword) {
-                    Text("Quên mật khẩu?", color = Color(0xFF3A3A3A), fontSize = 20.sp)
-                }
-                TextButton(onClick = onCreateAccount) {
-                    Text("Tạo tài khoản", color = Color(0xFF2E8B57), fontSize = 20.sp)
-                }
-            }
-
-            Spacer(Modifier.height(18.dp))
+            // SỬA: Xóa Spacer(Modifier.weight(1f)) ở dưới cùng
         }
     }
 }

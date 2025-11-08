@@ -8,9 +8,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -33,7 +34,7 @@ import com.example.ducktrack.utils.msToReadable
 fun AppUsageRow(
     usage: AppUsage,
     limitMinutes: Int?,
-    appIcon: Drawable?,                // <- icon truyền từ VM
+    appIcon: Drawable?,
     onSetLimit: (Int) -> Unit
 ) {
     val (showMenu, setShowMenu) = remember { mutableStateOf(false) }
@@ -97,5 +98,5 @@ fun AppUsageRow(
             }
         }
     }
-    Divider()
+    HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 }
