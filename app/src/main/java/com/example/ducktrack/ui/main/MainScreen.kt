@@ -266,7 +266,7 @@ private fun Pill(
 private fun DayPagerRow(
     modifier: Modifier = Modifier
 ) {
-    val locale = Locale("vi", "VN")
+    val locale = Locale.forLanguageTag("vi-VN")
     // ví dụ "Th 4, 1 tháng 10"
     val label = remember {
         val today = LocalDate.now()

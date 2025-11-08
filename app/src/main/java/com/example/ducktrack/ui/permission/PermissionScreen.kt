@@ -1,14 +1,9 @@
 package com.example.ducktrack.ui.permission
 
-// CÁC IMPORT MỚI ĐƯỢC THÊM
-import android.app.AppOpsManager
-import android.content.Context
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-// ---
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale // Đảm bảo đã import
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -30,196 +25,156 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
+import com.example.ducktrack.utils.hasUsageAccess
+import com.example.ducktrack.ui.theme.AppColors // Import màu mới
 
-// --- Định nghĩa màu sắc dựa trên ảnh chụp màn hình ---
-private val LightGrayBg = Color(0xFFF7F7F7)
-private val LightGreenCard = Color(0xFFEBF5EE)
-private val DarkGreen = Color(0xFF3BA15D)
-private val MediumGrayButton = Color(0xFFBDBDBD)
-private val DarkText = Color(0xFF333333)
-
-/**
- * Màn hình xin cấp quyền Truy cập dữ liệu sử dụng.
- * (Đã cập nhật: Bỏ TopAppBar, dùng ContentScale.Crop, tự động kiểm tra quyền)
- */
 @Composable
 fun PermissionScreen(
     onGoToSettings: () -> Unit,
     onCancel: () -> Unit,
-    onPermissionGranted: () -> Unit // <-- THAM SỐ MỚI ĐỂ ĐIỀU HƯỚNG
+    onPermissionGranted: () -> Unit
 ) {
-    // --- LOGIC MỚI: TỰ ĐỘNG KIỂM TRA QUYỀN KHI QUAY LẠI MÀN HÌNH ---
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    DisposableEffect(lifecycleOwner, context, onPermissionGranted) {
-        // Hàm kiểm tra quyền
-        fun checkPermission() {
-            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-            val mode = appOps.checkOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                context.packageName
-            )
-            val hasPermission = (mode == AppOpsManager.MODE_ALLOWED)
-
-            if (hasPermission) {
-                // Nếu đã có quyền, gọi lambda để điều hướng
-                onPermissionGranted()
-            }
-        }
-
+    // Logic kiểm tra quyền khi quay lại (Giữ nguyên)
+    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            // Kiểm tra quyền mỗi khi màn hình resume (quay lại)
             if (event == Lifecycle.Event.ON_RESUME) {
-                checkPermission()
+                if (hasUsageAccess(context)) {
+                    onPermissionGranted()
+                }
             }
         }
-        // Thêm observer
         lifecycleOwner.lifecycle.addObserver(observer)
-        // Gỡ observer khi composable bị hủy
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-    // --- KẾT THÚC LOGIC MỚI ---
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LightGrayBg)
-    ) {
-        // Lớp 1: Ảnh nền trang trí (img.png)
-        Image(
-            painter = painterResource(id = R.drawable.img),
-            contentDescription = null, // Ảnh trang trí
-            modifier = Modifier.fillMaxSize(),
-            // Dùng Crop để phóng to giữ tỉ lệ, không làm méo ảnh
-            contentScale = ContentScale.Crop
-        )
-
-        // Lớp 2: Nội dung chính
+    Scaffold { inner ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Cho phép cuộn
-                // Thêm statusBarsPadding() để nội dung bắt đầu bên dưới thanh status bar
+                .background(AppColors.BackgroundWhite) // Nền trắng
+                .padding(inner)
+                .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
+            Spacer(Modifier.weight(1f))
 
-            // Spacer này giờ sẽ tính từ dưới status bar
-            Spacer(modifier = Modifier.height(16.dp))
+            // Logo và hình nền bong bóng
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_bubble_background),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.ic_duck_logo),
+                    contentDescription = "DuckTrack Logo",
+                    modifier = Modifier.size(180.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
 
-            // Logo
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Logo Ducktrack",
-                modifier = Modifier.size(180.dp)
-            )
-
+            Spacer(modifier = Modifier.height(40.dp))
+            TitleText() // Gọi hàm TitleText đã sửa
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Tiêu đề
-            TitleText()
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Khung thông tin 1
-            PermissionInfoCard(
-                text = "Thống kê thời gian bạn đã dùng điện thoại và từng ứng dụng."
-            )
-
+            PermissionInfoCard(text = "Thống kê thời gian bạn đã dùng điện thoại và từng ứng dụng.")
             Spacer(modifier = Modifier.height(16.dp))
+            PermissionInfoCard(text = "Cho phép đặt giới hạn và cảnh báo khi bạn vượt quá thời gian đã cài.")
+            Spacer(modifier = Modifier.height(40.dp))
 
-            // Khung thông tin 2
-            PermissionInfoCard(
-                text = "Cho phép đặt giới hạn và cảnh báo khi bạn vượt quá thời gian đã cài."
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Nút màu xanh lá
+            // Nút "Đi tới Cài đặt và Cấp quyền" (Màu xanh)
             Button(
                 onClick = onGoToSettings,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = DarkGreen),
-                shape = RoundedCornerShape(12.dp)
+                    .height(60.dp)
+                    .padding(horizontal = 16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen),
+                shape = RoundedCornerShape(18.dp)
             ) {
                 Text(
                     text = "Đi tới Cài đặt và Cấp quyền",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 18.sp // Giảm cỡ chữ 1 chút
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Nút màu xám
+            // Nút "Hủy" (Màu xám)
             Button(
                 onClick = onCancel,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MediumGrayButton),
-                shape = RoundedCornerShape(12.dp)
+                    .height(60.dp)
+                    .padding(horizontal = 16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGray, contentColor = Color.Black),
+                shape = RoundedCornerShape(18.dp)
             ) {
                 Text(
                     text = "Hủy",
-                    color = DarkText,
+                    color = Color.Black,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 20.sp
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp)) // Padding cuối
+            Spacer(Modifier.weight(1.5f))
         }
     }
 }
 
-/**
- * Composable cho phần văn bản tiêu đề (với chữ "DUCKTRACK" màu xanh).
- */
+// Sửa lại TitleText
 @Composable
 private fun TitleText() {
     Text(
         text = buildAnnotatedString {
             append("Ứng dụng ")
-            withStyle(style = SpanStyle(color = DarkGreen, fontWeight = FontWeight.Bold)) {
+            withStyle(style = SpanStyle(color = AppColors.TextGreen, fontWeight = FontWeight.Bold)) {
                 append("DUCKTRACK")
             }
             append(" cần quyền\nTruy cập dữ liệu sử dụng để:")
         },
         textAlign = TextAlign.Center,
-        fontSize = 18.sp,
-        color = DarkText,
-        lineHeight = 24.sp,
-        fontWeight = FontWeight.Medium
+        fontSize = 20.sp,
+        color = Color.Black, // Màu chữ đen
+        lineHeight = 28.sp,
+        fontWeight = FontWeight.Normal
     )
 }
 
-/**
- * Composable cho các thẻ thông tin (màu xanh nhạt).
- */
+// Sửa lại PermissionInfoCard
 @Composable
 private fun PermissionInfoCard(text: String) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = LightGreenCard),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)), // Màu xanh lá rất nhạt
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(16.dp),
-            color = DarkText,
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Medium
+            color = AppColors.TextGray, // Màu chữ xám
+            fontSize = 18.sp,
+            textAlign = TextAlign.Start,
+            fontWeight = FontWeight.Normal
         )
     }
 }

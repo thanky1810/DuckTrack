@@ -2,180 +2,224 @@
 
 package com.example.ducktrack.ui.login
 
+import android.app.Activity
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
 import com.example.ducktrack.ui.AuthViewModel
-import com.example.ducktrack.ui.components.fields.PillTextField
-import com.example.ducktrack.ui.introducePage.AppColors
+import com.example.ducktrack.ui.AppRoot.AuthViewModelFactory
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.tasks.Task
+import kotlinx.coroutines.launch
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
+import com.example.ducktrack.ui.theme.AppColors
+
+// --- ĐỊNH NGHĨA FONT FAMILY ---
+val JostFontFamily = FontFamily(
+    Font(R.font.jost_extrabold, FontWeight.ExtraBold)
+)
+// ------------------------------------------
 
 @Composable
 fun LoginScreen(
-    viewModel: AuthViewModel,
-    onGoHome: () -> Unit = {},
-    onGoSignUp: () -> Unit = {},
-    onForgotPassword: () -> Unit = {},
-    onLogin: () -> Unit = {}
+    onLogin: () -> Unit = {},
+    googleSignInClient: GoogleSignInClient
 ) {
-    var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
-    val green = AppColors.Green
-    val fieldGreen = green.copy(alpha = 0.5f)
     val context = LocalContext.current
+    val viewModel: AuthViewModel = viewModel(
+        factory = AuthViewModelFactory(context.applicationContext)
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    // ===== GOOGLE SIGN IN LOGIC (Giữ nguyên) =====
+    val googleAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task: Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount> =
+                GoogleSignIn.getSignedInAccountFromIntent(result.data)
+
+            try {
+                val account = task.getResult(ApiException::class.java)!!
+                val idToken = account.idToken
+
+                if (idToken != null) {
+                    coroutineScope.launch {
+                        viewModel.signInWithGoogleToken(idToken)
+                        onLogin()
+                    }
+                } else {
+                    Toast.makeText(context, "Lỗi: Không nhận được ID Token", Toast.LENGTH_SHORT).show()
+                }
+
+            } catch (e: ApiException) {
+                Toast.makeText(context, "Đăng nhập Google thất bại: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        } else if (result.resultCode != CommonStatusCodes.CANCELED) {
+            Toast.makeText(context, "Hủy đăng nhập", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val signInWithGoogle: () -> Unit = {
+        googleSignInClient.signOut().addOnCompleteListener {
+            val signInIntent = googleSignInClient.signInIntent
+            googleAuthLauncher.launch(signInIntent)
+        }
+    }
+    // =============================================================
+
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onGoHome) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
-        }
-    ) { padding ->
+        // Loại bỏ TopAppBar
+    ) { inner ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(AppColors.BackgroundWhite)
+                .padding(inner)
+                // SỬA: Thêm padding trên cùng để nội dung không bị dính sát vào status bar
+                .padding(top = 40.dp, start = 8.dp, end = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
         ) {
-            // Sử dụng cấu trúc Box từ introducePage.kt để đảm bảo căn giữa và bố cục nhất quán
+            // SỬA: Xóa Spacer trên cùng
+
+            // Logo và hình nền bong bóng
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(350.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(150.dp),
+                    painter = painterResource(id = R.drawable.ic_bubble_background),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().scale(1.1f),
+                    contentScale = ContentScale.Fit
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.ic_duck_logo),
+                    contentDescription = "DuckTrack Logo",
+                    modifier = Modifier.size(250.dp),
                     contentScale = ContentScale.Fit
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Đăng nhập",
+
+            Spacer(Modifier.height(24.dp))
+
+            // --- CHỮ "ĐĂNG NHẬP" (Style giống introducePage) ---
+            val textStyleWithShadow = TextStyle(
+                fontFamily = JostFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 40.sp,
+                color = AppColors.TextGreen,
                 textAlign = TextAlign.Center,
-                fontSize = 42.sp,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    shadow = Shadow(
-                        color = Color(0x40000000),
-                        blurRadius = 8f
-                    )
+                lineHeight = 48.sp,
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.2f),
+                    offset = androidx.compose.ui.geometry.Offset(4f, 4f),
+                    blurRadius = 8f
                 )
             )
 
-            Spacer(Modifier.height(32.dp))
-
-            PillTextField(
-                value = username,
-                onValueChange = { username = it },
-                placeholder = "Tên đăng nhập",
-                leading = { Icon(Icons.Default.Person, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                containerColor = fieldGreen,
+            Text(
+                text = "Đăng nhập",
+                style = textStyleWithShadow,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(18.dp))
-            PillTextField(
-                value = password,
-                onValueChange = { password = it },
-                placeholder = "Mật khẩu",
-                leading = { Icon(Icons.Default.Lock, contentDescription = null) },
-                trailing = {
-                    IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                        val icon = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                        Icon(icon, contentDescription = "Toggle password visibility")
-                    }
-                },
-                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                containerColor = fieldGreen,
-                modifier = Modifier.fillMaxWidth()
+            // --------------------------------------------------------
+
+            Spacer(Modifier.height(40.dp))
+
+            // --- Google Sign In Button ---
+            AuthButton(
+                text = "Đăng nhập bằng Google",
+                iconResId = R.drawable.ic_google,
+                backgroundColor = Color(0xFFF0F0F0),
+                contentColor = Color.Black,
+                onClick = signInWithGoogle
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
-            Button(
-                onClick = {
-                    if (username.isBlank() || password.isBlank()) {
-                        Toast.makeText(context, "Vui lòng điền đầy đủ thông tin", Toast.LENGTH_SHORT).show()
-                    } else {
-                        if (viewModel.login(username, password)) {
-                            onLogin()
-                        } else {
-                            Toast.makeText(context, "Tên đăng nhập hoặc mật khẩu không đúng", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = green,
-                    contentColor = Color.White
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("Đăng nhập", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onForgotPassword) {
-                    Text("Quên mật khẩu?", color = Color(0xFF3A3A3A), fontSize = 20.sp)
-                }
-                TextButton(onClick = onGoSignUp) {
-                    Text("Tạo tài khoản", color = Color(0xFF2E8B57), fontSize = 20.sp)
-                }
-            }
+            // --- Facebook Sign In Button ---
+            AuthButton(
+                text = "Đăng nhập bằng Facebook",
+                iconResId = R.drawable.ic_facebook,
+                backgroundColor = Color(0xFF3B5998),
+                contentColor = Color.White,
+                onClick = { Toast.makeText(context, "Chức năng đang phát triển", Toast.LENGTH_SHORT).show() }
+            )
         }
     }
 }
 
+// Hàm Composable cho nút mạng xã hội (Giữ nguyên)
+@Composable
+fun AuthButton(
+    text: String,
+    iconResId: Int,
+    backgroundColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .padding(horizontal = 24.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Image(
+                painter = painterResource(id = iconResId),
+                contentDescription = null,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(32.dp))
+        }
+    }
+}
