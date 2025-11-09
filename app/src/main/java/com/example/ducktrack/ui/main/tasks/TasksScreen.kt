@@ -1,207 +1,153 @@
+
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+
 package com.example.ducktrack.ui.main.tasks
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
+import androidx.compose.runtime.collectAsState
+import androidx.compose.animation.*
 
-// Data class (không đổi)
-data class Task(
-    val id: Int,
-    val description: String,
-    val isCompleted: Boolean
-)
-
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun TasksScreen() {
-    // --- Định nghĩa màu sắc (không đổi) ---
+fun TasksScreen(
+    viewModel: TasksViewModel = viewModel()
+) {
+    // --- Định nghĩa màu sắc ---
     val screenBgColor = Color(0xFFFFFFFF)
     val titleColor = Color(0xFF62B26A)
-    val inputBgColor = Color(0xFFFFFFFF)
-    val inputBorderColor = Color(0xFFE0E0E0)
-    val buttonColor = Color(0xFF62B26A)
-    val taskPendingBg = Color(0xFFFFF6F6)
-    val taskCompletedBg = Color(0xFFE6F8E8)
+    val selectionColor = Color(0xFFD0E3FF)
     val taskTextColor = Color(0xFF424242)
+    val pinColor = Color(0xFF62B26A)
 
+    // --- State (Lấy từ ViewModel) ---
+    val tasks by viewModel.tasks.collectAsState()
+    val selectedTaskIds by viewModel.selectedTaskIds.collectAsState()
+    val newTaskText by viewModel.newTaskText.collectAsState()
+    val taskToEdit by viewModel.taskToEdit.collectAsState()
 
-    // --- State (không đổi) ---
-    var newTaskText by remember { mutableStateOf("") }
-    val tasks = remember {
-        mutableStateListOf(
-            Task(1, "Hoàn thành bài tập Tiếng Anh", false),
-            Task(2, "Đọc 1 quyển sách", false),
-            Task(3, "Dọn dẹp nhà cửa", true),
-        )
-    }
+    val isInSelectionMode = selectedTaskIds.isNotEmpty()
+    val sortedTasks = tasks
 
-    // --- Giao diện (UI) ---
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(screenBgColor)
-    ) {
+    Scaffold(
+        containerColor = screenBgColor,
+    ) { innerPadding ->
 
-        // --- THAY ĐỔI 1: Điều chỉnh kích thước Image và loại bỏ alpha ---
-        Image(
-            painter = painterResource(id = R.drawable.duck_celebrate),
-            contentDescription = "Con vịt nền",
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .size(200.dp)
-                .padding(bottom = 0.dp)
-        )
+        // Hiển thị Dialog Sửa nếu taskToEdit không null
+        taskToEdit?.let { task ->
+            EditTaskDialog(
+                task = task,
+                onDismiss = viewModel::onCancelEdit,
+                onConfirm = { newText ->
+                    viewModel.onConfirmEdit(newText)
+                }
+            )
+        }
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(innerPadding)
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Danh Sách Nhiệm Vụ Cần Làm Trong Hôm Nay ✅",
-                color = titleColor,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
+            Image(
+                painter = painterResource(id = R.drawable.duck_celebrate),
+                contentDescription = "Con Vịt Nền",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .size(200.dp)
+                    .padding(bottom = 0.dp)
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                OutlinedTextField(
-                    value = newTaskText,
-                    onValueChange = { newTaskText = it },
-                    placeholder = { Text("Thêm nhiệm vụ mới ..") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = buttonColor,
-                        unfocusedBorderColor = inputBorderColor,
-                        focusedContainerColor = inputBgColor,
-                        unfocusedContainerColor = inputBgColor,
-                    ),
-                    singleLine = true
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Danh Sách Nhiệm Vụ Cần Làm Trong Hôm Nay ",
+                    color = titleColor,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    fontFamily = FontFamily.SansSerif,
+                    modifier = Modifier.padding(horizontal = 0.dp)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                IconButton(
-                    onClick = {
-                        if (newTaskText.isNotBlank()) {
-                            tasks.add(
-                                Task(
-                                    id = (tasks.maxOfOrNull { it.id } ?: 0) + 1,
-                                    description = newTaskText,
-                                    isCompleted = false
-                                )
-                            )
-                            newTaskText = ""
-                        }
-                    },
+                Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(buttonColor, RoundedCornerShape(16.dp))
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Thêm nhiệm vụ",
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
-                    )
+                    if (isInSelectionMode) {
+                        SelectionActionRow(
+                            selectedCount = selectedTaskIds.size,
+                            onClose = viewModel::onCloseSelectionMode,
+                            onDelete = viewModel::onDeleteSelected,
+                            onPin = viewModel::onPinSelected
+                        )
+                    } else {
+                        AddTaskRow(
+                            newTaskText = newTaskText,
+                            onNewTaskTextChange = viewModel::onNewTaskTextChange,
+                            onAddTask = viewModel::onAddTask
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(tasks, key = { it.id }) { task ->
-                    TaskItem(
-                        task = task,
-                        onCheckedChange = { isChecked ->
-                            val index = tasks.indexOf(task)
-                            if (index != -1) {
-                                tasks[index] = task.copy(isCompleted = isChecked)
-                            }
-                        },
-                        backgroundColor = if (task.isCompleted) taskCompletedBg else taskPendingBg,
-                        textColor = taskTextColor
-                    )
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(
+                        items = sortedTasks,
+                        key = { it.id }
+                    ) { task ->
+                        val isSelected = task.id in selectedTaskIds
+
+                        TaskItem(
+                            // Thêm modifier này để tạo animation
+                            modifier = Modifier.animateItem(),
+
+                            // Các tham số còn lại
+                            task = task,
+                            isSelected = isSelected,
+                            onClick = { viewModel.onTaskClick(task) },
+                            onLongPress = { viewModel.onTaskLongPress(task) },
+                            onPinClick = { viewModel.onUnpinClick(task) },
+                            onEditClick = { viewModel.onEditClick(task) },
+                            selectionColor = selectionColor,
+                            textColor = taskTextColor,
+                            pinColor = pinColor
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-/**
- * Một Composable riêng cho từng Hàng nhiệm vụ (Task Item)
- * (Không thay đổi)
- */
-@Composable
-fun TaskItem(
-    task: Task,
-    onCheckedChange: (Boolean) -> Unit,
-    backgroundColor: Color,
-    textColor: Color
-) {
-    val textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = task.isCompleted,
-            onCheckedChange = onCheckedChange,
-            colors = CheckboxDefaults.colors(
-                checkedColor = Color(0xFF62B26A),
-                uncheckedColor = Color.Gray
-            )
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = task.description,
-            color = textColor,
-            textDecoration = textDecoration,
-            fontSize = 16.sp
-        )
     }
 }
 
