@@ -14,4 +14,27 @@ object AppColors {
     // Màu xám cho nút "Hủy"
     val ButtonGray = Color(0xFFE0E0E0) // Nền xám nhạt
     val TextGray = Color(0xFF616161)   // Chữ xám đậm
+
+    // ========== Palette cho PieChart và AppUsageRow ==========
+    /**
+     * Bảng màu chung cho PieChart và AppUsageRow
+     * Đảm bảo màu đồng nhất giữa biểu đồ và danh sách app
+     */
+    val chartPalette = listOf(
+        Color(0xFF4CAF50), // Xanh lá
+        Color(0xFF2196F3), // Xanh dương
+        Color(0xFFFF9800), // Cam
+        Color(0xFFE91E63), // Hồng
+        Color(0xFF9C27B0), // Tím
+        Color(0xFF00BCD4), // Xanh cyan
+        Color(0xFF8BC34A), // Xanh lá nhạt
+        Color(0xFF795548)  // Nâu
+    )
+
+    /**
+     * Lấy màu theo index, tự động lặp lại nếu vượt quá số màu
+     */
+    fun getColorForIndex(index: Int): Color {
+        return chartPalette[index % chartPalette.size]
+    }
 }

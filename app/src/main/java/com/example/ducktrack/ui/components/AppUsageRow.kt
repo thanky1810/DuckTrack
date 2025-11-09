@@ -8,10 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -35,68 +33,92 @@ fun AppUsageRow(
     usage: AppUsage,
     limitMinutes: Int?,
     appIcon: Drawable?,
+    chartColor: Color, // Màu từ chart
     onSetLimit: (Int) -> Unit
 ) {
     val (showMenu, setShowMenu) = remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+    // Surface với nền màu từ chart (opacity nhẹ)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = chartColor.copy(alpha = 0.12f), // Nền màu nhạt 12% opacity
+        shadowElevation = 1.dp
     ) {
-        // avatar tròn chứa icon app
-        Box(
+        Row(
             modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFF2F2F2)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            appIcon?.let {
-                val bmp = it.toBitmap(width = 64, height = 64, config = null)
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+            // Avatar tròn chứa icon app
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                appIcon?.let {
+                    val bmp = it.toBitmap(width = 64, height = 64, config = null)
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = usage.label,
+                    fontSize = 15.sp,
+                    color = Color(0xFF1F1F1F)
+                )
+                val used = msToReadable(usage.totalForegroundMs)
+                val limitText = limitMinutes?.let { " • Giới hạn: ${it}m" } ?: ""
+                Text(
+                    text = "Đã sử dụng: $used$limitText",
+                    fontSize = 12.sp,
+                    color = Color(0xFF6B6B6B)
                 )
             }
-        }
 
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(usage.label, fontSize = 16.sp, color = Color(0xFF1F1F1F))
-            val used = msToReadable(usage.totalForegroundMs)
-            val limitText = limitMinutes?.let { " • Giới hạn: ${it}m" } ?: ""
-            Text("Đã sử dụng: $used$limitText", fontSize = 12.sp, color = Color(0xFF6B6B6B))
-        }
-
-        // pill tổng phút bên phải
-        Surface(
-            color = Color(0xFFEFEFEF),
-            shape = RoundedCornerShape(10.dp),
-            shadowElevation = 0.dp
-        ) {
-            Text(
-                text = msToReadable(usage.totalForegroundMs),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                fontSize = 12.sp,
-                color = Color(0xFF333333)
-            )
-        }
-
-        IconButton(onClick = { setShowMenu(true) }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = null)
-        }
-        DropdownMenu(expanded = showMenu, onDismissRequest = { setShowMenu(false) }) {
-            listOf(15, 30, 45, 60, 90, 120).forEach { m ->
-                DropdownMenuItem(
-                    text = { Text("Giới hạn ${m} phút") },
-                    onClick = { setShowMenu(false); onSetLimit(m) }
+            // Pill tổng phút bên phải
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(8.dp),
+                shadowElevation = 0.dp
+            ) {
+                Text(
+                    text = msToReadable(usage.totalForegroundMs),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    fontSize = 13.sp,
+                    color = Color(0xFF333333)
                 )
+            }
+
+            IconButton(onClick = { setShowMenu(true) }) {
+                Icon(
+                    Icons.Filled.MoreVert,
+                    contentDescription = null,
+                    tint = Color(0xFF666666)
+                )
+            }
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { setShowMenu(false) }
+            ) {
+                listOf(15, 30, 45, 60, 90, 120).forEach { m ->
+                    DropdownMenuItem(
+                        text = { Text("Giới hạn ${m} phút") },
+                        onClick = { setShowMenu(false); onSetLimit(m) }
+                    )
+                }
             }
         }
     }
-    HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 }
