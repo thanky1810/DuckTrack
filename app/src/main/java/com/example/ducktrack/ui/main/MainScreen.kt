@@ -33,7 +33,7 @@ import com.example.ducktrack.ui.AppRoot.Routes
 import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.PieChart
 import com.example.ducktrack.ui.main.garden.GardenScreen
-import com.example.ducktrack.ui.main.pomodoro.PomodoroScreen
+import com.example.ducktrack.ui.main.promodoro.PomodoroScreen
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.utils.msToReadable
