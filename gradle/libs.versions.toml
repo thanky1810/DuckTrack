@@ -12,6 +12,8 @@ foundationLayout = "1.9.3"
 navigationCompose = "2.9.5"
 uiUnit = "1.9.4"
 foundation = "1.9.4"
+room = "2.6.1"
+lifecycleViewmodelKtx = "2.9.0"
 playServicesAuth = "21.3.0"
 googleGmsGoogleServices = "4.4.4"
 firebaseAuth = "24.0.1"
@@ -41,6 +43,11 @@ androidx-compose-foundation-layout = { group = "androidx.compose.foundation", na
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-compose-ui-unit = { group = "androidx.compose.ui", name = "ui-unit", version.ref = "uiUnit" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
+# Room & ViewModel
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsPlayServicesAuth" }
