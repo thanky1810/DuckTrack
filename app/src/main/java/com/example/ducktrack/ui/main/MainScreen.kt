@@ -6,7 +6,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +38,7 @@ import com.example.ducktrack.ui.main.garden.GardenScreen
 import com.example.ducktrack.ui.main.promodoro.PomodoroScreen
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
+import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.msToReadable
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -49,11 +50,8 @@ import java.util.Locale
 fun MainScreen(
     mainNavController: NavHostController,
     hasPermission: Boolean,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
 ) {
-
-
-
     val bottomNavController = rememberNavController()
     var currentPageTitle by remember { mutableStateOf("Trang chủ") }
 
@@ -65,7 +63,7 @@ fun MainScreen(
     val currentRoute = currentBackStack?.destination?.route
 
     val topTitle = remember(currentPageTitle, headerNote, currentRoute) {
-        // Header giữ “Trang chủ”, phần tổng thời gian hiển thị trong nội dung theo mockup
+        // Header giữ "Trang chủ", phần tổng thời gian hiển thị trong nội dung theo mockup
         currentPageTitle
     }
     val application = LocalContext.current.applicationContext as MyApplication
@@ -148,7 +146,7 @@ fun MainScreen(
 /**
  * DashboardScreen:
  * - Nếu CHƯA có quyền -> màn xin quyền (theo mockup không có app bar riêng)
- * - Nếu ĐÃ có quyền -> hiển thị layout giống ảnh
+ * - Nếu ĐÃ có quyền -> hiển thị layout: Header + Chart cố định, danh sách cuộn
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,20 +184,19 @@ private fun DashboardScreen(
     val total = vm.totalMs.toFloat().coerceAtLeast(1f)
     val slices = vm.usages.take(6).map { it.label to (it.totalForegroundMs / total) }
 
-    // ---- Layout giống ảnh ----
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        // Header: Chip vàng "Thời gian sử dụng thiết bị" + số giờ lớn màu xanh
-        item {
+    // ---- Layout: Header + Chart cố định ở trên, danh sách cuộn được ----
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Phần header + chart CỐ ĐỊNH (không cuộn)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 16.dp)
+        ) {
+            // Header: Chip vàng + số giờ lớn
+            Spacer(Modifier.height(12.dp))
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Pill(
@@ -218,46 +215,42 @@ private fun DashboardScreen(
                     fontWeight = FontWeight.ExtraBold
                 )
             }
-        }
 
-        // Pie chart
-        item {
+            // Pie chart
+            Spacer(Modifier.height(8.dp))
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 PieChart(
                     slices = slices,
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .size(240.dp)
+                    modifier = Modifier.size(220.dp)
                 )
             }
+            Spacer(Modifier.height(16.dp))
         }
 
-        // Date pager: nút trái / pill ngày / nút phải
-//        item {
-//            DayPagerRow()
-//        }
-
-        // Danh sách app usage (AppUsageRow bạn đã có)
-        items(vm.usages, key = { it.packageName }) { u ->
-            // Thẻ bo góc + bóng nhẹ theo cảm giác mockup
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                shadowElevation = 2.dp,
-                color = Color.White
-            ) {
+        // Phần danh sách app - CUỘN ĐƯỢC
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5)),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            itemsIndexed(vm.usages, key = { _, u -> u.packageName }) { index, u ->
                 AppUsageRow(
                     usage = u,
                     limitMinutes = vm.limits[u.packageName],
+                    appIcon = vm.iconFor(u),
+                    chartColor = AppColors.getColorForIndex(index),
                     onSetLimit = { minutes -> vm.setLimit(u.packageName, minutes) }
                 )
             }
+
+            // Spacer cuối để tránh bị che bởi bottom bar
+            item { Spacer(Modifier.height(8.dp)) }
         }
-        item { Spacer(Modifier.height(12.dp)) }
     }
 }
 
@@ -288,7 +281,7 @@ private fun Pill(
 private fun DayPagerRow(
     modifier: Modifier = Modifier
 ) {
-    val locale = Locale("vi", "VN")
+    val locale = Locale.forLanguageTag("vi-VN")
     // ví dụ "Th 4, 1 tháng 10"
     val label = remember {
         val today = LocalDate.now()

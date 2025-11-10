@@ -32,8 +32,4 @@ class LimitsStore(private val ctx: Context) {
         return obj.keys().asSequence().associateWith { obj.getInt(it) }
     }
 
-    suspend fun getLimit(pkg: String): Int? {
-        val all = getAll()
-        return all[pkg]
-    }
 }

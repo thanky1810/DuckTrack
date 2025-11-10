@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">DuckTrack</string>
+    <string name="app_name" translatable="false">DuckTrack</string>
+
+    <string name="default_web_client_id" translatable="false">886538399027-1k53hhfqpphkcptdu8pfia4bnvim1jmb.apps.googleusercontent.com</string>
 </resources>

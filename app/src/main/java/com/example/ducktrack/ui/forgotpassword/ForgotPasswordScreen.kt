@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
@@ -44,7 +45,7 @@ fun ForgotPasswordScreen(
                     IconButton(onClick = onGoBack) {
                         Icon(
                             // Sửa từ Icons.Default thành Icons.Filled cho nhất quán
-                            Icons.Filled.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Quay lại",
                             modifier = Modifier.size(32.dp)
                         )
@@ -65,7 +66,7 @@ fun ForgotPasswordScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.logo),
+                painter = painterResource(id = R.drawable.ic_duck_logo),
                 contentDescription = "Logo",
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
