@@ -19,8 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ducktrack.utils.*
+
 /**
- * Composable cho Dialog Cài đặt thời gian
+ * Dialog Cài đặt thời gian
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +90,6 @@ fun TimeSettingsDialog(
                         val presets = listOf("25/5", "30/5", "45/10")
                         presets.forEach { preset ->
                             val (focus, breakT) = preset.split("/").map { it }
-
                             val isSelected = (focusMinutes == focus && breakMinutes == breakT)
                             val buttonBgColor = if (isSelected) mainGreen else lightGrayButton
                             val buttonTextColor = if (isSelected) Color.White else darkGreenText
@@ -104,9 +104,7 @@ fun TimeSettingsDialog(
                                     contentColor = buttonTextColor
                                 ),
                                 shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(preset)
-                            }
+                            ) { Text(preset) }
                         }
                     }
 
@@ -120,9 +118,7 @@ fun TimeSettingsDialog(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = yellowButton),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
                         Text("Cài đặt", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
@@ -130,15 +126,9 @@ fun TimeSettingsDialog(
 
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Đóng",
-                        tint = Color.Gray
-                    )
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng", tint = Color.Gray)
                 }
             }
         }
@@ -193,7 +183,7 @@ fun HarvestDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = dialogBgRed,
+        containerColor = dialogBgRed, // Giữ nguyên màu nền đỏ theo code gốc
         shape = RoundedCornerShape(16.dp),
         title = {
             Text(
@@ -218,6 +208,43 @@ fun HarvestDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = mainGreen)
             ) {
                 Text("Tuyệt vời!", color = Color.White)
+            }
+        }
+    )
+}
+/**
+ * Dialog thông báo không đủ điểm
+ */
+@Composable
+fun NotEnoughPointsDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White, // Nền trắng
+        shape = RoundedCornerShape(16.dp),
+        title = {
+            Text(
+                "Không đủ điểm 😥",
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Text(
+                "Bạn không đủ điểm sao 🌟 để đổi vật phẩm này. Hãy cố gắng hoàn thành thêm Pomodoro nhé!",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                // Dùng màu xanh lá cây chính
+                colors = ButtonDefaults.buttonColors(containerColor = mainGreen)
+            ) {
+                Text("Đã hiểu", color = Color.White)
             }
         }
     )

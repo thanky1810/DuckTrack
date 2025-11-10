@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.AppRoot.Routes
 import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.PieChart
@@ -66,13 +68,15 @@ fun MainScreen(
         // Header giữ “Trang chủ”, phần tổng thời gian hiển thị trong nội dung theo mockup
         currentPageTitle
     }
-
+    val application = LocalContext.current.applicationContext as MyApplication
+    // Lấy điểm sao TỪ REPOSITORY và lắng nghe thay đổi
+    val starCount by application.repository.userPoints.collectAsState(initial = 0)
 
     Scaffold(
         topBar = {
             MainTopAppBar(
                 title = topTitle,
-                starCount = 1
+                starCount = starCount // Truyền điểm sao từ Repository
             )
         },
         bottomBar = {
@@ -108,11 +112,29 @@ fun MainScreen(
                 }
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    PomodoroScreen()
+                    // Thêm key với route để force recomposition
+                    key(Routes.Pomodoro + currentRoute) {
+                        PomodoroScreen()
+                    }
                 }
                 composable(Routes.Garden) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    GardenScreen()
+                    // Thêm key với route để force recomposition
+                    key(Routes.Garden + currentRoute) {
+                        GardenScreen(
+                            onNavigateToPomodoro = {
+                                bottomNavController.navigate(Routes.Pomodoro) {
+                                    // Pop tất cả để reset navigation stack
+                                    popUpTo(Routes.Dashboard) {
+                                        saveState = false
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = false
+                                }
+                                currentPageTitle = "Pomodoro"
+                            }
+                        )
+                    }
                 }
                 composable(Routes.Settings) {
                     LaunchedEffect(Unit) { headerNote = null }

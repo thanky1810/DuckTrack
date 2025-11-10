@@ -1,5 +1,6 @@
 package com.example.ducktrack.ui.main.promodoro
 
+import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -10,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -18,8 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -30,16 +33,25 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ducktrack.MyApplication
 import com.example.ducktrack.R
+import com.example.ducktrack.ui.main.ViewModelFactory
 import com.example.ducktrack.utils.*
 import kotlinx.coroutines.launch
 
 @Composable
 fun PomodoroScreen(
-    viewModel: PomodoroViewModel = viewModel()
+    // Thay vì viewModel() mặc định:
+    // viewModel: PomodoroViewModel = viewModel()
+    // Chúng ta dùng Factory:
+    context: Context = LocalContext.current.applicationContext,
+    viewModel: PomodoroViewModel = viewModel(
+        factory = ViewModelFactory(context.applicationContext as MyApplication)
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // --- Logic cho UI Animation ---
     val scope = rememberCoroutineScope()
     val duckScale = remember { Animatable(1f) }
     val plantScale = remember { Animatable(1f) }
@@ -55,28 +67,28 @@ fun PomodoroScreen(
         }
     }
 
-    // --- Tính toán các giá trị hiển thị dựa trên state ---
-
-    // CHỈNH SỬA: Thêm case Break
+    // --- Tính toán các giá trị hiển thị ---
     val timerCardText = when (uiState.pomodoroState) {
         PomodoroState.Ready -> "Bạn đã sẵn sàng để trồng cây chưa?"
         PomodoroState.Running -> "Cây đang lớn.. Không được mở app 🚫"
-        PomodoroState.Break -> "Thư giãn một chút nhé!" // <-- MỚI
+        PomodoroState.Break -> "Thư giãn một chút nhé!"
         PomodoroState.Finished -> "Hoàn thành! Hãy thu hoạch cây của bạn."
         PomodoroState.Failed -> "Bạn đã dừng lại. Cây đã héo mất..."
     }
 
-    // CHỈNH SỬA: Thêm case Break
     val timeToShowMillis = when (uiState.pomodoroState) {
         PomodoroState.Finished -> 0L
         PomodoroState.Ready, PomodoroState.Failed -> uiState.focusDurationMillis
         PomodoroState.Running -> uiState.remainingTimeMillis
-        PomodoroState.Break -> uiState.remainingTimeMillis // <-- MỚI
+        PomodoroState.Break -> uiState.remainingTimeMillis
     }
-
-    // CHỈNH SỬA: Thêm case Break (giống Ready)
+    // Các file drawable:
+    // duck_waiting, plant_chit (nảy mầm)
+    // duck_watering, plant_sendling (cây non)
+    // duck_happy, plant_grown (cây lớn)
+    // duck_crying, plant_dead (cây héo)
     val (duckImageRes, plantImageRes, statusText) = when (uiState.pomodoroState) {
-        PomodoroState.Ready, PomodoroState.Break -> Triple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ sẵn sàng...") // <-- SỬA
+        PomodoroState.Ready, PomodoroState.Break -> Triple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ sẵn sàng...")
         PomodoroState.Running -> Triple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang chờ tập trung...")
         PomodoroState.Finished -> Triple(R.drawable.duck_happy, R.drawable.plant_grown, "Thu hoạch thôi!")
         PomodoroState.Failed -> Triple(R.drawable.duck_crying, R.drawable.plant_dead, "Ôi không...!!")
@@ -86,17 +98,17 @@ fun PomodoroScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(screenBgColor)
+            .background(screenBgColor) // Nền trắng để cuộn
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp), // Padding cho nội dung
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
 
-            // --- Card 1 ---
+            // --- Card 1 (Timer) ---
             Text(
                 text = "Chế Độ Tập Trung và Trồng cây 🌿",
                 color = darkGreenText,
@@ -134,15 +146,14 @@ fun PomodoroScreen(
                             Icon(Icons.Default.ArrowDropDown, "Cài đặt thời gian")
                         }
 
-                        // CHỈNH SỬA: Cập nhật logic cho nút chính
                         val (mainButtonColor, mainButtonText) = when (uiState.pomodoroState) {
                             PomodoroState.Running -> Pair(redButton, "Dừng lại")
-                            PomodoroState.Break -> Pair(yellowButton, "Nghỉ ngơi") // <-- MỚI
-                            else -> Pair(yellowButton, "Sẵn sàng") // Ready, Finished, Failed
+                            PomodoroState.Break -> Pair(yellowButton, "Nghỉ ngơi")
+                            else -> Pair(yellowButton, "Sẵn sàng")
                         }
 
                         Button(
-                            onClick = { viewModel.onMainButtonClick() }, // Logic đã được cập nhật trong VM
+                            onClick = { viewModel.onMainButtonClick() },
                             colors = ButtonDefaults.buttonColors(containerColor = mainButtonColor),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -154,7 +165,7 @@ fun PomodoroScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Card 2 (Không thay đổi) ---
+            // --- Card 2 (Lựa chọn hạt giống) ---
             Text(
                 text = "🌱 Lựa chọn hạt giống",
                 color = darkGreenText,
@@ -169,29 +180,19 @@ fun PomodoroScreen(
                 colors = CardDefaults.cardColors(containerColor = cardBgColor),
                 border = BorderStroke(2.dp, card2and3BorderColor)
             ) {
+                // Render động dựa trên các cây đã mở khóa
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    item {
+                    items(uiState.availableSeeds) { seed ->
                         SeedChoiceCard(
-                            label = "Cây thường",
-                            subtitle = "Mặc định",
-                            image = painterResource(id = R.drawable.tree_normal),
-                            isSelected = uiState.selectedSeed == "Cây thường",
-                            onClick = { viewModel.onSeedSelected("Cây thường") },
-                            modifier = Modifier.size(width = 100.dp, height = 120.dp),
-                            imageHeight = 50.dp
-                        )
-                    }
-                    item {
-                        SeedChoiceCard(
-                            label = "Cây thông",
-                            subtitle = null,
-                            image = painterResource(id = R.drawable.tree_pine),
-                            isSelected = uiState.selectedSeed == "Cây thông",
-                            onClick = { viewModel.onSeedSelected("Cây thông") },
+                            label = seed.displayName,
+                            subtitle = if (seed.cost == 0) "Mặc định" else null,
+                            image = painterResource(id = seed.selectionIcon),
+                            isSelected = uiState.selectedSeed == seed,
+                            onClick = { viewModel.onSeedSelected(seed) },
                             modifier = Modifier.size(width = 100.dp, height = 120.dp),
                             imageHeight = 50.dp
                         )
@@ -201,25 +202,17 @@ fun PomodoroScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Text Hướng dẫn (Không thay đổi) ---
+            // --- Text Hướng dẫn ---
             Text(
                 text = buildAnnotatedString {
                     append("Thời gian là ")
-                    withStyle(style = SpanStyle(color = textGreen, fontWeight = FontWeight.Bold)) {
-                        append("hạt giống")
-                    }
+                    withStyle(style = SpanStyle(color = textGreen, fontWeight = FontWeight.Bold)) { append("hạt giống") }
                     append(", kỷ luật là ")
-                    withStyle(style = SpanStyle(color = textGreen, fontWeight = FontWeight.Bold)) {
-                        append("nước tưới")
-                    }
+                    withStyle(style = SpanStyle(color = textGreen, fontWeight = FontWeight.Bold)) { append("nước tưới") }
                     append(". Bắt đầu phiên Pomodoro để gieo ")
-                    withStyle(style = SpanStyle(color = textYellow, fontWeight = FontWeight.Bold)) {
-                        append("thói quen")
-                    }
+                    withStyle(style = SpanStyle(color = textYellow, fontWeight = FontWeight.Bold)) { append("thói quen") }
                     append(" và gặt hái ")
-                    withStyle(style = SpanStyle(color = textYellow, fontWeight = FontWeight.Bold)) {
-                        append("thành công")
-                    }
+                    withStyle(style = SpanStyle(color = textYellow, fontWeight = FontWeight.Bold)) { append("thành công") }
                     append(" ngay hôm nay ! 🌤️")
                 },
                 color = grayText,
@@ -230,7 +223,7 @@ fun PomodoroScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Card 3 ---
+            // --- Card 3 (Trồng cây) ---
             Text(
                 text = "💎 Trồng cây và thu hoạch",
                 color = darkGreenText,
@@ -249,7 +242,7 @@ fun PomodoroScreen(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Hạt giống được chọn : ${uiState.selectedSeed}", color = grayText, fontSize = 14.sp)
+                    Text("Hạt giống được chọn : ${uiState.selectedSeed.displayName}", color = grayText, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().height(200.dp),
@@ -257,7 +250,7 @@ fun PomodoroScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Image(
-                            painter = painterResource(id = duckImageRes), // <-- Đã được cập nhật
+                            painter = painterResource(id = duckImageRes),
                             contentDescription = "Trạng thái Vịt",
                             modifier = Modifier
                                 .height(110.dp)
@@ -265,7 +258,7 @@ fun PomodoroScreen(
                             contentScale = ContentScale.Fit
                         )
                         Image(
-                            painter = painterResource(id = plantImageRes), // <-- Đã được cập nhật
+                            painter = painterResource(id = plantImageRes),
                             contentDescription = "Trạng thái Cây",
                             modifier = Modifier
                                 .height(160.dp)
@@ -285,15 +278,15 @@ fun PomodoroScreen(
                             Text("Thu hoạch ngay +50 🌟", color = Color.Black, fontWeight = FontWeight.Bold)
                         }
                     } else {
-                        Text(statusText, color = darkGreenText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) // <-- Đã được cập nhật
+                        Text(statusText, color = darkGreenText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(60.dp)) // Thêm đệm dưới
         }
 
-        // --- 9. Các Dialog (Không thay đổi) ---
+        // --- 9. Các Dialog ---
         if (uiState.showSettingsDialog) {
             TimeSettingsDialog(
                 initialFocusMinutes = (uiState.focusDurationMillis / 60000).toString(),
@@ -313,13 +306,13 @@ fun PomodoroScreen(
 
         if (uiState.showHarvestDialog) {
             HarvestDialog(
-                onDismiss = { viewModel.onDismissHarvestDialog() } // <-- Logic quan trọng ở đây
+                onDismiss = { viewModel.onDismissHarvestDialog() }
             )
         }
     }
 }
 
-// --- Preview (Xem trước) ---
+// --- Preview ---
 @Preview(showBackground = true)
 @Composable
 fun PomodoroScreenPreview() {
