@@ -82,7 +82,8 @@ dependencies {
     implementation(libs.play.services.auth)
     // Google Sign In
     implementation("com.google.android.gms:play-services-auth:20.7.0")
-
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+    implementation("com.google.firebase:firebase-analytics")
     // Kotlin Coroutines for Firebase Tasks
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.androidx.material3)

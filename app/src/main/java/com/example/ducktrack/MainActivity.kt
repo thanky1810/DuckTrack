@@ -19,12 +19,21 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import java.util.concurrent.TimeUnit
 
+// --- THÊM CÁC IMPORT NÀY (Theo ảnh 2) ---
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.analytics
+import com.google.firebase.Firebase
+// ----------------------------------------
+
 class MainActivity : ComponentActivity() {
 
-    // Khởi tạo GoogleSignInClient
+    // --- THÊM BIẾN NÀY (Theo ảnh 2) ---
+    private lateinit var analytics: FirebaseAnalytics
+    // ----------------------------------
+
+    // Khởi tạo GoogleSignInClient (Giữ nguyên)
     private val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            // Yêu cầu ID Token để Firebase xác thực
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
@@ -35,23 +44,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // --- KHỞI TẠO ANALYTICS (Theo ảnh 2) ---
+        // Lấy thực thể FirebaseAnalytics
+        analytics = Firebase.analytics
+        // --------------------------------------
+
         setupLimitCheckWorker()
 
         setContent {
             DuckTrackTheme {
-                // Truyền GoogleSignInClient vào AppRoot
                 AppRoot(googleSignInClient = googleSignInClient)
             }
         }
     }
 
+    // (Hàm setupLimitCheckWorker giữ nguyên)
     private fun setupLimitCheckWorker() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
         val checkWork = PeriodicWorkRequestBuilder<LimitCheckWorker>(
-            repeatInterval = 15, // Chạy mỗi 15 phút
+            repeatInterval = 15,
             repeatIntervalTimeUnit = TimeUnit.MINUTES
         )
             .setConstraints(constraints)
