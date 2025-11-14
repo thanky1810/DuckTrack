@@ -1,12 +1,16 @@
 package com.example.ducktrack.ui.main
 
 import android.app.Application
+import android.content.Intent
 import android.graphics.drawable.Drawable
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.data.LimitsStore
 import com.example.ducktrack.data.UsageRepository
 import com.example.ducktrack.data.model.AppUsage
+import com.example.ducktrack.service.UsageMonitorService
+import com.example.ducktrack.utils.PermissionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,9 +49,38 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setLimit(pkg: String, minutes: Int) {
         viewModelScope.launch(Dispatchers.IO) {
+            // 1. Lưu giới hạn
             limitsStore.setLimit(pkg, minutes)
             val m = limitsStore.getAll()
-            withContext(Dispatchers.Main) { limits = m }
+
+            withContext(Dispatchers.Main) {
+                limits = m
+
+                // 2. TỰ ĐỘNG khởi động service (nếu có quyền overlay)
+                if (PermissionHelper.hasOverlayPermission(getApplication())) {
+                    startMonitoringService()
+                }
+            }
+        }
+    }
+
+    /**
+     * Khởi động UsageMonitorService tự động
+     */
+    private fun startMonitoringService() {
+        val context = getApplication<Application>()
+        val intent = Intent(context, UsageMonitorService::class.java).apply {
+            action = UsageMonitorService.ACTION_START_MONITORING
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } catch (e: Exception) {
+            // Service đã chạy hoặc lỗi khác - ignore
         }
     }
 }

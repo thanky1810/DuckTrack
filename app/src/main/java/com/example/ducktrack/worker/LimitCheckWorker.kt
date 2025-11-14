@@ -24,11 +24,15 @@ class LimitCheckWorker(
     private val store = LimitsStore(ctx)
 
     override suspend fun doWork(): Result {
-        val today = repo.queryToday().associateBy { it.packageName }
-        val limits = store.getAll()
+        // Map usage theo package thật (iconPackage), fallback về label nếu thiếu
+        val today = repo.queryToday().associateBy { it.iconPackage ?: it.packageName }
+
+        val limits = store.getAll() // Map<realPackageName, minutes>
         limits.forEach { (pkg, minutes) ->
             val usedMs = today[pkg]?.totalForegroundMs ?: 0L
-            if (usedMs >= minutes * 60_000L) notify(pkg, minutes, usedMs)
+            if (usedMs >= minutes * 60_000L) {
+                notify(pkg, minutes, usedMs)
+            }
         }
         return Result.success()
     }
@@ -37,7 +41,8 @@ class LimitCheckWorker(
         // Android 13+: nếu chưa có quyền thì KHÔNG gửi
         if (Build.VERSION.SDK_INT >= 33) {
             val granted = ActivityCompat.checkSelfPermission(
-                applicationContext, Manifest.permission.POST_NOTIFICATIONS
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
             if (!granted) return
         }
@@ -47,7 +52,11 @@ class LimitCheckWorker(
 
         if (Build.VERSION.SDK_INT >= 26) {
             val sys = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val ch = NotificationChannel(channelId, "Giới hạn", NotificationManager.IMPORTANCE_DEFAULT)
+            val ch = NotificationChannel(
+                channelId,
+                "Giới hạn",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
             sys.createNotificationChannel(ch)
         }
 

@@ -112,7 +112,7 @@ fun AppUsageRow(
                 expanded = showMenu,
                 onDismissRequest = { setShowMenu(false) }
             ) {
-                listOf(15, 30, 45, 60, 90, 120).forEach { m ->
+                listOf(5, 15, 30, 45, 60, 90, 120).forEach { m ->
                     DropdownMenuItem(
                         text = { Text("Giới hạn ${m} phút") },
                         onClick = { setShowMenu(false); onSetLimit(m) }

@@ -30,15 +30,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.AppRoot.Routes
 import com.example.ducktrack.ui.components.AppUsageRow
+import com.example.ducktrack.ui.components.OverlayPermissionDialog
 import com.example.ducktrack.ui.components.PieChart
 import com.example.ducktrack.ui.main.garden.GardenScreen
 import com.example.ducktrack.ui.main.promodoro.PomodoroScreen
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
+import com.example.ducktrack.utils.PermissionHelper
 import com.example.ducktrack.utils.msToReadable
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -63,18 +64,14 @@ fun MainScreen(
     val currentRoute = currentBackStack?.destination?.route
 
     val topTitle = remember(currentPageTitle, headerNote, currentRoute) {
-        // Header giữ "Trang chủ", phần tổng thời gian hiển thị trong nội dung theo mockup
         currentPageTitle
     }
-    val application = LocalContext.current.applicationContext as MyApplication
-    // Lấy điểm sao TỪ REPOSITORY và lắng nghe thay đổi
-    val starCount by application.repository.userPoints.collectAsState(initial = 0)
 
     Scaffold(
         topBar = {
             MainTopAppBar(
                 title = topTitle,
-                starCount = starCount // Truyền điểm sao từ Repository
+                starCount = 1
             )
         },
         bottomBar = {
@@ -110,19 +107,16 @@ fun MainScreen(
                 }
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    // Thêm key với route để force recomposition
                     key(Routes.Pomodoro + currentRoute) {
                         PomodoroScreen()
                     }
                 }
                 composable(Routes.Garden) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    // Thêm key với route để force recomposition
                     key(Routes.Garden + currentRoute) {
                         GardenScreen(
                             onNavigateToPomodoro = {
                                 bottomNavController.navigate(Routes.Pomodoro) {
-                                    // Pop tất cả để reset navigation stack
                                     popUpTo(Routes.Dashboard) {
                                         saveState = false
                                     }
@@ -145,7 +139,7 @@ fun MainScreen(
 
 /**
  * DashboardScreen:
- * - Nếu CHƯA có quyền -> màn xin quyền (theo mockup không có app bar riêng)
+ * - Nếu CHƯA có quyền -> màn xin quyền
  * - Nếu ĐÃ có quyền -> hiển thị layout: Header + Chart cố định, danh sách cuộn
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,6 +150,16 @@ private fun DashboardScreen(
     onHeaderNoteChange: (String?) -> Unit,
     vm: HomeViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+
+    // State cho dialog nhắc quyền overlay
+    var showOverlayPermissionDialog by remember { mutableStateOf(false) }
+
+    // Kiểm tra quyền overlay
+    val hasOverlayPermission = remember {
+        mutableStateOf(PermissionHelper.hasOverlayPermission(context))
+    }
+
     if (!hasPermission) {
         LaunchedEffect(Unit) { onHeaderNoteChange(null) }
 
@@ -175,7 +179,7 @@ private fun DashboardScreen(
         return
     }
 
-    // Đã có quyền
+    // Đã có quyền Usage Stats
     LaunchedEffect(Unit) { vm.load() }
 
     val totalReadable = remember(vm.totalMs) { msToReadable(vm.totalMs) }
@@ -184,16 +188,25 @@ private fun DashboardScreen(
     val total = vm.totalMs.toFloat().coerceAtLeast(1f)
     val slices = vm.usages.take(6).map { it.label to (it.totalForegroundMs / total) }
 
-    // ---- Layout: Header + Chart cố định ở trên, danh sách cuộn được ----
+    // Dialog nhắc quyền overlay
+    if (showOverlayPermissionDialog) {
+        OverlayPermissionDialog(
+            onDismiss = { showOverlayPermissionDialog = false },
+            onGoToSettings = {
+                showOverlayPermissionDialog = false
+                PermissionHelper.requestOverlayPermission(context as android.app.Activity)
+            }
+        )
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        // Phần header + chart CỐ ĐỊNH (không cuộn)
+        // Header + chart CỐ ĐỊNH
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
                 .padding(horizontal = 16.dp)
         ) {
-            // Header: Chip vàng + số giờ lớn
             Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -216,7 +229,6 @@ private fun DashboardScreen(
                 )
             }
 
-            // Pie chart
             Spacer(Modifier.height(8.dp))
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -230,7 +242,7 @@ private fun DashboardScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // Phần danh sách app - CUỘN ĐƯỢC
+        // Danh sách app - CUỘN
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -238,13 +250,24 @@ private fun DashboardScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            itemsIndexed(vm.usages, key = { _, u -> u.packageName }) { index, u ->
+            itemsIndexed(vm.usages, key = { _, u -> u.iconPackage ?: u.packageName }) { index, u ->
+
+                // Key giới hạn: ưu tiên dùng package thật
+                val limitKey = u.iconPackage ?: u.packageName
+
                 AppUsageRow(
                     usage = u,
-                    limitMinutes = vm.limits[u.packageName],
+                    limitMinutes = vm.limits[limitKey],
                     appIcon = vm.iconFor(u),
                     chartColor = AppColors.getColorForIndex(index),
-                    onSetLimit = { minutes -> vm.setLimit(u.packageName, minutes) }
+                    onSetLimit = { minutes ->
+                        // Kiểm tra quyền overlay khi set limit
+                        if (!hasOverlayPermission.value) {
+                            showOverlayPermissionDialog = true
+                        }
+                        // Lưu limit theo real packageName
+                        vm.setLimit(limitKey, minutes)
+                    }
                 )
             }
 
@@ -254,7 +277,7 @@ private fun DashboardScreen(
     }
 }
 
-/* ====================== Helpers (trong file này) ====================== */
+/* ====================== Helpers ====================== */
 
 @Composable
 private fun Pill(
@@ -282,10 +305,9 @@ private fun DayPagerRow(
     modifier: Modifier = Modifier
 ) {
     val locale = Locale.forLanguageTag("vi-VN")
-    // ví dụ "Th 4, 1 tháng 10"
     val label = remember {
         val today = LocalDate.now()
-        val dow = today.dayOfWeek.value % 7 + 1 // 1..7
+        val dow = today.dayOfWeek.value % 7 + 1
         val dowText = "Th $dow"
         val dateText = today.format(DateTimeFormatter.ofPattern("d 'tháng' M", locale))
         "$dowText, $dateText"
@@ -298,7 +320,7 @@ private fun DayPagerRow(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = { /* TODO: sang ngày trước */ })
+        RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = { /* TODO: previous day */ })
         Spacer(Modifier.width(10.dp))
         Pill(
             text = label,
@@ -309,7 +331,7 @@ private fun DayPagerRow(
             radius = 12.dp
         )
         Spacer(Modifier.width(10.dp))
-        RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = { /* TODO: sang ngày sau */ })
+        RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = { /* TODO: next day */ })
     }
 }
 
