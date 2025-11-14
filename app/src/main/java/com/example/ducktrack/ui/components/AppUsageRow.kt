@@ -34,7 +34,8 @@ fun AppUsageRow(
     limitMinutes: Int?,
     appIcon: Drawable?,
     chartColor: Color, // Màu từ chart
-    onSetLimit: (Int) -> Unit
+    onClickSetLimit: () -> Unit,
+    onClickRemoveLimit: (() -> Unit)? = null
 ) {
     val (showMenu, setShowMenu) = remember { mutableStateOf(false) }
 
@@ -78,7 +79,12 @@ fun AppUsageRow(
                     color = Color(0xFF1F1F1F)
                 )
                 val used = msToReadable(usage.totalForegroundMs)
-                val limitText = limitMinutes?.let { " • Giới hạn: ${it}m" } ?: ""
+                val limitText = limitMinutes?.let {
+                    val h = it / 60
+                    val m = it % 60
+                    val formatted = String.format("%02d:%02d", h, m)
+                    " • Giới hạn: $formatted"
+                } ?: ""
                 Text(
                     text = "Đã sử dụng: $used$limitText",
                     fontSize = 12.sp,
@@ -112,10 +118,30 @@ fun AppUsageRow(
                 expanded = showMenu,
                 onDismissRequest = { setShowMenu(false) }
             ) {
-                listOf(5, 15, 30, 45, 60, 90, 120).forEach { m ->
+                // Đặt / chỉnh giới hạn
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (limitMinutes != null)
+                                "Chỉnh giới hạn thời gian"
+                            else
+                                "Đặt giới hạn thời gian"
+                        )
+                    },
+                    onClick = {
+                        setShowMenu(false)
+                        onClickSetLimit()
+                    }
+                )
+
+                // Xóa giới hạn (chỉ hiện nếu đã có limit)
+                if (limitMinutes != null && onClickRemoveLimit != null) {
                     DropdownMenuItem(
-                        text = { Text("Giới hạn ${m} phút") },
-                        onClick = { setShowMenu(false); onSetLimit(m) }
+                        text = { Text("Xóa giới hạn") },
+                        onClick = {
+                            setShowMenu(false)
+                            onClickRemoveLimit()
+                        }
                     )
                 }
             }

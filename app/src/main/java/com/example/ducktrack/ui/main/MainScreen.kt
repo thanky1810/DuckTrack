@@ -30,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ducktrack.data.model.AppUsage
 import com.example.ducktrack.ui.AppRoot.Routes
 import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.OverlayPermissionDialog
@@ -64,6 +65,7 @@ fun MainScreen(
     val currentRoute = currentBackStack?.destination?.route
 
     val topTitle = remember(currentPageTitle, headerNote, currentRoute) {
+        // Header giữ "Trang chủ", phần tổng thời gian hiển thị trong nội dung theo mockup
         currentPageTitle
     }
 
@@ -107,16 +109,19 @@ fun MainScreen(
                 }
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
+                    // Thêm key với route để force recomposition
                     key(Routes.Pomodoro + currentRoute) {
                         PomodoroScreen()
                     }
                 }
                 composable(Routes.Garden) {
                     LaunchedEffect(Unit) { headerNote = null }
+                    // Thêm key với route để force recomposition
                     key(Routes.Garden + currentRoute) {
                         GardenScreen(
                             onNavigateToPomodoro = {
                                 bottomNavController.navigate(Routes.Pomodoro) {
+                                    // Pop tất cả để reset navigation stack
                                     popUpTo(Routes.Dashboard) {
                                         saveState = false
                                     }
@@ -139,7 +144,7 @@ fun MainScreen(
 
 /**
  * DashboardScreen:
- * - Nếu CHƯA có quyền -> màn xin quyền
+ * - Nếu CHƯA có quyền -> màn xin quyền (theo mockup không có app bar riêng)
  * - Nếu ĐÃ có quyền -> hiển thị layout: Header + Chart cố định, danh sách cuộn
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -154,6 +159,12 @@ private fun DashboardScreen(
 
     // State cho dialog nhắc quyền overlay
     var showOverlayPermissionDialog by remember { mutableStateOf(false) }
+
+    // Dialog chọn giới hạn thời gian
+    var showLimitDialog by remember { mutableStateOf(false) }
+    var editingApp by remember { mutableStateOf<AppUsage?>(null) }
+    var editingKey by remember { mutableStateOf<String?>(null) }
+    var editingCurrentLimitMinutes by remember { mutableStateOf<Int?>(null) }
 
     // Kiểm tra quyền overlay
     val hasOverlayPermission = remember {
@@ -199,14 +210,16 @@ private fun DashboardScreen(
         )
     }
 
+    // ---- Layout: Header + Chart cố định ở trên, danh sách cuộn được ----
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header + chart CỐ ĐỊNH
+        // Phần header + chart CỐ ĐỊNH (không cuộn)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
                 .padding(horizontal = 16.dp)
         ) {
+            // Header: Chip vàng + số giờ lớn
             Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -229,6 +242,7 @@ private fun DashboardScreen(
                 )
             }
 
+            // Pie chart
             Spacer(Modifier.height(8.dp))
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -242,7 +256,7 @@ private fun DashboardScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // Danh sách app - CUỘN
+        // Phần danh sách app - CUỘN ĐƯỢC
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -251,23 +265,26 @@ private fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             itemsIndexed(vm.usages, key = { _, u -> u.iconPackage ?: u.packageName }) { index, u ->
-
-                // Key giới hạn: ưu tiên dùng package thật
+                // Key dùng để lưu limit: ưu tiên packageName thật
                 val limitKey = u.iconPackage ?: u.packageName
+                val limitMinutes = vm.limits[limitKey]
 
                 AppUsageRow(
                     usage = u,
-                    limitMinutes = vm.limits[limitKey],
+                    limitMinutes = limitMinutes,
                     appIcon = vm.iconFor(u),
                     chartColor = AppColors.getColorForIndex(index),
-                    onSetLimit = { minutes ->
-                        // Kiểm tra quyền overlay khi set limit
-                        if (!hasOverlayPermission.value) {
-                            showOverlayPermissionDialog = true
+                    onClickSetLimit = {
+                        editingApp = u
+                        editingKey = limitKey
+                        editingCurrentLimitMinutes = limitMinutes
+                        showLimitDialog = true
+                    },
+                    onClickRemoveLimit = if (limitMinutes != null) {
+                        {
+                            vm.removeLimit(limitKey)
                         }
-                        // Lưu limit theo real packageName
-                        vm.setLimit(limitKey, minutes)
-                    }
+                    } else null
                 )
             }
 
@@ -275,9 +292,32 @@ private fun DashboardScreen(
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
+
+    // Dialog chọn thời gian 00:00 - 23:59
+    if (showLimitDialog && editingApp != null && editingKey != null) {
+        TimeLimitDialog(
+            initialMinutes = editingCurrentLimitMinutes,
+            onDismiss = { showLimitDialog = false },
+            onConfirm = { minutes ->
+                // Kiểm tra quyền overlay khi set limit
+                if (!hasOverlayPermission.value) {
+                    showOverlayPermissionDialog = true
+                }
+                val app = editingApp!!
+                val key = editingKey!!
+
+                vm.setLimit(
+                    pkg = key,
+                    minutes = minutes,
+                    baselineMs = app.totalForegroundMs // tổng ms đã dùng tới lúc set
+                )
+                showLimitDialog = false
+            }
+        )
+    }
 }
 
-/* ====================== Helpers ====================== */
+/* ====================== Helpers (trong file này) ====================== */
 
 @Composable
 private fun Pill(
@@ -305,9 +345,10 @@ private fun DayPagerRow(
     modifier: Modifier = Modifier
 ) {
     val locale = Locale.forLanguageTag("vi-VN")
+    // ví dụ "Th 4, 1 tháng 10"
     val label = remember {
         val today = LocalDate.now()
-        val dow = today.dayOfWeek.value % 7 + 1
+        val dow = today.dayOfWeek.value % 7 + 1 // 1..7
         val dowText = "Th $dow"
         val dateText = today.format(DateTimeFormatter.ofPattern("d 'tháng' M", locale))
         "$dowText, $dateText"
@@ -320,7 +361,7 @@ private fun DayPagerRow(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = { /* TODO: previous day */ })
+        RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = { /* TODO: sang ngày trước */ })
         Spacer(Modifier.width(10.dp))
         Pill(
             text = label,
@@ -331,7 +372,7 @@ private fun DayPagerRow(
             radius = 12.dp
         )
         Spacer(Modifier.width(10.dp))
-        RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = { /* TODO: next day */ })
+        RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = { /* TODO: sang ngày sau */ })
     }
 }
 
@@ -349,4 +390,104 @@ private fun RoundIconButton(
             Icon(icon, contentDescription = null, tint = Color(0xFF3A2A11))
         }
     }
+}
+
+/**
+ * Dialog cho phép user chọn giới hạn thời gian 00:00 - 23:59
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimeLimitDialog(
+    initialMinutes: Int?,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var hourText by remember { mutableStateOf("0") }
+    var minuteText by remember { mutableStateOf("0") }
+
+    // Khi mở dialog, map minutes -> giờ/phút
+    LaunchedEffect(initialMinutes) {
+        val total = initialMinutes ?: 0
+        val h = total / 60
+        val m = total % 60
+        hourText = h.toString()
+        minuteText = m.toString()
+    }
+
+    val hourInt = hourText.toIntOrNull() ?: 0
+    val minuteInt = minuteText.toIntOrNull() ?: 0
+    val clampedHour = hourInt.coerceIn(0, 23)
+    val clampedMinute = minuteInt.coerceIn(0, 59)
+    val valid = clampedHour != 0 || clampedMinute != 0
+    val preview = String.format("%02d:%02d", clampedHour, clampedMinute)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Đặt giới hạn thời gian") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Chọn thời gian sử dụng cho ứng dụng (00:00 - 23:59).",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = hourText,
+                        onValueChange = { value ->
+                            if (value.length <= 2 && value.all { it.isDigit() }) {
+                                hourText = value
+                            }
+                        },
+                        label = { Text("Giờ (0-23)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = minuteText,
+                        onValueChange = { value ->
+                            if (value.length <= 2 && value.all { it.isDigit() }) {
+                                minuteText = value
+                            }
+                        },
+                        label = { Text("Phút (0-59)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Text(
+                    text = "Giới hạn: $preview",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (valid) Color(0xFF2E7D32) else Color.Red
+                )
+                if (!valid) {
+                    Text(
+                        text = "Thời gian phải lớn hơn 0 phút.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Red
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val totalMinutes = clampedHour * 60 + clampedMinute
+                    if (totalMinutes > 0) {
+                        onConfirm(totalMinutes)
+                    }
+                },
+                enabled = valid
+            ) {
+                Text("Lưu")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Hủy")
+            }
+        }
+    )
 }

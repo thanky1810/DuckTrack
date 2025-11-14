@@ -28,9 +28,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun iconFor(usage: AppUsage): Drawable? {
         val key = usage.iconPackage ?: return null
         return iconCache[key] ?: run {
-            val d = try { getApplication<Application>().packageManager.getApplicationIcon(key) }
-            catch (_: Exception) { null }
-            iconCache[key] = d; d
+            val d = try {
+                getApplication<Application>().packageManager.getApplicationIcon(key)
+            } catch (_: Exception) {
+                null
+            }
+            iconCache[key] = d
+            d
         }
     }
 
@@ -47,10 +51,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun setLimit(pkg: String, minutes: Int) {
+    /**
+     * Set giới hạn cho 1 app:
+     *  - pkg: packageName thật (vd: com.ss.android.ugc.trill)
+     *  - minutes: số phút giới hạn
+     *  - baselineMs: tổng ms đã dùng đến thời điểm set (dùng cho logic "ngày đầu tính từ lúc set")
+     */
+    fun setLimit(pkg: String, minutes: Int, baselineMs: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. Lưu giới hạn
-            limitsStore.setLimit(pkg, minutes)
+            // 1. Lưu giới hạn + baseline
+            limitsStore.setLimitWithBaseline(pkg, minutes, baselineMs)
             val m = limitsStore.getAll()
 
             withContext(Dispatchers.Main) {
@@ -60,6 +70,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 if (PermissionHelper.hasOverlayPermission(getApplication())) {
                     startMonitoringService()
                 }
+            }
+        }
+    }
+
+    /**
+     * Xóa giới hạn cho 1 app
+     */
+    fun removeLimit(pkg: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            limitsStore.removeLimit(pkg)
+            val m = limitsStore.getAll()
+            withContext(Dispatchers.Main) {
+                limits = m
             }
         }
     }
