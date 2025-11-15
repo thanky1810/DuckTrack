@@ -6,10 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.ducktrack.ui.AppRoot.AppRoot
 import com.example.ducktrack.ui.theme.DuckTrackTheme
 import com.example.ducktrack.worker.LimitCheckWorker
@@ -17,20 +18,15 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import java.util.concurrent.TimeUnit
-
-// --- THÊM CÁC IMPORT NÀY (Theo ảnh 2) ---
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.analytics
 import com.google.firebase.Firebase
-// ----------------------------------------
 
 class MainActivity : ComponentActivity() {
 
-    // --- THÊM BIẾN NÀY (Theo ảnh 2) ---
     private lateinit var analytics: FirebaseAnalytics
-    // ----------------------------------
 
-    // Khởi tạo GoogleSignInClient (Giữ nguyên)
+    // Khởi tạo GoogleSignInClient
     private val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
@@ -44,10 +40,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // --- KHỞI TẠO ANALYTICS (Theo ảnh 2) ---
-        // Lấy thực thể FirebaseAnalytics
+        // Firebase Analytics
         analytics = Firebase.analytics
-        // --------------------------------------
 
         setupLimitCheckWorker()
 
@@ -58,15 +52,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // (Hàm setupLimitCheckWorker giữ nguyên)
     private fun setupLimitCheckWorker() {
+        // Worker chỉ đọc usage + DataStore + gửi notification -> không cần mạng
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
             .build()
 
         val checkWork = PeriodicWorkRequestBuilder<LimitCheckWorker>(
-            repeatInterval = 15,
-            repeatIntervalTimeUnit = TimeUnit.MINUTES
+            15, TimeUnit.MINUTES
         )
             .setConstraints(constraints)
             .build()
