@@ -7,88 +7,105 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.core.content.edit
 
-// Data class cho thông tin người dùng
-data class UserInfo(val name: String, val email: String)
+// SỬA LẠI: Thêm 'provider'
+data class UserInfo(
+    val name: String,
+    val email: String,
+    val provider: String // "Google", "Facebook", hoặc "Email"
+)
 
 class AuthViewModel(context: Context) : ViewModel() {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("DuckTrackPrefs", Context.MODE_PRIVATE)
 
-    // Khởi tạo Firebase Auth instance
     private val firebaseAuth = FirebaseAuth.getInstance()
 
-    private val initialAuthState = prefs.getBoolean("IS_LOGGED_IN", false)
+    // Key để lưu phương thức đăng nhập
+    private val providerKey = "LOGIN_PROVIDER"
+    private val authKey = "IS_LOGGED_IN"
 
+    private val initialAuthState = prefs.getBoolean(authKey, false)
     private val _isAuthenticated = MutableStateFlow(initialAuthState)
-    //val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
-
-    //private val userCredentials = mutableMapOf<String, String>() // Giữ lại cho login thường
+    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
     /**
-     * HÀM QUAN TRỌNG: Lấy thông tin người dùng từ Firebase Auth
+     * HÀM QUAN TRỌNG: Lấy thông tin người dùng
      */
     fun getCurrentUserInfo(): UserInfo? {
-        val user = firebaseAuth.currentUser // Lấy user từ instance của ViewModel
+        val user = firebaseAuth.currentUser
+        // Đọc provider đã lưu từ SharedPreferences
+        val providerName = prefs.getString(providerKey, "Không rõ") ?: "Không rõ"
+
         return if (user != null) {
             UserInfo(
                 name = user.displayName ?: user.email ?: "Người dùng",
-                email = user.email ?: "Không có email"
+                email = user.email ?: "Không có email",
+                provider = providerName // Trả về provider đã lưu
             )
         } else {
-            null
+            // Ngay cả khi user null, nếu cờ IS_LOGGED_IN vẫn còn (trường hợp hiếm)
+            // ta vẫn trả về provider (nếu có)
+            if (initialAuthState) {
+                UserInfo("Đang tải...", "...", providerName)
+            } else {
+                null
+            }
         }
     }
 
-    // ... (Hàm signUp và login thường giữ nguyên) ...
-
-
-//    fun login(username: String, pass: String): Boolean {
-//        if (userCredentials[username] == pass) {
-//            viewModelScope.launch {
-//                _isAuthenticated.update { true }
-//                prefs.edit().putBoolean("IS_LOGGED_IN", true).apply()
-//            }
-//            return true
-//        }
-//        return false
-//    }
-
     /**
-     * SỬA LỖI: Xử lý đăng nhập bằng Google ID Token
-     * Hàm này sẽ thực hiện xác thực với Firebase
+     * SỬA LẠI: Xử lý đăng nhập bằng Google ID Token
      */
     suspend fun signInWithGoogleToken(idToken: String) {
         try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
-            // Thực hiện đăng nhập Firebase bằng credential
             firebaseAuth.signInWithCredential(credential).await()
 
-            // Nếu thành công, cập nhật trạng thái
             _isAuthenticated.update { true }
-            prefs.edit { putBoolean("IS_LOGGED_IN", true) }
-
+            // Sửa: Lưu cả trạng thái và provider
+            prefs.edit {
+                putBoolean(authKey, true)
+                putString(providerKey, "Google")
+            }
         } catch (e: Exception) {
-            // Xử lý lỗi nếu xác thực Firebase thất bại
             e.printStackTrace()
-            _isAuthenticated.update { false }
-            prefs.edit { putBoolean("IS_LOGGED_IN", false) }
+            logout() // Đảm bảo logout nếu Firebase thất bại
         }
     }
 
     /**
-     * Xử lý đăng xuất
+     * THÊM MỚI: Hàm giả lập cho Đăng nhập Facebook
+     */
+    suspend fun signInWithFacebookToken() {
+        // TODO: Thêm logic xác thực Facebook Firebase ở đây
+        // Giả lập thành công:
+        _isAuthenticated.update { true }
+        prefs.edit {
+            putBoolean(authKey, true)
+            putString(providerKey, "Facebook")
+        }
+    }
+
+    /**
+     * SỬA LẠI: Xử lý đăng xuất
      */
     fun logout() {
         viewModelScope.launch {
-            firebaseAuth.signOut() // Đăng xuất khỏi Firebase
+            firebaseAuth.signOut()
             _isAuthenticated.update { false }
-            prefs.edit { putBoolean("IS_LOGGED_IN", false) }
+            // Sửa: Xóa cả trạng thái và provider
+            prefs.edit {
+                putBoolean(authKey, false)
+                remove(providerKey)
+            }
         }
     }
 }
