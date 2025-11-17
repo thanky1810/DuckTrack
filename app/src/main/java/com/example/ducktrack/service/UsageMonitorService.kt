@@ -6,7 +6,9 @@ import android.app.NotificationManager
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
+import android.content.Context // <-- Thêm import
 import android.content.Intent
+import android.os.Build // <-- Thêm import
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -15,10 +17,6 @@ import com.example.ducktrack.utils.usageManager
 import kotlinx.coroutines.*
 import java.util.Calendar
 
-/**
- * Foreground Service theo dõi app đang sử dụng
- * Khi phát hiện vượt giới hạn → start OverlayService để chặn
- */
 class UsageMonitorService : Service() {
 
     private val TAG = "UsageMonitorService"
@@ -28,20 +26,19 @@ class UsageMonitorService : Service() {
     private var monitorJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    // Lưu trạng thái: packageName -> (startTime, accumulatedMs)
+    // (Các hàm sessionMap, lastExtendRequestTime, onCreate giữ nguyên)
     private val sessionMap = mutableMapOf<String, SessionData>()
     private data class SessionData(var startTime: Long, var accumulatedMs: Long = 0L)
-
-    // Chống double-click "Thêm 15 phút"
     private val lastExtendRequestTime = mutableMapOf<String, Long>()
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Service onCreate")
-        createNotificationChannel()
+        createNotificationChannel() // Gọi hàm đã sửa
         startForeground(NOTIFICATION_ID, buildNotification())
     }
 
+    // (Hàm onStartCommand, startMonitoring, checkUsageLimits, getCurrentForegroundApp, getTodayUsage, showBlockOverlay, handleExtendTime, handleRemoveLimit giữ nguyên)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         Log.d(TAG, "Service onStartCommand action=$action")
@@ -77,11 +74,9 @@ class UsageMonitorService : Service() {
 
             val currentApp = getCurrentForegroundApp() ?: return
 
-            // Chỉ xử lý nếu app này có giới hạn
             val limitMinutes = limits[currentApp] ?: return
             val limitMs = limitMinutes * 60_000L
 
-            // Cập nhật session (hiện tại chủ yếu dùng getTodayUsage)
             val session = sessionMap.getOrPut(currentApp) {
                 SessionData(System.currentTimeMillis())
             }
@@ -95,7 +90,6 @@ class UsageMonitorService : Service() {
                 "-> Đã dùng: ${totalUsed / 60000} phút / Giới hạn: $limitMinutes phút (Tổng ms: $totalUsed / $limitMs)"
             )
 
-            // Nếu vượt giới hạn → show overlay
             if (totalUsed >= limitMs) {
                 Log.w(TAG, "⚠️⚠️⚠️ VƯỢT GIỚI HẠN: $currentApp. Hiển thị màn hình chặn!")
                 showBlockOverlay(currentApp, limitMinutes)
@@ -106,9 +100,6 @@ class UsageMonitorService : Service() {
         }
     }
 
-    /**
-     * Lấy app đang chạy foreground trong ~5 giây gần nhất
-     */
     private fun getCurrentForegroundApp(): String? {
         val usm: UsageStatsManager = usageManager(applicationContext)
         val endTime = System.currentTimeMillis()
@@ -128,9 +119,6 @@ class UsageMonitorService : Service() {
         return currentApp
     }
 
-    /**
-     * Lấy tổng thời gian sử dụng app trong ngày hôm nay (từ 0h)
-     */
     private fun getTodayUsage(packageName: String): Long {
         val usm: UsageStatsManager = usageManager(applicationContext)
         val end = System.currentTimeMillis()
@@ -145,11 +133,6 @@ class UsageMonitorService : Service() {
         return stats?.find { it.packageName == packageName }?.totalTimeInForeground ?: 0L
     }
 
-    /**
-     * Gửi ACTION_SHOW_BLOCK cho OverlayService
-     * ❶ FIX: dùng startService(), KHÔNG dùng startForegroundService()
-     *     vì OverlayService hiện tại không gọi startForeground().
-     */
     private fun showBlockOverlay(packageName: String, limitMinutes: Int) {
         if (!android.provider.Settings.canDrawOverlays(applicationContext)) {
             Log.e(TAG, "❌ No overlay permission - cannot show block screen")
@@ -165,17 +148,12 @@ class UsageMonitorService : Service() {
         Log.d(TAG, "OverlayService startService() called")
 
         try {
-            // DÙNG startService để tránh ForegroundServiceDidNotStartInTimeException
             startService(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start OverlayService", e)
         }
     }
 
-    /**
-     * Xử lý "Thêm 15 phút"
-     * - Dùng lastExtendRequestTime để tránh cộng 2 lần trong vài giây
-     */
     private fun handleExtendTime(intent: Intent) {
         val packageName = intent.getStringExtra("packageName") ?: return
 
@@ -199,9 +177,6 @@ class UsageMonitorService : Service() {
         }
     }
 
-    /**
-     * Xử lý "Xóa giới hạn"
-     */
     private fun handleRemoveLimit(intent: Intent) {
         val packageName = intent.getStringExtra("packageName") ?: return
         Log.d(TAG, "Service onStartCommand action=REMOVE_LIMIT for $packageName")
@@ -213,19 +188,25 @@ class UsageMonitorService : Service() {
         }
     }
 
+    /**
+     * SỬA LỖI: Thêm kiểm tra API Level 26
+     */
     private fun createNotificationChannel() {
-        val manager = getSystemService(NotificationManager::class.java)
-        if (manager == null) return
+        // Chỉ tạo channel trên API 26 (Oreo) trở lên
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
+            if (manager == null) return
 
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Usage Monitor",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Theo dõi thời gian sử dụng ứng dụng"
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Usage Monitor",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Theo dõi thời gian sử dụng ứng dụng"
+            }
+
+            manager.createNotificationChannel(channel)
         }
-
-        manager.createNotificationChannel(channel)
     }
 
     private fun buildNotification(): Notification {

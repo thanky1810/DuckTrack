@@ -8,6 +8,8 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -24,8 +26,9 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.ducktrack.ui.theme.DuckTrackTheme
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.example.ducktrack.utils.hasUsageAccess
+import androidx.compose.runtime.remember // <-- Thêm import này
 
-// Factory để truyền Context vào ViewModel
+// (Factory và hàm checkUsageAccessPermission giữ nguyên)
 class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
@@ -35,11 +38,10 @@ class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Fac
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
-
-// Hàm kiểm tra quyền
 fun checkUsageAccessPermission(context: Context): Boolean {
     return hasUsageAccess(context)
 }
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -53,26 +55,42 @@ fun AppRoot(
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(appContext)
     )
-    // val isAuthenticated by authViewModel.isAuthenticated.collectAsState() // Vẫn cần cho Logout
 
     // --- SỬA LẠI HOÀN TOÀN LOGIC KHỞI ĐỘNG ---
-    // Ứng dụng LUÔN BẮT ĐẦU TẠI TRANG MỞ ĐẦU (introducePage)
-    // Chúng ta không kiểm tra isAuthenticated ở đây nữa.
-    val startDestination = Routes.Home
+
+    // 1. Lấy trạng thái đăng nhập TỪ VIEWMODEL (ViewModel đọc từ SharedPreferences)
+    val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
+
+    // 2. Kiểm tra quyền truy cập
+    val hasPermission = checkUsageAccessPermission(appContext)
+
+    // 3. Quyết định màn hình khởi động
+    val startDestination = remember(isAuthenticated, hasPermission) {
+        if (isAuthenticated) {
+            // NẾU ĐÃ ĐĂNG NHẬP:
+            if (hasPermission) {
+                Routes.Main // -> Vào thẳng Dashboard
+            } else {
+                Routes.Permission // -> Vào màn hình xin quyền
+            }
+        } else {
+            // NẾU CHƯA ĐĂNG NHẬP:
+            Routes.Home // -> Vào trang Mở đầu (introducePage)
+        }
+    }
     // ------------------------------------------
 
     DuckTrackTheme {
         Scaffold { innerPadding ->
             NavHost(
                 navController = nav,
-                startDestination = startDestination, // Luôn là Routes.Home
+                startDestination = startDestination, // <-- SỬ DỤNG BIẾN ĐỘNG
                 modifier = Modifier.padding(innerPadding)
             ) {
 
                 // 1. Routes.Home (Trang mở đầu - introducePage)
                 composable(Routes.Home) {
                     introduceScreen(
-                        // Khi nhấn "Đăng nhập" -> đi tới Routes.Login
                         onGoLogin = { nav.navigate(Routes.Login) }
                     )
                 }
@@ -82,13 +100,17 @@ fun AppRoot(
                     LoginScreen(
                         googleSignInClient = googleSignInClient,
                         onLogin = {
-                            // 3. Sau khi Đăng nhập thành công -> đi tới Routes.Permission
-                            nav.navigate(Routes.Permission) {
-                                // Xóa stack về Home để người dùng không quay lại được
-                                popUpTo(Routes.Home) { inclusive = true }
+                            // 3. Sau khi Đăng nhập thành công -> kiểm tra quyền
+                            if (checkUsageAccessPermission(appContext)) {
+                                nav.navigate(Routes.Main) {
+                                    popUpTo(Routes.Home) { inclusive = true }
+                                }
+                            } else {
+                                nav.navigate(Routes.Permission) {
+                                    popUpTo(Routes.Home) { inclusive = true }
+                                }
                             }
-                        },
-                        //onGoHome = { nav.popBackStack() } // Nút quay lại từ Login về Home
+                        }
                     )
                 }
 
@@ -104,13 +126,13 @@ fun AppRoot(
                                 e.printStackTrace()
                             }
                         },
-                        // 5. Sau khi Cấp quyền HOẶC Hủy -> luôn về Routes.Main (DashboardScreen)
+                        // 5. Sau khi Cấp quyền HOẶC Hủy -> luôn về Routes.Main
                         onCancel = {
                             nav.navigate(Routes.Main) {
                                 popUpTo(Routes.Permission) { inclusive = true }
                             }
                         },
-                        onPermissionGranted = { // Khi quay lại app và thấy đã có quyền
+                        onPermissionGranted = {
                             nav.navigate(Routes.Main) {
                                 popUpTo(Routes.Permission) { inclusive = true }
                             }
@@ -120,7 +142,6 @@ fun AppRoot(
 
                 // 6. Routes.Main (Màn hình chính chứa DashboardScreen)
                 composable(Routes.Main) {
-                    // MainScreen sẽ tự kiểm tra quyền và hiển thị 1 trong 2 UI
                     val currentHasPermission = checkUsageAccessPermission(appContext)
 
                     MainScreen(
