@@ -47,6 +47,7 @@ val JostFontFamily = FontFamily(
 
 @Composable
 fun LoginScreen(
+    // ĐÃ XÓA onGoHome: () -> Unit = {},
     onLogin: () -> Unit = {},
     googleSignInClient: GoogleSignInClient
 ) {
@@ -56,7 +57,7 @@ fun LoginScreen(
     )
     val coroutineScope = rememberCoroutineScope()
 
-    // ===== GOOGLE SIGN IN LOGIC (Giữ nguyên) =====
+    // (Logic Google Sign-In giữ nguyên)
     val googleAuthLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -91,25 +92,18 @@ fun LoginScreen(
             googleAuthLauncher.launch(signInIntent)
         }
     }
-    // =============================================================
 
-
-    Scaffold(
-        // Loại bỏ TopAppBar
-    ) { inner ->
+    Scaffold { inner ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppColors.BackgroundWhite)
                 .padding(inner)
-                // SỬA: Thêm padding trên cùng để nội dung không bị dính sát vào status bar
                 .padding(top = 40.dp, start = 8.dp, end = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // SỬA: Xóa Spacer trên cùng
-
-            // Logo và hình nền bong bóng
+            // (Logo, Tiêu đề, và các Nút giữ nguyên)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,7 +126,6 @@ fun LoginScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // --- CHỮ "ĐĂNG NHẬP" (Style giống introducePage) ---
             val textStyleWithShadow = TextStyle(
                 fontFamily = JostFontFamily,
                 fontWeight = FontWeight.ExtraBold,
@@ -152,11 +145,9 @@ fun LoginScreen(
                 style = textStyleWithShadow,
                 modifier = Modifier.fillMaxWidth()
             )
-            // --------------------------------------------------------
 
             Spacer(Modifier.height(40.dp))
 
-            // --- Google Sign In Button ---
             AuthButton(
                 text = "Đăng nhập bằng Google",
                 iconResId = R.drawable.ic_google,
@@ -167,7 +158,6 @@ fun LoginScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // --- Facebook Sign In Button ---
             AuthButton(
                 text = "Đăng nhập bằng Facebook",
                 iconResId = R.drawable.ic_facebook,
@@ -179,7 +169,7 @@ fun LoginScreen(
     }
 }
 
-// Hàm Composable cho nút mạng xã hội (Giữ nguyên)
+// (Hàm AuthButton giữ nguyên)
 @Composable
 fun AuthButton(
     text: String,

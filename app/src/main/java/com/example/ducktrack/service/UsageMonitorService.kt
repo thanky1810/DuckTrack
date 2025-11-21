@@ -6,11 +6,11 @@ import android.app.NotificationManager
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
+import android.content.Context // <-- Thêm import
 import android.content.Intent
-<<<<<<< Updated upstream
-=======
-import android.os.Build
->>>>>>> Stashed changes
+
+import android.os.Build // <-- Thêm import
+
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -22,10 +22,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Foreground Service theo dõi app đang sử dụng
- * Khi phát hiện vượt giới hạn → start OverlayService để chặn
- */
 class UsageMonitorService : Service() {
 
     private val TAG = "UsageMonitorService"
@@ -35,38 +31,27 @@ class UsageMonitorService : Service() {
     private var monitorJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-<<<<<<< Updated upstream
     // Lưu trạng thái: packageName -> (startTime, accumulatedMs)
     private val sessionMap = mutableMapOf<String, SessionData>()
     private data class SessionData(var startTime: Long, var accumulatedMs: Long = 0L)
 
     // Chống double-click "Thêm 15 phút"
-=======
-    // Map: mỗi app -> tổng ms đã dùng (tự đếm bằng đồng hồ)
-    private val usedMsMap = mutableMapOf<String, Long>()
 
-    // Lưu baseline cuối cùng để biết khi nào user SET / ĐỔI limit
-    private val lastKnownBaselines = mutableMapOf<String, BaselineInfo>()
+    // (Các hàm sessionMap, lastExtendRequestTime, onCreate giữ nguyên)
+    private val sessionMap = mutableMapOf<String, SessionData>()
+    private data class SessionData(var startTime: Long, var accumulatedMs: Long = 0L)
 
-    // App foreground ở vòng lặp trước + thời điểm tick trước
-    private var lastForegroundPackage: String? = null
-    private var lastTickTime: Long = System.currentTimeMillis()
-
-    // Dùng để reset usage khi sang ngày mới
-    private var currentDay: String = todayString()
-
-    // Chống spam nút "Extend time"
->>>>>>> Stashed changes
     private val lastExtendRequestTime = mutableMapOf<String, Long>()
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Service onCreate")
-        createNotificationChannel()
+        createNotificationChannel() // Gọi hàm đã sửa
         startForeground(NOTIFICATION_ID, buildNotification())
         lastTickTime = System.currentTimeMillis()
     }
 
+    // (Hàm onStartCommand, startMonitoring, checkUsageLimits, getCurrentForegroundApp, getTodayUsage, showBlockOverlay, handleExtendTime, handleRemoveLimit giữ nguyên)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         Log.d(TAG, "Service onStartCommand action=$action")
@@ -140,43 +125,16 @@ class UsageMonitorService : Service() {
             // Xoá usage của những app không còn limit (cho sạch map)
             usedMsMap.keys.retainAll(limits.keys)
 
-<<<<<<< Updated upstream
             // Chỉ xử lý nếu app này có giới hạn
-=======
-            val baselines = limitsStore.getAllBaselines()
 
-            // Reset usage khi baseline (thời điểm set limit) thay đổi
-            for ((pkg, baseline) in baselines) {
-                val prev = lastKnownBaselines[pkg]
-                if (prev == null ||
-                    prev.day != baseline.day ||
-                    prev.baselineMs != baseline.baselineMs
-                ) {
-                    Log.d(
-                        TAG,
-                        "Baseline changed for $pkg -> reset usage (day=${baseline.day}, baselineMs=${baseline.baselineMs})"
-                    )
-                    usedMsMap[pkg] = 0L
-                    lastKnownBaselines[pkg] = baseline
-                }
-            }
-            // Xoá baseline cũ của những app không còn baseline
-            lastKnownBaselines.keys.retainAll(baselines.keys)
-
-            // 4) Lấy danh sách app được "bỏ qua giới hạn hôm nay" (từ màn block)
-            val skipTodaySet = loadSkipSetForToday()
-
-            // 5) Kiểm tra limit cho app hiện tại
->>>>>>> Stashed changes
             val limitMinutes = limits[currentApp] ?: return
             val limitMs = limitMinutes * 60_000L
             val totalUsed = usedMsMap[currentApp] ?: 0L
 
-<<<<<<< Updated upstream
             // Cập nhật session (hiện tại chủ yếu dùng getTodayUsage)
             val session = sessionMap.getOrPut(currentApp) {
                 SessionData(System.currentTimeMillis())
-=======
+
             if (skipTodaySet.contains(currentApp)) {
                 Log.i(
                     TAG,
@@ -184,7 +142,7 @@ class UsageMonitorService : Service() {
                 )
                 // Không block trong hôm nay, nhưng ngày mai limit hoạt động lại
                 return
->>>>>>> Stashed changes
+
             }
 
             Log.i(TAG, "🔔 ĐANG GIÁM SÁT: $currentApp")
@@ -193,7 +151,6 @@ class UsageMonitorService : Service() {
                 "-> Đã dùng: ${totalUsed / 60000} phút / Giới hạn: $limitMinutes phút (Tổng ms: $totalUsed / $limitMs)"
             )
 
-            // Nếu vượt giới hạn → show overlay
             if (totalUsed >= limitMs) {
                 Log.w(TAG, "⚠️⚠️⚠️ VƯỢT GIỚI HẠN: $currentApp. Hiển thị màn hình chặn!")
                 showBlockOverlay(currentApp, limitMinutes)
@@ -205,15 +162,14 @@ class UsageMonitorService : Service() {
     }
 
     /**
-<<<<<<< Updated upstream
      * Lấy app đang chạy foreground trong ~5 giây gần nhất
      */
     private fun getCurrentForegroundApp(): String? {
-=======
+
      * Lấy app foreground mới nhất trong 5s gần đây (dựa vào event MOVE_TO_FOREGROUND)
      */
     private fun getCurrentForegroundAppRaw(): String? {
->>>>>>> Stashed changes
+
         val usm: UsageStatsManager = usageManager(applicationContext)
         val endTime = System.currentTimeMillis()
         val startTime = endTime - 5000 // 5 giây trước
@@ -237,15 +193,9 @@ class UsageMonitorService : Service() {
     }
 
     /**
-<<<<<<< Updated upstream
      * Lấy tổng thời gian sử dụng app trong ngày hôm nay (từ 0h)
      */
-=======
-     * Hàm cũ dùng UsageStats để lấy tổng foreground từ 0h đến giờ.
-     * Không dùng trong logic chính, nhưng giữ lại nếu cần về sau.
-     */
-    @Suppress("unused")
->>>>>>> Stashed changes
+
     private fun getTodayUsage(packageName: String): Long {
         val usm: UsageStatsManager = usageManager(applicationContext)
         val end = System.currentTimeMillis()
@@ -260,11 +210,6 @@ class UsageMonitorService : Service() {
         return stats?.find { it.packageName == packageName }?.totalTimeInForeground ?: 0L
     }
 
-    /**
-     * Gửi ACTION_SHOW_BLOCK cho OverlayService
-     * ❶ FIX: dùng startService(), KHÔNG dùng startForegroundService()
-     *     vì OverlayService hiện tại không gọi startForeground().
-     */
     private fun showBlockOverlay(packageName: String, limitMinutes: Int) {
         if (!android.provider.Settings.canDrawOverlays(applicationContext)) {
             Log.e(TAG, "❌ No overlay permission - cannot show block screen")
@@ -280,25 +225,20 @@ class UsageMonitorService : Service() {
         Log.d(TAG, "OverlayService startService() called")
 
         try {
-<<<<<<< Updated upstream
             // DÙNG startService để tránh ForegroundServiceDidNotStartInTimeException
             startService(intent)
-=======
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
             } else {
                 startService(intent)
             }
->>>>>>> Stashed changes
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start OverlayService", e)
         }
     }
 
-    /**
-     * Xử lý "Thêm 15 phút"
-     * - Dùng lastExtendRequestTime để tránh cộng 2 lần trong vài giây
-     */
     private fun handleExtendTime(intent: Intent) {
         val packageName = intent.getStringExtra("packageName") ?: return
 
@@ -323,17 +263,9 @@ class UsageMonitorService : Service() {
     }
 
     /**
-<<<<<<< Updated upstream
      * Xử lý "Xóa giới hạn"
-=======
-     * Nút "Xóa giới hạn" trên MÀN BLOCK:
-     *  - KHÔNG xóa limit vĩnh viễn.
-     *  - Chỉ đánh dấu: hôm nay bỏ qua giới hạn cho app này.
-     *  - Sang ngày mới, limit hoạt động lại như cũ.
-     *
-     * Xóa VĨNH VIỄN vẫn là nút trong CARD (MainScreen -> vm.removeLimit -> limitsStore.removeLimit).
->>>>>>> Stashed changes
      */
+
     private fun handleRemoveLimit(intent: Intent) {
         val packageName = intent.getStringExtra("packageName") ?: return
         Log.d(TAG, "Service onStartCommand action=REMOVE_LIMIT for $packageName (BLOCK SCREEN)")
@@ -357,14 +289,12 @@ class UsageMonitorService : Service() {
         }
     }
 
+    /**
+     * SỬA LỖI: Thêm kiểm tra API Level 26
+     */
     private fun createNotificationChannel() {
-<<<<<<< Updated upstream
         val manager = getSystemService(NotificationManager::class.java)
         if (manager == null) return
-=======
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java) ?: return
->>>>>>> Stashed changes
 
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -374,7 +304,22 @@ class UsageMonitorService : Service() {
             description = "Theo dõi thời gian sử dụng ứng dụng"
         }
 
-        manager.createNotificationChannel(channel)
+        // Chỉ tạo channel trên API 26 (Oreo) trở lên
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
+            if (manager == null) return
+
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Usage Monitor",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Theo dõi thời gian sử dụng ứng dụng"
+            }
+
+
+            manager.createNotificationChannel(channel)
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -401,62 +346,7 @@ class UsageMonitorService : Service() {
         const val ACTION_EXTEND_TIME = "EXTEND_TIME"
         const val ACTION_REMOVE_LIMIT = "REMOVE_LIMIT"
     }
-<<<<<<< Updated upstream
-=======
-
-    private fun todayString(): String =
-        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-
-    // ===================== HỖ TRỢ "XÓA GIỚI HẠN TRONG NGÀY" =====================
-
-    private fun skipPrefs() =
-        getSharedPreferences("ducktrack_skip_limits", MODE_PRIVATE)
-
-    /**
-     * Load danh sách app được bỏ qua giới hạn trong NGÀY HIỆN TẠI.
-     * Nếu stored day khác today -> reset.
-     */
-    private fun loadSkipSetForToday(): MutableSet<String> {
-        val prefs = skipPrefs()
-        val today = todayString()
-        val savedDay = prefs.getString("day", null)
-        if (savedDay != today) {
-            // Reset cho ngày mới
-            prefs.edit()
-                .putString("day", today)
-                .putStringSet("apps", emptySet())
-                .apply()
-            return mutableSetOf()
-        }
-        val set = prefs.getStringSet("apps", emptySet()) ?: emptySet()
-        return set.toMutableSet()
-    }
-
-    /**
-     * Lưu danh sách app được bỏ qua giới hạn trong ngày hiện tại.
-     */
-    private fun saveSkipSetToday(set: Set<String>) {
-        val prefs = skipPrefs()
-        prefs.edit()
-            .putString("day", todayString())
-            .putStringSet("apps", set.toSet())
-            .apply()
-    }
-
-    /**
-     * Đảm bảo khi chuyển ngày, SharedPreferences cũng đã được reset.
-     * (Thực ra loadSkipSetForToday() đã tự xử lý, nhưng thêm hàm này cho rõ ràng intent.)
-     */
-    private fun clearSkipSetIfNewDay() {
-        val prefs = skipPrefs()
-        val today = todayString()
-        val savedDay = prefs.getString("day", null)
-        if (savedDay != today) {
-            prefs.edit()
-                .putString("day", today)
-                .putStringSet("apps", emptySet())
-                .apply()
-        }
-    }
->>>>>>> Stashed changes
 }
+
+}
+
