@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.theme.AppColors
+import com.example.ducktrack.ui.theme.AppColors // Import màu từ theme
 
 // --- ĐỊNH NGHĨA FONT FAMILY TÙY CHỈNH ---
 val JostFontFamily = FontFamily(
@@ -33,6 +33,7 @@ val JostFontFamily = FontFamily(
 @Composable
 fun introduceScreen(
     onGoLogin: () -> Unit = {}
+    // ĐÃ XÓA onForgotPassword và onCreateAccount
 ) {
     Scaffold { inner ->
         Column(
@@ -42,10 +43,8 @@ fun introduceScreen(
                 .padding(inner)
                 .padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            // SỬA: Đổi thành Arrangement.Top để đẩy nội dung lên
             verticalArrangement = Arrangement.Top
         ) {
-            // SỬA: Giảm Spacer trên cùng để đẩy nội dung lên cao
             Spacer(Modifier.height(60.dp))
 
             // Logo và hình nền bong bóng
@@ -69,7 +68,6 @@ fun introduceScreen(
                 )
             }
 
-            // SỬA: Giảm khoảng cách
             Spacer(Modifier.height(24.dp))
 
             // --- CHỮ (Giữ nguyên style) ---
@@ -97,9 +95,7 @@ fun introduceScreen(
                 style = textStyleWithShadow,
                 modifier = Modifier.fillMaxWidth()
             )
-            // ---------------------------------
 
-            // SỬA: Giảm khoảng cách
             Spacer(Modifier.height(40.dp))
 
             // Nút "Đăng nhập"
@@ -121,8 +117,6 @@ fun introduceScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-
-            // SỬA: Xóa Spacer(Modifier.weight(1f)) ở dưới cùng
         }
     }
 }

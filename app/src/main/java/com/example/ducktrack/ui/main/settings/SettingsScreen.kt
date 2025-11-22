@@ -1,8 +1,8 @@
 package com.example.ducktrack.ui.main.settings
 
-// Các import không cần nữa đã bị xóa (Intent, Build, UsageMonitorService)
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
@@ -15,15 +15,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel // <-- Import mới
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.utils.PermissionHelper
+import com.example.ducktrack.ui.AuthViewModel
+import com.example.ducktrack.ui.AppRoot.AuthViewModelFactory
 
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
-    // Khởi tạo ViewModel
-    viewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModelFactory(LocalContext.current.applicationContext)
+    )
 ) {
+    val userInfo = authViewModel.getCurrentUserInfo()
+    val primaryColor = Color(0xFF62B26A)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -38,13 +45,75 @@ fun SettingsScreen(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // Phần giám sát thời gian (MỚI)
-        // Truyền ViewModel vào
-        MonitoringControlSection(viewModel)
+        // --- THẺ THÔNG TIN NGƯỜI DÙNG (ĐÃ SỬA) ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = primaryColor.copy(alpha = 0.1f)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                // Tên người dùng
+                Text(
+                    text = "Tên người dùng:",
+                    fontSize = 14.sp,
+                    color = primaryColor
+                )
+                Text(
+                    text = userInfo?.name ?: "Khách",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                // Email
+                Text(
+                    text = "Email:",
+                    fontSize = 14.sp,
+                    color = primaryColor
+                )
+                Text(
+                    text = userInfo?.email ?: "Vui lòng đăng nhập",
+                    fontSize = 16.sp,
+                    color = Color.DarkGray
+                )
+
+                // --- THÊM MỚI: PHƯƠNG THỨC ĐĂNG NHẬP ---
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = "Phương thức đăng nhập:",
+                    fontSize = 14.sp,
+                    color = primaryColor
+                )
+                Text(
+                    text = userInfo?.provider ?: "Không rõ", // Lấy từ UserInfo
+                    fontSize = 16.sp,
+                    color = Color.DarkGray,
+                    fontWeight = FontWeight.SemiBold
+                )
+                // --- KẾT THÚC PHẦN THÊM MỚI ---
+            }
+        }
+        // --- KẾT THÚC THẺ ---
 
         Divider()
 
-        // Nút đăng xuất
+        // Phần giám sát thời gian (Giữ nguyên)
+        MonitoringControlSection(settingsViewModel)
+
+        Divider()
+
+        // Nút đăng xuất (Giữ nguyên)
         Button(
             onClick = onLogout,
             modifier = Modifier
@@ -56,32 +125,25 @@ fun SettingsScreen(
         ) {
             Icon(Icons.Filled.ExitToApp, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Đăng xuất")
+            Text("Đăng xuất", fontWeight = FontWeight.Bold)
         }
     }
 }
 
 /**
- * Section để bật/tắt monitoring và xin quyền overlay
+ * Section để bật/tắt monitoring (Giữ nguyên)
  */
 @Composable
 private fun MonitoringControlSection(
-    // Nhận ViewModel làm tham số
     viewModel: SettingsViewModel
 ) {
     val context = LocalContext.current
-
-    // Lấy trạng thái giám sát TỪ VIEWMODEL (đã kết nối DataStore)
     val isMonitoring by viewModel.isMonitoringEnabled.collectAsState()
-
-    // DÒNG NÀY ĐÃ BỊ XÓA:
-    // var isMonitoring by remember { mutableStateOf(false) }
 
     var hasOverlayPermission by remember {
         mutableStateOf(PermissionHelper.hasOverlayPermission(context))
     }
 
-    // Check lại quyền khi quay lại app
     LaunchedEffect(Unit) {
         hasOverlayPermission = PermissionHelper.hasOverlayPermission(context)
     }
@@ -108,7 +170,6 @@ private fun MonitoringControlSection(
                 color = Color.Gray
             )
 
-            // Kiểm tra quyền overlay (Giữ nguyên)
             if (!hasOverlayPermission) {
                 Card(
                     colors = CardDefaults.cardColors(
@@ -144,7 +205,6 @@ private fun MonitoringControlSection(
                 }
             }
 
-            // Nút bật/tắt monitoring
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -164,9 +224,8 @@ private fun MonitoringControlSection(
                 }
 
                 Switch(
-                    checked = isMonitoring, // Lấy trạng thái từ ViewModel
+                    checked = isMonitoring,
                     onCheckedChange = { enabled ->
-                        // Khi gạt nút, gọi ViewModel để xử lý
                         viewModel.setMonitoringEnabled(enabled)
                     },
                     enabled = hasOverlayPermission
@@ -189,6 +248,3 @@ private fun MonitoringControlSection(
         }
     }
 }
-
-// 2 HÀM startMonitoringService và stopMonitoringService ĐÃ BỊ XÓA KHỎI ĐÂY
-// (Vì chúng đã được chuyển vào SettingsViewModel)

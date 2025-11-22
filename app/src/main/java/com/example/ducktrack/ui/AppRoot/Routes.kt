@@ -5,8 +5,10 @@ object Routes {
     const val Permission = "permission"
     const val Home = "introducePage"
     const val Login = "login"
+
     // Luồng đã xác thực
     const val Main = "main"
+
     // Các tab trong màn hình chính (Dùng bởi MainScreen)
     const val Dashboard = "dashboard"
     const val Tasks = "tasks"
