@@ -30,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ducktrack.MyApplication
 import com.example.ducktrack.data.model.AppUsage
 import com.example.ducktrack.ui.AppRoot.Routes
 import com.example.ducktrack.ui.components.AppUsageRow
@@ -68,6 +69,10 @@ fun MainScreen(
         // Header giữ "Trang chủ", phần tổng thời gian hiển thị trong nội dung theo mockup
         currentPageTitle
     }
+    val application = LocalContext.current.applicationContext as MyApplication
+    // Lấy điểm sao TỪ REPOSITORY và lắng nghe thay đổi
+    val starCount by application.repository.userPoints.collectAsState(initial = 0)
+
 
     Scaffold(
         topBar = {

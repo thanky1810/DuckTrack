@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 // 1. Bảng lưu điểm, chúng ta chỉ có 1 user, nên id luôn là 1
 @Entity(tableName = "user_profile")
 data class UserProfile(
-    @PrimaryKey val id: Int = 1,
+    @PrimaryKey val id: Int = 0,
     val points: Int // Số điểm sao 🌟
 )
 
