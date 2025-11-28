@@ -6,6 +6,9 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.example.ducktrack.data.LimitsStore
 import com.example.ducktrack.data.UsageRepository
 import com.example.ducktrack.data.model.AppUsage
@@ -16,12 +19,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
+
     private val repo = UsageRepository(app)
     private val limitsStore = LimitsStore(app)
 
-    var usages: List<AppUsage> = emptyList(); private set
-    var totalMs: Long = 0L; private set
-    var limits: Map<String, Int> = emptyMap(); private set
+    // Các state mà DashboardScreen đang đọc
+    var usages by mutableStateOf<List<AppUsage>>(emptyList())
+        private set
+
+    var totalMs by mutableStateOf(0L)
+        private set
+
+    var limits by mutableStateOf<Map<String, Int>>(emptyMap())
+        private set
 
     private val iconCache = HashMap<String, Drawable?>()
 
@@ -43,6 +53,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             val list = repo.queryToday()
             val total = list.sumOf { it.totalForegroundMs }
             val allLimits = limitsStore.getAll()
+
             withContext(Dispatchers.Main) {
                 usages = list
                 totalMs = total
@@ -55,7 +66,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      * Set giới hạn cho 1 app:
      *  - pkg: packageName thật (vd: com.ss.android.ugc.trill)
      *  - minutes: số phút giới hạn
-     *  - baselineMs: tổng ms đã dùng đến thời điểm set (dùng cho logic "ngày đầu tính từ lúc set")
+     *  - baselineMs: tổng ms đã dùng tới thời điểm set
      */
     fun setLimit(pkg: String, minutes: Int, baselineMs: Long) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -66,7 +77,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.Main) {
                 limits = m
 
-                // 2. TỰ ĐỘNG khởi động service (nếu có quyền overlay)
+                // 2. Nếu đã có quyền overlay, khởi động service giám sát
                 if (PermissionHelper.hasOverlayPermission(getApplication())) {
                     startMonitoringService()
                 }
@@ -74,9 +85,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * Xóa giới hạn cho 1 app
-     */
     fun removeLimit(pkg: String) {
         viewModelScope.launch(Dispatchers.IO) {
             limitsStore.removeLimit(pkg)
@@ -88,7 +96,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Khởi động UsageMonitorService tự động
+     * Khởi động UsageMonitorService
      */
     private fun startMonitoringService() {
         val context = getApplication<Application>()
@@ -102,8 +110,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 context.startService(intent)
             }
-        } catch (e: Exception) {
-            // Service đã chạy hoặc lỗi khác - ignore
+        } catch (_: Exception) {
+            // Service đã chạy hoặc lỗi khác -> bỏ qua
         }
     }
 }

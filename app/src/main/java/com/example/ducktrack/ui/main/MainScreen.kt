@@ -78,7 +78,7 @@ fun MainScreen(
         topBar = {
             MainTopAppBar(
                 title = topTitle,
-                starCount = 1
+                starCount = starCount
             )
         },
         bottomBar = {
