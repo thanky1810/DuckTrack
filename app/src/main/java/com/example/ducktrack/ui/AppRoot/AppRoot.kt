@@ -95,7 +95,7 @@ fun AppRoot(
                     )
                 }
 
-                // 2. Routes.Login (Màn hình đăng nhập - login.kt)
+                // 2. Routes.Login (Màn hình đăng nhập - LoginScreen.kt)
                 composable(Routes.Login) {
                     LoginScreen(
                         googleSignInClient = googleSignInClient,
