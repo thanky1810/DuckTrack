@@ -67,7 +67,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.ui.unit)
     implementation(libs.androidx.compose.foundation)
-
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     // Nếu bạn dùng thêm Material3 View (non-compose) thì giữ lại dòng này
     implementation(libs.androidx.material3)
 
