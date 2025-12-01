@@ -3,6 +3,7 @@ package com.example.ducktrack.ui.introducePage
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,10 +24,11 @@ import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
 import com.example.ducktrack.ui.theme.AppColors
 
-val JostFontFamily = FontFamily(
-    Font(R.font.jost_extrabold, FontWeight.ExtraBold)
+val MainFontFamily = FontFamily(
+    Font(R.font.montserrat_extrabold, FontWeight.ExtraBold)
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun introduceScreen(
     onGoLogin: () -> Unit = {}
@@ -39,40 +41,49 @@ fun introduceScreen(
                 .padding(inner),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // --- PHẦN 1: LOGO & ẢNH NỀN (TỰ ĐỘNG CO GIÃN) ---
-            // Sử dụng weight(1f) để nó chiếm toàn bộ không gian trống
+            // --- PHẦN 1: LOGO (Chiếm 45% màn hình) ---
             Box(
                 modifier = Modifier
-                    .weight(1f) // Chiếm phần lớn màn hình
+                    .weight(0.45f) // Giảm trọng số để chừa chỗ cho phần dưới đẩy lên
                     .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.BottomCenter // Đẩy ảnh xuống sát mép dưới của vùng này
             ) {
+                // Ảnh nền bong bóng
                 Image(
                     painter = painterResource(id = R.drawable.ic_bubble_background),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(0.9f), // Co lại chút để không sát lề
-                    contentScale = ContentScale.Fit
+                    modifier = Modifier.fillMaxSize(0.9f),
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomCenter
                 )
+                // Logo con vịt
                 Image(
                     painter = painterResource(id = R.drawable.ic_duck_logo),
                     contentDescription = "DuckTrack Logo",
-                    // Thay vì size cố định, ta dùng fillMaxHeight theo tỷ lệ
-                    modifier = Modifier.fillMaxHeight(0.6f).aspectRatio(1f),
-                    contentScale = ContentScale.Fit
+                    modifier = Modifier
+                        .fillMaxHeight(0.85f) // Tăng kích thước vịt lên chút cho cân đối
+                        .aspectRatio(1f),
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomCenter
                 )
             }
 
-            // --- PHẦN 2: NỘI DUNG CHỮ & NÚT ---
+            // Khoảng cách nhỏ giữa Ảnh và Chữ
+            Spacer(Modifier.height(16.dp))
+
+            // --- PHẦN 2: CHỮ & NÚT BẤM (Chiếm 55% màn hình) ---
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 40.dp), // Cách đáy một chút
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .weight(0.55f) // Chiếm phần còn lại
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center // Đẩy nội dung lên sát mép trên (gần ảnh)
             ) {
                 val textStyleWithShadow = TextStyle(
-                    fontFamily = JostFontFamily,
+                    fontFamily = MainFontFamily,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 36.sp, // Giảm nhẹ font để an toàn cho máy nhỏ
+                    fontSize = 36.sp,
                     color = AppColors.TextGreen,
                     textAlign = TextAlign.Center,
                     lineHeight = 44.sp,
@@ -94,8 +105,10 @@ fun introduceScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Khoảng cách giữa chữ và nút
                 Spacer(Modifier.height(32.dp))
 
+                // Nút Bắt đầu
                 Button(
                     onClick = onGoLogin,
                     shape = RoundedCornerShape(24.dp),
@@ -105,12 +118,14 @@ fun introduceScreen(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(70.dp) // Nút cao vừa phải
+                        .padding(horizontal = 32.dp)
+                        .height(70.dp)
                 ) {
                     Text(
                         "Bắt đầu",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = MainFontFamily
                     )
                 }
             }

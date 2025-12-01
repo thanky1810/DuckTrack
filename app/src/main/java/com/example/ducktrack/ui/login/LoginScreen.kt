@@ -39,9 +39,10 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import com.example.ducktrack.ui.theme.AppColors
 
-// --- ĐỊNH NGHĨA FONT FAMILY ---
-val JostFontFamily = FontFamily(
-    Font(R.font.jost_extrabold, FontWeight.ExtraBold)
+// --- ĐỊNH NGHĨA FONT FAMILY (Đã đổi sang Montserrat) ---
+// Hãy chắc chắn bạn đã copy file 'montserrat_extrabold.ttf' vào res/font
+val MainFontFamily = FontFamily(
+    Font(R.font.montserrat_extrabold, FontWeight.ExtraBold)
 )
 // ------------------------------------------
 
@@ -56,32 +57,26 @@ fun LoginScreen(
     )
     val coroutineScope = rememberCoroutineScope()
 
-    // 1. LOGIC ĐĂNG NHẬP GOOGLE
+    // ... (Logic đăng nhập giữ nguyên) ...
     val googleAuthLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val task: Task<com.google.android.gms.auth.api.signin.GoogleSignInAccount> =
-                GoogleSignIn.getSignedInAccountFromIntent(result.data)
-
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)!!
                 val idToken = account.idToken
-
                 if (idToken != null) {
                     coroutineScope.launch {
                         viewModel.signInWithGoogleToken(idToken)
                         onLogin()
                     }
                 } else {
-                    Toast.makeText(context, "Lỗi: Không nhận được ID Token", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Lỗi Token", Toast.LENGTH_SHORT).show()
                 }
-
             } catch (e: ApiException) {
-                Toast.makeText(context, "Đăng nhập Google thất bại: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_LONG).show()
             }
-        } else if (result.resultCode != CommonStatusCodes.CANCELED) {
-            Toast.makeText(context, "Hủy đăng nhập", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -92,25 +87,18 @@ fun LoginScreen(
         }
     }
 
-    // 2. LOGIC ĐĂNG NHẬP GITHUB
     val signInWithGithub: () -> Unit = {
         val activity = context as? Activity
         if (activity != null) {
             viewModel.signInWithGithub(
                 activity = activity,
-                onSuccess = {
-                    onLogin() // Chuyển màn hình khi thành công
-                },
-                onError = { msg ->
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
+                onSuccess = { onLogin() },
+                onError = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
             )
-        } else {
-            Toast.makeText(context, "Lỗi thiết bị: Không tìm thấy Activity", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // --- GIAO DIỆN RESPONSIVE ---
+    // --- GIAO DIỆN ---
     Scaffold { inner ->
         Column(
             modifier = Modifier
@@ -119,38 +107,38 @@ fun LoginScreen(
                 .padding(inner),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // PHẦN 1: LOGO (Chiếm phần lớn màn hình - Tự động co giãn)
+            // PHẦN 1: LOGO
             Box(
                 modifier = Modifier
-                    .weight(1f) // Quan trọng: Chiếm hết không gian thừa
+                    .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_bubble_background),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(0.9f), // Co lại xíu cho đẹp
+                    modifier = Modifier.fillMaxSize(0.9f),
                     contentScale = ContentScale.Fit
                 )
                 Image(
                     painter = painterResource(id = R.drawable.ic_duck_logo),
                     contentDescription = "DuckTrack Logo",
-                    // Logo chiếm 50% chiều cao của Box chứa nó, giữ tỷ lệ 1:1
                     modifier = Modifier.fillMaxHeight(0.5f).aspectRatio(1f),
                     contentScale = ContentScale.Fit
                 )
             }
 
-            // PHẦN 2: TIÊU ĐỀ & NÚT BẤM (Luôn nằm gọn ở dưới)
+            // PHẦN 2: TIÊU ĐỀ & NÚT BẤM
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 40.dp), // Cách đáy màn hình
+                    .padding(bottom = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val textStyleWithShadow = TextStyle(
-                    fontFamily = JostFontFamily,
+                    // SỬ DỤNG FONT MỚI Ở ĐÂY
+                    fontFamily = MainFontFamily,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 40.sp,
                     color = AppColors.TextGreen,
@@ -170,22 +158,20 @@ fun LoginScreen(
 
                 Spacer(Modifier.height(32.dp))
 
-                // Nút Google
                 AuthButton(
                     text = "Đăng nhập bằng Google",
                     iconResId = R.drawable.ic_google,
-                    backgroundColor = Color(0xFFF0F0F0),
-                    contentColor = Color.Black,
+                    backgroundColor = AppColors.ButtonGreen,
+                    contentColor = Color.White,
                     onClick = signInWithGoogle
                 )
 
                 Spacer(Modifier.height(16.dp))
 
-                // Nút GitHub
                 AuthButton(
                     text = "Đăng nhập bằng GitHub",
-                    iconResId = R.drawable.ic_github, // Đảm bảo file ảnh ic_github có trong drawable
-                    backgroundColor = Color(0xFF24292E),
+                    iconResId = R.drawable.ic_github,
+                    backgroundColor = AppColors.ButtonGreen,
                     contentColor = Color.White,
                     onClick = signInWithGithub
                 )
@@ -194,7 +180,7 @@ fun LoginScreen(
     }
 }
 
-// Component nút bấm dùng chung (Đã tối ưu chiều cao)
+// Button giữ nguyên
 @Composable
 fun AuthButton(
     text: String,
@@ -212,7 +198,7 @@ fun AuthButton(
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .height(70.dp), // Chiều cao vừa phải, không quá lớn
+            .height(70.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
         Row(
@@ -222,18 +208,19 @@ fun AuthButton(
             Image(
                 painter = painterResource(id = iconResId),
                 contentDescription = null,
-                modifier = Modifier.size(28.dp) // Icon nhỏ gọn hơn chút
+                modifier = Modifier.size(40.dp)
             )
             Spacer(Modifier.width(16.dp))
             Text(
                 text,
+                // Dùng font Montserrat cho nút bấm luôn cho đẹp
+                fontFamily = MainFontFamily,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Bold, // Montserrat ExtraBold hoặc Bold đều đẹp
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f)
             )
-            // Spacer ảo để icon bên trái không đẩy chữ lệch
-            Spacer(Modifier.width(28.dp))
+            Spacer(Modifier.width(40.dp))
         }
     }
 }
