@@ -20,19 +20,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ducktrack.utils.*
 
-/**
- * Dialog Cài đặt thời gian
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeSettingsDialog(
     initialFocusMinutes: String,
     initialBreakMinutes: String,
+    initialLongBreakMinutes: String,
+    initialSessions: String,
     onDismiss: () -> Unit,
-    onSettingsApplied: (focus: Long, breakTime: Long) -> Unit
+    onSettingsApplied: (focus: Long, breakTime: Long, longBreak: Long, sessions: Int) -> Unit
 ) {
     var focusMinutes by remember { mutableStateOf(initialFocusMinutes) }
     var breakMinutes by remember { mutableStateOf(initialBreakMinutes) }
+    var longBreakMinutes by remember { mutableStateOf(initialLongBreakMinutes) }
+    var sessionsInput by remember { mutableStateOf(initialSessions) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -45,37 +46,52 @@ fun TimeSettingsDialog(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Cài đặt thời gian", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = mainGreen)
+                    Text("Cài đặt Pomodoro", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = mainGreen)
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Thời gian tập trung", fontSize = 14.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
+                    // Hàng 1
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Tập trung", fontSize = 12.sp, color = grayText)
                             OutlinedTextField(
-                                value = focusMinutes,
-                                onValueChange = { focusMinutes = it.filter { c -> c.isDigit() } },
-                                modifier = Modifier.width(80.dp),
-                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = darkGreenText),
+                                value = focusMinutes, onValueChange = { focusMinutes = it.filter { c -> c.isDigit() } },
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                                shape = RoundedCornerShape(12.dp),
                                 singleLine = true
                             )
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Thời gian nghỉ ngơi", fontSize = 14.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Nghỉ ngắn", fontSize = 12.sp, color = grayText)
                             OutlinedTextField(
-                                value = breakMinutes,
-                                onValueChange = { breakMinutes = it.filter { c -> c.isDigit() } },
-                                modifier = Modifier.width(80.dp),
-                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = darkGreenText),
+                                value = breakMinutes, onValueChange = { breakMinutes = it.filter { c -> c.isDigit() } },
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                singleLine = true
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // Hàng 2
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Số phiên", fontSize = 12.sp, color = grayText)
+                            OutlinedTextField(
+                                value = sessionsInput, onValueChange = { sessionsInput = it.filter { c -> c.isDigit() } },
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                singleLine = true
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("Nghỉ dài", fontSize = 12.sp, color = grayText)
+                            OutlinedTextField(
+                                value = longBreakMinutes, onValueChange = { longBreakMinutes = it.filter { c -> c.isDigit() } },
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                                shape = RoundedCornerShape(12.dp),
                                 singleLine = true
                             )
                         }
@@ -83,51 +99,50 @@ fun TimeSettingsDialog(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        val presets = listOf("25/5", "30/5", "45/10")
-                        presets.forEach { preset ->
-                            val (focus, breakT) = preset.split("/").map { it }
-                            val isSelected = (focusMinutes == focus && breakMinutes == breakT)
+                    // PRESETS (Sửa text hiển thị đầy đủ)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        val presets = listOf(
+                            Triple("25/5/4/15", "25", "5"),
+                            Triple("30/5/4/15", "30", "5"),
+                            Triple("45/10/4/20", "45", "10")
+                        )
+                        presets.forEach { (fullStr, focusStr, breakStr) ->
+                            val parts = fullStr.split("/")
+                            val f = parts[0]; val b = parts[1]; val s = parts[2]; val l = parts[3]
+                            val isSelected = (focusMinutes == f && breakMinutes == b && sessionsInput == s && longBreakMinutes == l)
                             val buttonBgColor = if (isSelected) mainGreen else lightGrayButton
                             val buttonTextColor = if (isSelected) Color.White else darkGreenText
 
                             Button(
                                 onClick = {
-                                    focusMinutes = focus
-                                    breakMinutes = breakT
+                                    focusMinutes = f; breakMinutes = b; sessionsInput = s; longBreakMinutes = l
                                 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = buttonBgColor,
-                                    contentColor = buttonTextColor
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) { Text(preset) }
+                                colors = ButtonDefaults.buttonColors(containerColor = buttonBgColor, contentColor = buttonTextColor),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp)
+                            ) {
+                                Text(fullStr, fontSize = 11.sp) // Hiển thị full chuỗi
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-
                     Button(
                         onClick = {
                             val newFocus = focusMinutes.toLongOrNull() ?: 25L
                             val newBreak = breakMinutes.toLongOrNull() ?: 5L
-                            onSettingsApplied(newFocus, newBreak)
+                            val newLongBreak = longBreakMinutes.toLongOrNull() ?: 15L
+                            val newSessions = sessionsInput.toIntOrNull() ?: 4
+                            onSettingsApplied(newFocus, newBreak, newLongBreak, newSessions)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = yellowButton),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
-                        Text("Cài đặt", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Lưu cài đặt", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 }
-
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-                ) {
+                IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                     Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng", tint = Color.Gray)
                 }
             }
@@ -135,117 +150,31 @@ fun TimeSettingsDialog(
     }
 }
 
-/**
- * Dialog thông báo Thất bại
- */
+// ... (Giữ nguyên FailedDialog, HarvestDialog, NotEnoughPointsDialog) ...
 @Composable
-fun FailedDialog(
-    onDismiss: () -> Unit
-) {
+fun FailedDialog(onDismiss: () -> Unit) {
     AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = dialogBgRed,
-        shape = RoundedCornerShape(16.dp),
-        title = {
-            Text(
-                "Ôi không cây đã chết mất rồi !!",
-                color = dialogTextRed,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        text = {
-            Text(
-                "Vì bạn đã mở ứng dụng hoặc dừng đột xuất",
-                color = dialogTextRed,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = redButton)
-            ) {
-                Text("Đã hiểu", color = Color.White)
-            }
-        }
+        onDismissRequest = onDismiss, containerColor = dialogBgRed, shape = RoundedCornerShape(16.dp),
+        title = { Text("Ôi không cây đã chết mất rồi !!", color = dialogTextRed, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
+        text = { Text("Vì bạn đã mở ứng dụng hoặc dừng đột xuất", color = dialogTextRed, textAlign = TextAlign.Center) },
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = redButton)) { Text("Đã hiểu", color = Color.White) } }
     )
 }
-
-/**
- * Dialog thông báo Thu hoạch
- */
 @Composable
-fun HarvestDialog(
-    onDismiss: () -> Unit
-) {
+fun HarvestDialog(onDismiss: () -> Unit) {
     AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = dialogBgRed, // Giữ nguyên màu nền đỏ theo code gốc
-        shape = RoundedCornerShape(16.dp),
-        title = {
-            Text(
-                "Đã thu hoạch cây :3",
-                color = dialogTextRed,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        text = {
-            Text(
-                "Cây sẽ được trồng trên mảnh đất của bạn",
-                color = dialogTextRed,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = mainGreen)
-            ) {
-                Text("Tuyệt vời!", color = Color.White)
-            }
-        }
+        onDismissRequest = onDismiss, containerColor = dialogBgRed, shape = RoundedCornerShape(16.dp),
+        title = { Text("Đã thu hoạch cây :3", color = dialogTextRed, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
+        text = { Text("Cây sẽ được trồng trên mảnh đất của bạn", color = dialogTextRed, textAlign = TextAlign.Center) },
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = mainGreen)) { Text("Tuyệt vời!", color = Color.White) } }
     )
 }
-/**
- * Dialog thông báo không đủ điểm
- */
 @Composable
-fun NotEnoughPointsDialog(
-    onDismiss: () -> Unit
-) {
+fun NotEnoughPointsDialog(onDismiss: () -> Unit) {
     AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Color.White, // Nền trắng
-        shape = RoundedCornerShape(16.dp),
-        title = {
-            Text(
-                "Không đủ điểm 😥",
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        text = {
-            Text(
-                "Bạn không đủ điểm sao 🌟 để đổi vật phẩm này. Hãy cố gắng hoàn thành thêm Pomodoro nhé!",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                // Dùng màu xanh lá cây chính
-                colors = ButtonDefaults.buttonColors(containerColor = mainGreen)
-            ) {
-                Text("Đã hiểu", color = Color.White)
-            }
-        }
+        onDismissRequest = onDismiss, containerColor = Color.White, shape = RoundedCornerShape(16.dp),
+        title = { Text("Không đủ điểm 😥", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
+        text = { Text("Bạn không đủ điểm sao 🌟 để đổi vật phẩm này.", textAlign = TextAlign.Center) },
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = mainGreen)) { Text("Đã hiểu", color = Color.White) } }
     )
 }
