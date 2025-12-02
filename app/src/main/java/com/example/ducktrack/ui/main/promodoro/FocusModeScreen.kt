@@ -4,9 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Audiotrack // Icon nốt nhạc
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -28,40 +29,113 @@ import com.example.ducktrack.utils.formatTime
 @Composable
 fun FocusModeScreen(
     viewModel: PomodoroViewModel,
-    onExit: () -> Unit // Callback để thoát về màn hình chính
+    onExit: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showConfirmExitDialog by remember { mutableStateOf(false) }
 
-    // Chặn nút Back của điện thoại để tránh thoát nhầm
+    // State cho Dropdown Menu nhạc
+    var isSoundMenuExpanded by remember { mutableStateOf(false) }
+
     BackHandler {
         showConfirmExitDialog = true
     }
 
-    // Nếu trạng thái quay về Ready hoặc Finished -> Tự động thoát
     LaunchedEffect(uiState.pomodoroState) {
-        if (uiState.pomodoroState == PomodoroState.Ready ||
-            uiState.pomodoroState == PomodoroState.Finished) {
+        if (uiState.pomodoroState == PomodoroState.Finished) {
             onExit()
         }
+    }
+
+    val isBreak = uiState.pomodoroState == PomodoroState.Break
+    val currentSessionDisplay = uiState.currentSessionCount + 1
+    val targetSession = uiState.sessionsBeforeLongBreak
+
+    val statusText = if (isBreak) {
+        "ĐANG NGHỈ NGƠI"
+    } else {
+        "PHIÊN $currentSessionDisplay / $targetSession"
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White), // Nền trắng
+            .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
+        // --- NÚT CHỌN NHẠC (Góc trên phải) ---
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 40.dp, end = 20.dp)
+        ) {
+            Button(
+                onClick = { isSoundMenuExpanded = true },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE0F2F1), // Màu xanh nhạt
+                    contentColor = Color(0xFF00695C)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Icon(Icons.Filled.Audiotrack, contentDescription = "Chọn nhạc", modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                // Hiển thị tên bài hát đang chọn (nếu không phải OFF thì hiện tên ngắn gọn)
+                val label = if (uiState.selectedSound == BackgroundSound.OFF) "Nhạc nền" else uiState.selectedSound.displayName.substringBefore(" ")
+                Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // Dropdown Menu
+            DropdownMenu(
+                expanded = isSoundMenuExpanded,
+                onDismissRequest = { isSoundMenuExpanded = false },
+                modifier = Modifier.background(Color.White)
+            ) {
+                BackgroundSound.values().forEach { sound ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = sound.displayName,
+                                    fontWeight = if (sound == uiState.selectedSound) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (sound == uiState.selectedSound) Color(0xFF2E7D32) else Color.Black
+                                )
+                                if (sound == uiState.selectedSound) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
+                        onClick = {
+                            viewModel.onSoundSelected(sound)
+                            isSoundMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // --- NỘI DUNG CHÍNH (Giữ nguyên) ---
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Nút icon góc trên (nếu cần)
-            // ...
+            Surface(
+                color = if (isBreak) Color(0xFFE0F7FA) else Color(0xFFF1F8E9),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.padding(bottom = 20.dp)
+            ) {
+                Text(
+                    text = statusText,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = if (isBreak) Color(0xFF0097A7) else Color(0xFF388E3C),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // Đồng hồ đếm ngược (To đùng)
             Text(
                 text = uiState.remainingTimeMillis.formatTime(),
                 fontSize = 80.sp,
@@ -71,9 +145,8 @@ fun FocusModeScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Hình con vịt (Duck)
             Image(
-                painter = painterResource(id = R.drawable.duck_watering), // Hoặc ảnh duck_eating tùy logic
+                painter = painterResource(id = if (isBreak) R.drawable.duck_waiting else R.drawable.duck_watering),
                 contentDescription = null,
                 modifier = Modifier.size(250.dp),
                 contentScale = ContentScale.Fit
@@ -86,7 +159,6 @@ fun FocusModeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Nút Dừng hẳn (Vuông đỏ nhỏ)
                 IconButton(
                     onClick = { showConfirmExitDialog = true },
                     modifier = Modifier
@@ -97,19 +169,16 @@ fun FocusModeScreen(
                     Icon(
                         imageVector = Icons.Filled.Stop,
                         contentDescription = "Stop",
-                        tint = Color(0xFFD32F2F), // Màu đỏ
+                        tint = Color(0xFFD32F2F),
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
-                // Nút Tạm dừng / Tiếp tục (To đen dài)
                 Button(
-                    onClick = { viewModel.onMainButtonClick() }, // Toggle Pause/Resume
-                    modifier = Modifier
-                        .height(60.dp)
-                        .width(160.dp),
+                    onClick = { viewModel.onMainButtonClick() },
+                    modifier = Modifier.height(60.dp).width(160.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF212121), // Màu đen
+                        containerColor = Color(0xFF212121),
                         contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(30.dp)
@@ -123,11 +192,10 @@ fun FocusModeScreen(
         }
     }
 
-    // Dialog xác nhận thoát (Giống hình image_a54c5d.png)
     if (showConfirmExitDialog) {
         ExitConfirmDialog(
             onConfirmExit = {
-                viewModel.stopTimer(isFailed = true) // Gọi logic dừng (Failed)
+                viewModel.stopTimer(isFailed = true)
                 showConfirmExitDialog = false
                 onExit()
             },
@@ -136,6 +204,7 @@ fun FocusModeScreen(
     }
 }
 
+// ExitConfirmDialog giữ nguyên
 @Composable
 fun ExitConfirmDialog(
     onConfirmExit: () -> Unit,
@@ -152,24 +221,19 @@ fun ExitConfirmDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Thời gian tập trung dưới 5 phút, có tiếp tục không?",
+                    text = "Bạn muốn dừng phiên này?",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-
                 Spacer(Modifier.height(8.dp))
-
                 Text(
-                    text = "Phiên tập trung dưới 5 phút sẽ không được ghi lại",
+                    text = "Thời gian đã tập trung sẽ không được tính điểm.",
                     fontSize = 14.sp,
                     color = Color.Red,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-
                 Spacer(Modifier.height(24.dp))
-
-                // Nút Kết thúc (Đen)
                 Button(
                     onClick = onConfirmExit,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF212121)),
@@ -178,10 +242,7 @@ fun ExitConfirmDialog(
                 ) {
                     Text("Kết thúc", color = Color.White, fontWeight = FontWeight.Bold)
                 }
-
                 Spacer(Modifier.height(12.dp))
-
-                // Nút Tiếp tục (Viền đen, nền trắng)
                 OutlinedButton(
                     onClick = onCancel,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
@@ -189,7 +250,7 @@ fun ExitConfirmDialog(
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
-                    Text("Tiếp tục tập trung", fontWeight = FontWeight.Bold)
+                    Text("Tiếp tục", fontWeight = FontWeight.Bold)
                 }
             }
         }

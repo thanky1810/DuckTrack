@@ -1,9 +1,11 @@
 package com.example.ducktrack.ui.main.promodoro
 
 import android.app.Application
+import android.media.MediaPlayer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
+import com.example.ducktrack.R // Import R để lấy ID nhạc
 import com.example.ducktrack.ui.main.garden.SeedType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -24,108 +26,100 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
 
     private var timerJob: Job? = null
 
+    // --- AUDIO PLAYERS ---
+    private var backgroundPlayer: MediaPlayer? = null
+    private var effectPlayer: MediaPlayer? = null
+
     init {
         repository.unlockedSeeds
             .onEach { unlockedSet ->
-                _uiState.update {
-                    it.copy(availableSeeds = unlockedSet.toList())
-                }
+                _uiState.update { it.copy(availableSeeds = unlockedSet.toList()) }
             }
             .launchIn(viewModelScope)
     }
 
-    // --- SỬA LOGIC NÚT BẤM ---
+    // --- HÀM CHỌN NHẠC TỪ UI ---
+    fun onSoundSelected(sound: BackgroundSound) {
+        _uiState.update { it.copy(selectedSound = sound) }
+
+        // Nếu đang chạy timer thì đổi nhạc luôn
+        if (_uiState.value.isTimerRunning) {
+            playBackgroundMusic()
+        }
+    }
+
+    // --- LOGIC PHÁT NHẠC NỀN ---
+    private fun playBackgroundMusic() {
+        // 1. Giải phóng player cũ nếu có
+        backgroundPlayer?.release()
+        backgroundPlayer = null
+
+        val sound = _uiState.value.selectedSound
+        if (sound.resId != null) {
+            // 2. Tạo player mới
+            backgroundPlayer = MediaPlayer.create(getApplication(), sound.resId)
+            backgroundPlayer?.isLooping = true // Lặp lại vô tận
+            backgroundPlayer?.start()
+        }
+    }
+
+    private fun pauseBackgroundMusic() {
+        if (backgroundPlayer?.isPlaying == true) {
+            backgroundPlayer?.pause()
+        }
+    }
+
+    private fun resumeBackgroundMusic() {
+        if (_uiState.value.selectedSound != BackgroundSound.OFF && backgroundPlayer != null) {
+            backgroundPlayer?.start()
+        } else {
+            // Trường hợp player bị null do thu hồi bộ nhớ hoặc chưa init
+            playBackgroundMusic()
+        }
+    }
+
+    private fun stopBackgroundMusic() {
+        backgroundPlayer?.stop()
+        backgroundPlayer?.release()
+        backgroundPlayer = null
+    }
+
+    // --- LOGIC PHÁT HIỆU ỨNG (Chuông / Ending) ---
+    private fun playEffect(resId: Int) {
+        // Tạm nhỏ nhạc nền nếu đang phát (tuỳ chọn, ở đây mình giữ nguyên)
+        effectPlayer?.release()
+        effectPlayer = MediaPlayer.create(getApplication(), resId)
+        effectPlayer?.start()
+        effectPlayer?.setOnCompletionListener {
+            it.release()
+            effectPlayer = null
+        }
+    }
+
+    // --- CẬP NHẬT CÁC HÀM CŨ ---
+
     fun onMainButtonClick() {
         val currentState = _uiState.value
-        when (currentState.pomodoroState) {
-            PomodoroState.Running -> stopTimer(isFailed = true)
-            PomodoroState.Ready, PomodoroState.Finished, PomodoroState.Failed -> startTimer()
-
-            // Nếu đang ở trạng thái Break (Nghỉ)
-            PomodoroState.Break -> {
-                if (currentState.isTimerRunning) {
-                    // Nếu đang chạy -> Bấm nút là Bỏ qua (Skip)
-                    skipBreak()
-                } else {
-                    // Nếu đang dừng (mới thu hoạch xong) -> Bấm nút là Bắt đầu chạy giờ nghỉ
-                    startBreakTimer()
-                }
-            }
-        }
-    }
-
-    fun onSeedSelected(seed: SeedType) {
-        _uiState.update { it.copy(selectedSeed = seed) }
-    }
-
-    fun onHarvestClick() {
-        _uiState.update { it.copy(showHarvestDialog = true) }
-    }
-
-    // --- SỬA HÀM NÀY: KHÔNG TỰ ĐỘNG CHẠY NỮA ---
-    fun onDismissHarvestDialog() {
-        viewModelScope.launch {
-            val pointsToAdd = 50
-            val seedToPlant = _uiState.value.selectedSeed
-
-            repository.addPoints(pointsToAdd)
-            repository.addGrownTree(seedToPlant)
-
-            // Thay vì startBreakTimer(), ta chỉ chuyển trạng thái sang chờ thôi
-            waitForBreak()
-        }
-    }
-
-    // --- HÀM MỚI: CHUYỂN SANG CHẾ ĐỘ CHỜ NGHỈ (CHƯA ĐẾM NGƯỢC) ---
-    private fun waitForBreak() {
-        timerJob?.cancel()
-        _uiState.update {
-            it.copy(
-                pomodoroState = PomodoroState.Break,
-                isTimerRunning = false, // Đánh dấu là chưa chạy
-                remainingTimeMillis = it.breakDurationMillis, // Reset về 5 phút (hoặc tùy chỉnh)
-                showHarvestDialog = false
-            )
-        }
-    }
-
-    fun onDismissFailedDialog() { _uiState.update { it.copy(showFailedDialog = false) } }
-    fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }
-    fun onDismissSettingsDialog() { _uiState.update { it.copy(showSettingsDialog = false) } }
-
-    fun onSettingsApplied(newFocus: Long, newBreak: Long) {
-        val newFocusMillis = newFocus * 60 * 1000L
-        val newBreakMillis = newBreak * 60 * 1000L
-        _uiState.update {
-            val newState = it.copy(
-                focusDurationMillis = newFocusMillis,
-                breakDurationMillis = newBreakMillis,
-                showSettingsDialog = false
-            )
-            // Nếu timer không chạy, cập nhật luôn số hiển thị
-            if (!newState.isTimerRunning) {
-                if (newState.pomodoroState == PomodoroState.Break) {
-                    newState.copy(remainingTimeMillis = newBreakMillis)
-                } else if (newState.pomodoroState == PomodoroState.Ready || newState.pomodoroState == PomodoroState.Failed) {
-                    newState.copy(remainingTimeMillis = newFocusMillis)
-                } else {
-                    newState
-                }
+        if (currentState.isTimerRunning) {
+            // Đang chạy -> Bấm dừng
+            if (currentState.pomodoroState == PomodoroState.Running) {
+                stopTimer(isFailed = true)
             } else {
-                newState
+                pauseTimer()
             }
+        } else {
+            // Đang dừng -> Bấm chạy
+            resumeTimer()
         }
     }
 
-    private fun startTimer() {
+    private fun resumeTimer() {
         timerJob?.cancel()
-        _uiState.update {
-            it.copy(
-                pomodoroState = PomodoroState.Running,
-                isTimerRunning = true,
-                remainingTimeMillis = it.focusDurationMillis
-            )
-        }
+        _uiState.update { it.copy(isTimerRunning = true) }
+
+        // ==> BẮT ĐẦU PHÁT NHẠC NỀN
+        playBackgroundMusic()
+
         timerJob = viewModelScope.launch {
             while (_uiState.value.remainingTimeMillis > 0) {
                 delay(1000L)
@@ -133,19 +127,71 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
                     it.copy(remainingTimeMillis = it.remainingTimeMillis - 1000L)
                 }
             }
-            _uiState.update {
-                it.copy(
-                    pomodoroState = PomodoroState.Finished,
-                    isTimerRunning = false,
-                    remainingTimeMillis = 0
-                )
-            }
+            handleTimerFinished()
         }
     }
 
-    fun stopTimer(isFailed: Boolean) { // Public để FocusModeScreen gọi được
+    private fun handleTimerFinished() {
+        // Dừng nhạc nền khi hết giờ
+        stopBackgroundMusic()
+
+        val state = _uiState.value
+
+        if (state.pomodoroState == PomodoroState.Running) {
+            // KẾT THÚC PHIÊN TẬP TRUNG
+            autoHarvest()
+            val completedSessions = state.currentSessionCount + 1
+
+            if (completedSessions >= state.sessionsBeforeLongBreak) {
+                // ==> HOÀN THÀNH TOÀN BỘ: Phát nhạc Ending
+                playEffect(R.raw.ending_effect)
+
+                _uiState.update {
+                    it.copy(
+                        pomodoroState = PomodoroState.Finished,
+                        isTimerRunning = false,
+                        currentSessionCount = completedSessions,
+                        remainingTimeMillis = 0
+                    )
+                }
+            } else {
+                // ==> CHUYỂN QUA NGHỈ: Phát tiếng chuông
+                playEffect(R.raw.japanese_school_bell)
+
+                val isLongBreak = (completedSessions % 4 == 0)
+                val breakTime = if (isLongBreak) state.longBreakDurationMillis else state.breakDurationMillis
+
+                _uiState.update {
+                    it.copy(
+                        pomodoroState = PomodoroState.Break,
+                        currentSessionCount = completedSessions,
+                        remainingTimeMillis = breakTime,
+                        isTimerRunning = true
+                    )
+                }
+                resumeTimer() // Tự động chạy nghỉ (và nhạc nền lại phát nếu user chọn nhạc)
+            }
+
+        } else if (state.pomodoroState == PomodoroState.Break) {
+            // ==> HẾT GIỜ NGHỈ: Phát tiếng chuông để báo vào làm việc
+            playEffect(R.raw.japanese_school_bell)
+
+            _uiState.update {
+                it.copy(
+                    pomodoroState = PomodoroState.Running,
+                    remainingTimeMillis = it.focusDurationMillis,
+                    isTimerRunning = true
+                )
+            }
+            resumeTimer()
+        }
+    }
+
+    fun stopTimer(isFailed: Boolean) {
         timerJob?.cancel()
-        timerJob = null
+        // ==> DỪNG NHẠC NỀN
+        stopBackgroundMusic()
+
         if (isFailed) {
             _uiState.update {
                 it.copy(
@@ -156,58 +202,65 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         } else {
-            // Nếu dừng bình thường (reset)
-            _uiState.update {
-                it.copy(
-                    pomodoroState = PomodoroState.Ready,
-                    isTimerRunning = false,
-                    remainingTimeMillis = it.focusDurationMillis
-                )
-            }
+            pauseTimer()
         }
     }
 
-    private fun startBreakTimer() {
+    private fun pauseTimer() {
         timerJob?.cancel()
+        // ==> TẠM DỪNG NHẠC NỀN
+        pauseBackgroundMusic()
+        _uiState.update { it.copy(isTimerRunning = false) }
+    }
+
+    fun startNewSession() {
+        val focusTime = _uiState.value.focusDurationMillis
         _uiState.update {
             it.copy(
-                pomodoroState = PomodoroState.Break,
-                isTimerRunning = true, // Bắt đầu chạy
-                remainingTimeMillis = it.breakDurationMillis,
-                showHarvestDialog = false
+                pomodoroState = PomodoroState.Running,
+                currentSessionCount = 0,
+                remainingTimeMillis = focusTime,
+                isTimerRunning = true
             )
         }
-        timerJob = viewModelScope.launch {
-            while (_uiState.value.remainingTimeMillis > 0) {
-                delay(1000L)
-                _uiState.update {
-                    it.copy(remainingTimeMillis = it.remainingTimeMillis - 1000L)
-                }
-            }
-            // Hết giờ nghỉ -> Quay về Ready
-            _uiState.update {
-                it.copy(
-                    pomodoroState = PomodoroState.Ready,
-                    isTimerRunning = false,
-                    remainingTimeMillis = it.focusDurationMillis
-                )
-            }
-        }
+        resumeTimer()
     }
 
-    private fun skipBreak() {
-        timerJob?.cancel()
-        _uiState.update {
-            it.copy(
-                pomodoroState = PomodoroState.Ready,
-                isTimerRunning = false,
-                remainingTimeMillis = it.focusDurationMillis
-            )
-        }
-    }
-
+    // QUAN TRỌNG: Giải phóng tài nguyên khi thoát màn hình
     override fun onCleared() {
-        timerJob?.cancel()
         super.onCleared()
+        backgroundPlayer?.release()
+        effectPlayer?.release()
+        backgroundPlayer = null
+        effectPlayer = null
+    }
+
+    // Các hàm khác giữ nguyên...
+    fun onSeedSelected(seed: SeedType) { _uiState.update { it.copy(selectedSeed = seed) } }
+    fun autoHarvest() {
+        viewModelScope.launch {
+            repository.addPoints(50)
+            repository.addGrownTree(_uiState.value.selectedSeed)
+        }
+    }
+    fun onHarvestClick() {}
+    fun onDismissHarvestDialog() { _uiState.update { it.copy(pomodoroState = PomodoroState.Ready, currentSessionCount = 0, isTimerRunning = false) } }
+    fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }
+    fun onDismissSettingsDialog() { _uiState.update { it.copy(showSettingsDialog = false) } }
+    fun onDismissFailedDialog() { _uiState.update { it.copy(showFailedDialog = false) } }
+    fun onSettingsApplied(f: Long, b: Long, l: Long, s: Int) {
+        val newFocusMillis = f * 60 * 1000L
+        val newBreakMillis = b * 60 * 1000L
+        val newLongBreakMillis = l * 60 * 1000L
+        _uiState.update {
+            it.copy(
+                focusDurationMillis = newFocusMillis,
+                breakDurationMillis = newBreakMillis,
+                longBreakDurationMillis = newLongBreakMillis,
+                sessionsBeforeLongBreak = s,
+                remainingTimeMillis = newFocusMillis,
+                showSettingsDialog = false
+            )
+        }
     }
 }
