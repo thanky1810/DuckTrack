@@ -38,6 +38,7 @@ import com.example.ducktrack.ui.components.OverlayPermissionDialog
 import com.example.ducktrack.ui.components.PieChart
 import com.example.ducktrack.ui.main.garden.GardenScreen
 import com.example.ducktrack.ui.main.promodoro.PomodoroScreen
+import com.example.ducktrack.ui.main.promodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
@@ -53,12 +54,13 @@ fun MainScreen(
     mainNavController: NavHostController,
     hasPermission: Boolean,
     onLogout: () -> Unit,
-    homeViewModel: HomeViewModel = viewModel() // Dùng chung ViewModel ở đây
+    homeViewModel: HomeViewModel = viewModel(),
+    // NHẬN SHARED VIEWMODEL và CALLBACK MỚI
+    pomodoroViewModel: PomodoroViewModel,
+    onNavigateToFocus: () -> Unit
 ) {
     val bottomNavController = rememberNavController()
     var currentPageTitle by remember { mutableStateOf("Trang chủ") }
-
-    // Biến này có thể dùng để hiển thị tổng thời gian lên TopBar nếu muốn (hiện tại đang null)
     var headerNote by remember { mutableStateOf<String?>(null) }
 
     val currentBackStack by bottomNavController.currentBackStackEntryAsState()
@@ -67,19 +69,14 @@ fun MainScreen(
     val application = LocalContext.current.applicationContext as MyApplication
     val starCount by application.repository.userPoints.collectAsState(initial = 0)
 
-    // --- LOGIC XỬ LÝ NGÀY THÁNG ---
     val selectedDateMs = homeViewModel.selectedDateMs
     val dateText = remember(selectedDateMs) {
         val date = Date(selectedDateMs)
         val today = Date()
         val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", Locale("vi", "VN"))
-
-        // So sánh ngày để hiển thị text phù hợp
         val fmtCheck = java.text.SimpleDateFormat("yyyyMMdd", Locale.US)
         val isToday = fmtCheck.format(date) == fmtCheck.format(today)
-
-        if (isToday) "Hôm nay, ${fmt.format(date)}"
-        else fmt.format(date)
+        if (isToday) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
     }
 
     val topTitle = currentPageTitle
@@ -89,7 +86,7 @@ fun MainScreen(
             MainTopAppBar(
                 title = topTitle,
                 starCount = starCount,
-                dateText = dateText // Truyền ngày đã format xuống TopBar
+                dateText = dateText
             )
         },
         bottomBar = {
@@ -110,31 +107,31 @@ fun MainScreen(
                 startDestination = Routes.Dashboard,
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Dashboard
                 composable(Routes.Dashboard) {
                     DashboardScreen(
                         hasPermission = hasPermission,
                         onGoToPermission = { mainNavController.navigate(Routes.Permission) },
                         onHeaderNoteChange = { note -> headerNote = note },
-                        vm = homeViewModel // Truyền VM xuống để Dashboard điều khiển ngày
+                        vm = homeViewModel
                     )
                 }
 
-                // Tasks
                 composable(Routes.Tasks) {
                     LaunchedEffect(Unit) { headerNote = null }
                     TasksScreen()
                 }
 
-                // Pomodoro
+                // TAB POMODORO: Dùng Shared ViewModel và truyền callback
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Pomodoro + currentRoute) {
-                        PomodoroScreen()
+                        PomodoroScreen(
+                            viewModel = pomodoroViewModel,
+                            onStartFocus = onNavigateToFocus
+                        )
                     }
                 }
 
-                // Garden
                 composable(Routes.Garden) {
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Garden + currentRoute) {
@@ -151,7 +148,6 @@ fun MainScreen(
                     }
                 }
 
-                // Settings
                 composable(Routes.Settings) {
                     LaunchedEffect(Unit) { headerNote = null }
                     SettingsScreen(onLogout = onLogout)

@@ -15,4 +15,7 @@ object Routes {
     const val Pomodoro = "pomodoro"
     const val Garden = "garden"
     const val Settings = "settings"
+
+    // --- THÊM MỚI: Màn hình tập trung Full-screen ---
+    const val FocusMode = "focus_mode"
 }

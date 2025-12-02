@@ -21,11 +21,14 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Calendar
+import com.example.ducktrack.MyApplication
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = UsageRepository(app)
     private val limitsStore = LimitsStore(app)
+
+    private val userRepo = (app as MyApplication).repository
 
     var usages by mutableStateOf<List<AppUsage>>(emptyList())
         private set
@@ -42,6 +45,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     private val iconCache = HashMap<String, Drawable?>()
+
+
+    init {
+        // --- SỬA LẠI KHỐI INIT ---
+        viewModelScope.launch(Dispatchers.IO) {
+            // Gọi từ userRepo chứ không phải repo
+            userRepo.restoreDataFromCloud()
+        }
+    }
+
 
     fun iconFor(usage: AppUsage): Drawable? {
         val key = usage.iconPackage ?: return null
@@ -151,4 +164,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val isToday = fmtCheck.format(date) == fmtCheck.format(today)
         return if (isToday) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
     }
+
+
 }

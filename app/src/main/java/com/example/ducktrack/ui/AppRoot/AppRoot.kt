@@ -10,25 +10,28 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
 import com.example.ducktrack.ui.main.MainScreen
+import com.example.ducktrack.ui.main.ViewModelFactory
+import com.example.ducktrack.ui.main.promodoro.FocusModeScreen
+import com.example.ducktrack.ui.main.promodoro.PomodoroViewModel
 import com.example.ducktrack.ui.permission.PermissionScreen
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import com.example.ducktrack.ui.theme.DuckTrackTheme
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.example.ducktrack.utils.hasUsageAccess
-import androidx.compose.runtime.remember // <-- Thêm import này
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
 
-// (Factory và hàm checkUsageAccessPermission giữ nguyên)
 class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
@@ -38,10 +41,10 @@ class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Fac
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
 fun checkUsageAccessPermission(context: Context): Boolean {
     return hasUsageAccess(context)
 }
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -56,51 +59,40 @@ fun AppRoot(
         factory = AuthViewModelFactory(appContext)
     )
 
-    // --- SỬA LẠI HOÀN TOÀN LOGIC KHỞI ĐỘNG ---
+    // --- KHỞI TẠO SHARED POMODORO VIEWMODEL TẠI ĐÂY ---
+    // Để đảm bảo Timer không bị reset khi chuyển màn hình
+    val pomodoroViewModel: PomodoroViewModel = viewModel(
+        factory = ViewModelFactory(appContext as MyApplication)
+    )
 
-    // 1. Lấy trạng thái đăng nhập TỪ VIEWMODEL (ViewModel đọc từ SharedPreferences)
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
-
-    // 2. Kiểm tra quyền truy cập
     val hasPermission = checkUsageAccessPermission(appContext)
 
-    // 3. Quyết định màn hình khởi động
     val startDestination = remember(isAuthenticated, hasPermission) {
         if (isAuthenticated) {
-            // NẾU ĐÃ ĐĂNG NHẬP:
-            if (hasPermission) {
-                Routes.Main // -> Vào thẳng Dashboard
-            } else {
-                Routes.Permission // -> Vào màn hình xin quyền
-            }
+            if (hasPermission) Routes.Main else Routes.Permission
         } else {
-            // NẾU CHƯA ĐĂNG NHẬP:
-            Routes.Home // -> Vào trang Mở đầu (introducePage)
+            Routes.Home
         }
     }
-    // ------------------------------------------
 
     DuckTrackTheme {
         Scaffold { innerPadding ->
             NavHost(
                 navController = nav,
-                startDestination = startDestination, // <-- SỬ DỤNG BIẾN ĐỘNG
+                startDestination = startDestination,
                 modifier = Modifier.padding(innerPadding)
             ) {
-
-                // 1. Routes.Home (Trang mở đầu - introducePage)
                 composable(Routes.Home) {
                     introduceScreen(
                         onGoLogin = { nav.navigate(Routes.Login) }
                     )
                 }
 
-                // 2. Routes.Login (Màn hình đăng nhập - LoginScreen.kt)
                 composable(Routes.Login) {
                     LoginScreen(
                         googleSignInClient = googleSignInClient,
                         onLogin = {
-                            // 3. Sau khi Đăng nhập thành công -> kiểm tra quyền
                             if (checkUsageAccessPermission(appContext)) {
                                 nav.navigate(Routes.Main) {
                                     popUpTo(Routes.Home) { inclusive = true }
@@ -114,7 +106,6 @@ fun AppRoot(
                     )
                 }
 
-                // 4. Routes.Permission (Màn hình xin cấp quyền - PermissionScreen)
                 composable(Routes.Permission) {
                     PermissionScreen(
                         onGoToSettings = {
@@ -126,7 +117,6 @@ fun AppRoot(
                                 e.printStackTrace()
                             }
                         },
-                        // 5. Sau khi Cấp quyền HOẶC Hủy -> luôn về Routes.Main
                         onCancel = {
                             nav.navigate(Routes.Main) {
                                 popUpTo(Routes.Permission) { inclusive = true }
@@ -140,18 +130,31 @@ fun AppRoot(
                     )
                 }
 
-                // 6. Routes.Main (Màn hình chính chứa DashboardScreen)
+                // ROUTE MAIN: Truyền Shared ViewModel xuống
                 composable(Routes.Main) {
                     val currentHasPermission = checkUsageAccessPermission(appContext)
-
                     MainScreen(
                         mainNavController = nav,
                         hasPermission = currentHasPermission,
                         onLogout = {
                             authViewModel.logout()
-                            nav.navigate(Routes.Home) { // Đăng xuất -> Quay về Trang mở đầu
+                            nav.navigate(Routes.Home) {
                                 popUpTo(Routes.Main) { inclusive = true }
                             }
+                        },
+                        pomodoroViewModel = pomodoroViewModel, // <-- Truyền vào
+                        onNavigateToFocus = { // <-- Callback mở màn hình Focus
+                            nav.navigate(Routes.FocusMode)
+                        }
+                    )
+                }
+
+                // ROUTE FOCUS MODE: Màn hình Full Screen mới
+                composable(Routes.FocusMode) {
+                    FocusModeScreen(
+                        viewModel = pomodoroViewModel, // <-- Dùng chung ViewModel để đồng bộ giờ
+                        onExit = {
+                            nav.popBackStack() // Quay về Main
                         }
                     )
                 }
