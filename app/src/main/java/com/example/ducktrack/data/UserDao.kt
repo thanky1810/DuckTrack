@@ -11,14 +11,18 @@ import kotlinx.coroutines.flow.Flow
 interface UserDao {
 
     // --- User Profile (Điểm) ---
-    @Upsert // (Insert hoặc Update nếu đã tồn tại)
+    @Upsert
     suspend fun upsertUserProfile(profile: UserProfile)
 
     @Query("SELECT * FROM user_profile WHERE id = 1")
-    fun getUserProfile(): Flow<UserProfile?> // Dùng Flow để tự động cập nhật
+    fun getUserProfile(): Flow<UserProfile?>
+
+    // --- THÊM MỚI: Hàm cộng điểm trực tiếp bằng SQL (Chính xác tuyệt đối) ---
+    @Query("UPDATE user_profile SET points = points + :amount WHERE id = 1")
+    suspend fun increasePoints(amount: Int)
 
     // --- Unlocked Seeds (Cây đã mở khóa) ---
-    @Insert(onConflict = OnConflictStrategy.IGNORE) // Bỏ qua nếu đã có
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertUnlockedSeed(seed: UnlockedSeed)
 
     @Query("SELECT * FROM unlocked_seeds")
@@ -28,9 +32,9 @@ interface UserDao {
     @Insert
     suspend fun insertGrownTree(tree: GrownTree)
 
-    @Query("SELECT * FROM grown_trees ORDER BY id ASC") // Sắp xếp để giữ đúng thứ tự
+    @Query("SELECT * FROM grown_trees ORDER BY id ASC")
     fun getGrownTrees(): Flow<List<GrownTree>>
 
     @Query("SELECT COUNT(*) FROM grown_trees")
-    suspend fun getGrownTreeCount(): Int // Để check giới hạn 12 cây
+    suspend fun getGrownTreeCount(): Int
 }

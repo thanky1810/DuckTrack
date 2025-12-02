@@ -7,11 +7,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,13 +40,11 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun PomodoroScreen(
-    // Thay vì viewModel() mặc định:
-    // viewModel: PomodoroViewModel = viewModel()
-    // Chúng ta dùng Factory:
     context: Context = LocalContext.current.applicationContext,
-    viewModel: PomodoroViewModel = viewModel(
-        factory = ViewModelFactory(context.applicationContext as MyApplication)
-    )
+    // ViewModel sẽ được truyền từ cha (MainScreen) xuống để đồng bộ dữ liệu
+    viewModel: PomodoroViewModel,
+    // Callback khi bấm "Sẵn sàng"
+    onStartFocus: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -82,11 +79,7 @@ fun PomodoroScreen(
         PomodoroState.Running -> uiState.remainingTimeMillis
         PomodoroState.Break -> uiState.remainingTimeMillis
     }
-    // Các file drawable:
-    // duck_waiting, plant_chit (nảy mầm)
-    // duck_watering, plant_sendling (cây non)
-    // duck_happy, plant_grown (cây lớn)
-    // duck_crying, plant_dead (cây héo)
+
     val (duckImageRes, plantImageRes, statusText) = when (uiState.pomodoroState) {
         PomodoroState.Ready, PomodoroState.Break -> Triple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ sẵn sàng...")
         PomodoroState.Running -> Triple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang chờ tập trung...")
@@ -98,13 +91,13 @@ fun PomodoroScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(screenBgColor) // Nền trắng để cuộn
+            .background(screenBgColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp), // Padding cho nội dung
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
 
@@ -146,6 +139,7 @@ fun PomodoroScreen(
                             Icon(Icons.Default.ArrowDropDown, "Cài đặt thời gian")
                         }
 
+                        // Logic nút bấm chính
                         val (mainButtonColor, mainButtonText) = when (uiState.pomodoroState) {
                             PomodoroState.Running -> Pair(redButton, "Dừng lại")
                             PomodoroState.Break -> Pair(yellowButton, "Nghỉ ngơi")
@@ -153,7 +147,15 @@ fun PomodoroScreen(
                         }
 
                         Button(
-                            onClick = { viewModel.onMainButtonClick() },
+                            onClick = {
+                                // Nếu đang ở trạng thái Ready -> Bấm phát là chạy và chuyển trang luôn
+                                if (uiState.pomodoroState == PomodoroState.Ready) {
+                                    viewModel.onMainButtonClick() // Bắt đầu đếm giờ
+                                    onStartFocus() // Chuyển sang màn hình Full Screen
+                                } else {
+                                    viewModel.onMainButtonClick()
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = mainButtonColor),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -180,7 +182,6 @@ fun PomodoroScreen(
                 colors = CardDefaults.cardColors(containerColor = cardBgColor),
                 border = BorderStroke(2.dp, card2and3BorderColor)
             ) {
-                // Render động dựa trên các cây đã mở khóa
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
@@ -283,10 +284,10 @@ fun PomodoroScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(60.dp)) // Thêm đệm dưới
+            Spacer(modifier = Modifier.height(60.dp))
         }
 
-        // --- 9. Các Dialog ---
+        // --- Các Dialog ---
         if (uiState.showSettingsDialog) {
             TimeSettingsDialog(
                 initialFocusMinutes = (uiState.focusDurationMillis / 60000).toString(),
@@ -299,24 +300,11 @@ fun PomodoroScreen(
         }
 
         if (uiState.showFailedDialog) {
-            FailedDialog(
-                onDismiss = { viewModel.onDismissFailedDialog() }
-            )
+            FailedDialog(onDismiss = { viewModel.onDismissFailedDialog() })
         }
 
         if (uiState.showHarvestDialog) {
-            HarvestDialog(
-                onDismiss = { viewModel.onDismissHarvestDialog() }
-            )
+            HarvestDialog(onDismiss = { viewModel.onDismissHarvestDialog() })
         }
-    }
-}
-
-// --- Preview ---
-@Preview(showBackground = true)
-@Composable
-fun PomodoroScreenPreview() {
-    Surface(color = Color.White) {
-        PomodoroScreen()
     }
 }
