@@ -37,4 +37,7 @@ interface UserDao {
 
     @Query("SELECT COUNT(*) FROM grown_trees")
     suspend fun getGrownTreeCount(): Int
+
+    @Query("DELETE FROM grown_trees")
+    suspend fun deleteAllGrownTrees()
 }
