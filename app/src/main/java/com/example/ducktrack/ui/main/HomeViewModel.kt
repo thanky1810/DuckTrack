@@ -17,13 +17,16 @@ import com.example.ducktrack.utils.PermissionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.Calendar
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = UsageRepository(app)
     private val limitsStore = LimitsStore(app)
 
-    // Các state mà DashboardScreen đang đọc
     var usages by mutableStateOf<List<AppUsage>>(emptyList())
         private set
 
@@ -31,6 +34,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     var limits by mutableStateOf<Map<String, Int>>(emptyMap())
+        private set
+
+    // --- THÊM MỚI: QUẢN LÝ NGÀY ĐANG XEM ---
+    // Mặc định là ngày hôm nay (dạng Long millis)
+    var selectedDateMs by mutableStateOf(System.currentTimeMillis())
         private set
 
     private val iconCache = HashMap<String, Drawable?>()
@@ -48,9 +56,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // Hàm load dữ liệu theo ngày đang chọn
     fun load() {
         viewModelScope.launch(Dispatchers.IO) {
-            val list = repo.queryToday()
+            // Gọi hàm mới queryUsageForDate thay vì queryToday
+            val list = repo.queryUsageForDate(selectedDateMs)
             val total = list.sumOf { it.totalForegroundMs }
             val allLimits = limitsStore.getAll()
 
@@ -62,22 +72,45 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * Set giới hạn cho 1 app:
-     *  - pkg: packageName thật (vd: com.ss.android.ugc.trill)
-     *  - minutes: số phút giới hạn
-     *  - baselineMs: tổng ms đã dùng tới thời điểm set
-     */
+    // --- CÁC HÀM ĐỔI NGÀY ---
+
+    fun previousDay() {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = selectedDateMs
+        cal.add(Calendar.DAY_OF_YEAR, -1) // Trừ 1 ngày
+        selectedDateMs = cal.timeInMillis
+        load() // Load lại dữ liệu
+    }
+
+    fun nextDay() {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = selectedDateMs
+        // Không cho phép đi quá ngày hôm nay (tương lai chưa có dữ liệu)
+        if (isToday(cal.timeInMillis)) return
+
+        cal.add(Calendar.DAY_OF_YEAR, 1) // Cộng 1 ngày
+        selectedDateMs = cal.timeInMillis
+        load()
+    }
+
+    // Kiểm tra xem mốc thời gian có phải là hôm nay không
+    fun isToday(dateMs: Long): Boolean {
+        val cal1 = Calendar.getInstance()
+        cal1.timeInMillis = dateMs
+
+        val cal2 = Calendar.getInstance() // Thời gian hiện tại
+
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    // ... (Giữ nguyên các hàm setLimit, removeLimit, startMonitoringService cũ) ...
     fun setLimit(pkg: String, minutes: Int, baselineMs: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. Lưu giới hạn + baseline
             limitsStore.setLimitWithBaseline(pkg, minutes, baselineMs)
             val m = limitsStore.getAll()
-
             withContext(Dispatchers.Main) {
                 limits = m
-
-                // 2. Nếu đã có quyền overlay, khởi động service giám sát
                 if (PermissionHelper.hasOverlayPermission(getApplication())) {
                     startMonitoringService()
                 }
@@ -95,23 +128,27 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * Khởi động UsageMonitorService
-     */
     private fun startMonitoringService() {
         val context = getApplication<Application>()
         val intent = Intent(context, UsageMonitorService::class.java).apply {
             action = UsageMonitorService.ACTION_START_MONITORING
         }
-
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
             }
-        } catch (_: Exception) {
-            // Service đã chạy hoặc lỗi khác -> bỏ qua
-        }
+        } catch (_: Exception) {}
+    }
+
+    fun getDateText(): String {
+        val date = java.util.Date(selectedDateMs)
+        val today = java.util.Date()
+        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", java.util.Locale("vi", "VN"))
+        val fmtCheck = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
+
+        val isToday = fmtCheck.format(date) == fmtCheck.format(today)
+        return if (isToday) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
     }
 }

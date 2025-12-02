@@ -17,47 +17,36 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTopAppBar(
     title: String,
-    starCount: Int
+    starCount: Int,
+    dateText: String // Tham số mới để nhận chuỗi ngày tháng từ MainScreen
 ) {
-    // ====== TÙY CHỈNH MÀU Ở ĐÂY ======
-    val green       = Color(0xFF62B26A)   // nền topbar
-    val textOnGreen = Color(0xFFFAFDF9)   // chữ trên nền xanh
-    val pillGold    = Color(0xFFE0C378)   // pill ⭐
+    // Màu sắc cố định theo thiết kế xanh lá
+    val green       = Color(0xFF62B26A)
+    val textOnGreen = Color(0xFFFAFDF9)
+    val pillGold    = Color(0xFFE0C378)
     val textOnPill  = Color(0xFF3A2A11)
 
     val shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
 
-    // Định dạng ngày kiểu: "Hôm nay, 2 tháng 10"
-    val dateStr = "Hôm nay, " + LocalDate.now().format(
-        DateTimeFormatter.ofPattern("d 'tháng' M", Locale("vi", "VN"))
-    )
-
-    // Surface để bo góc đáy + đổ bóng
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(8.dp, shape) // độ bóng
+            .shadow(8.dp, shape)
             .clip(shape),
         color = Color.Transparent
     ) {
-        // Nền xanh cho toàn vùng top bar
         Box(
             modifier = Modifier
                 .background(green)
         ) {
             TopAppBar(
-                modifier = Modifier
-                    .height(75.dp),
-
+                modifier = Modifier.height(75.dp),
                 title = {
                     Column(
                         modifier = Modifier.padding(top = 6.dp),
@@ -72,7 +61,7 @@ fun MainTopAppBar(
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = dateStr,
+                            text = dateText, // Hiển thị ngày được truyền vào
                             color = Color.Black,
                             fontSize = 14.sp,
                             maxLines = 1
@@ -80,9 +69,7 @@ fun MainTopAppBar(
                     }
                 },
                 actions = {
-
                     Surface(
-
                         color = pillGold,
                         shape = RoundedCornerShape(14.dp),
                         tonalElevation = 2.dp,
@@ -94,7 +81,6 @@ fun MainTopAppBar(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
-
                         ) {
                             Text(
                                 text = starCount.toString(),
@@ -109,17 +95,14 @@ fun MainTopAppBar(
                                 tint = textOnPill,
                                 modifier = Modifier.size(18.dp)
                             )
-
-
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,       // để nền do Box quyết định
+                    containerColor = Color.Transparent,
                     titleContentColor = textOnGreen,
                     actionIconContentColor = textOnGreen
                 ),
-                // Không thêm inset mặc định để giữ layout gọn
                 windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
