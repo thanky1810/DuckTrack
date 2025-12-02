@@ -43,8 +43,7 @@ import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
 import com.example.ducktrack.utils.msToReadable
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -54,31 +53,43 @@ fun MainScreen(
     mainNavController: NavHostController,
     hasPermission: Boolean,
     onLogout: () -> Unit,
+    homeViewModel: HomeViewModel = viewModel() // Dùng chung ViewModel ở đây
 ) {
     val bottomNavController = rememberNavController()
     var currentPageTitle by remember { mutableStateOf("Trang chủ") }
 
-    // Ghi chú hiển thị ở header (ví dụ: "Hôm nay: 2h35m")
+    // Biến này có thể dùng để hiển thị tổng thời gian lên TopBar nếu muốn (hiện tại đang null)
     var headerNote by remember { mutableStateOf<String?>(null) }
 
-    // Bắt route hiện tại để biết đang ở tab nào
     val currentBackStack by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = currentBackStack?.destination?.route
 
-    val topTitle = remember(currentPageTitle, headerNote, currentRoute) {
-        // Header giữ "Trang chủ", phần tổng thời gian hiển thị trong nội dung theo mockup
-        currentPageTitle
-    }
     val application = LocalContext.current.applicationContext as MyApplication
-    // Lấy điểm sao TỪ REPOSITORY và lắng nghe thay đổi
     val starCount by application.repository.userPoints.collectAsState(initial = 0)
 
+    // --- LOGIC XỬ LÝ NGÀY THÁNG ---
+    val selectedDateMs = homeViewModel.selectedDateMs
+    val dateText = remember(selectedDateMs) {
+        val date = Date(selectedDateMs)
+        val today = Date()
+        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", Locale("vi", "VN"))
+
+        // So sánh ngày để hiển thị text phù hợp
+        val fmtCheck = java.text.SimpleDateFormat("yyyyMMdd", Locale.US)
+        val isToday = fmtCheck.format(date) == fmtCheck.format(today)
+
+        if (isToday) "Hôm nay, ${fmt.format(date)}"
+        else fmt.format(date)
+    }
+
+    val topTitle = currentPageTitle
 
     Scaffold(
         topBar = {
             MainTopAppBar(
                 title = topTitle,
-                starCount = starCount
+                starCount = starCount,
+                dateText = dateText // Truyền ngày đã format xuống TopBar
             )
         },
         bottomBar = {
@@ -99,37 +110,38 @@ fun MainScreen(
                 startDestination = Routes.Dashboard,
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Dashboard = UI theo mockup + logic xin quyền
+                // Dashboard
                 composable(Routes.Dashboard) {
                     DashboardScreen(
                         hasPermission = hasPermission,
                         onGoToPermission = { mainNavController.navigate(Routes.Permission) },
-                        onHeaderNoteChange = { note -> headerNote = note }
+                        onHeaderNoteChange = { note -> headerNote = note },
+                        vm = homeViewModel // Truyền VM xuống để Dashboard điều khiển ngày
                     )
                 }
 
+                // Tasks
                 composable(Routes.Tasks) {
                     LaunchedEffect(Unit) { headerNote = null }
                     TasksScreen()
                 }
+
+                // Pomodoro
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    // Thêm key với route để force recomposition
                     key(Routes.Pomodoro + currentRoute) {
                         PomodoroScreen()
                     }
                 }
+
+                // Garden
                 composable(Routes.Garden) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    // Thêm key với route để force recomposition
                     key(Routes.Garden + currentRoute) {
                         GardenScreen(
                             onNavigateToPomodoro = {
                                 bottomNavController.navigate(Routes.Pomodoro) {
-                                    // Pop tất cả để reset navigation stack
-                                    popUpTo(Routes.Dashboard) {
-                                        saveState = false
-                                    }
+                                    popUpTo(Routes.Dashboard) { saveState = false }
                                     launchSingleTop = true
                                     restoreState = false
                                 }
@@ -138,6 +150,8 @@ fun MainScreen(
                         )
                     }
                 }
+
+                // Settings
                 composable(Routes.Settings) {
                     LaunchedEffect(Unit) { headerNote = null }
                     SettingsScreen(onLogout = onLogout)
@@ -148,9 +162,7 @@ fun MainScreen(
 }
 
 /**
- * DashboardScreen:
- * - Nếu CHƯA có quyền -> màn xin quyền (theo mockup không có app bar riêng)
- * - Nếu ĐÃ có quyền -> hiển thị layout: Header + Chart cố định, danh sách cuộn
+ * Màn hình Dashboard: Hiển thị Biểu đồ, Tổng thời gian, Danh sách App
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,27 +170,24 @@ private fun DashboardScreen(
     hasPermission: Boolean,
     onGoToPermission: () -> Unit,
     onHeaderNoteChange: (String?) -> Unit,
-    vm: HomeViewModel = viewModel()
+    vm: HomeViewModel
 ) {
     val context = LocalContext.current
 
-    // State cho dialog nhắc quyền overlay
+    // State cho dialog
     var showOverlayPermissionDialog by remember { mutableStateOf(false) }
-
-    // Dialog chọn giới hạn thời gian
     var showLimitDialog by remember { mutableStateOf(false) }
     var editingApp by remember { mutableStateOf<AppUsage?>(null) }
     var editingKey by remember { mutableStateOf<String?>(null) }
     var editingCurrentLimitMinutes by remember { mutableStateOf<Int?>(null) }
 
-    // Kiểm tra quyền overlay
     val hasOverlayPermission = remember {
         mutableStateOf(PermissionHelper.hasOverlayPermission(context))
     }
 
+    // Nếu chưa có quyền Usage Stats -> Hiển thị màn hình xin quyền
     if (!hasPermission) {
         LaunchedEffect(Unit) { onHeaderNoteChange(null) }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -195,8 +204,10 @@ private fun DashboardScreen(
         return
     }
 
-    // Đã có quyền Usage Stats
-    LaunchedEffect(Unit) { vm.load() }
+    // Đã có quyền -> Load dữ liệu mỗi khi ngày thay đổi
+    LaunchedEffect(vm.selectedDateMs) {
+        vm.load()
+    }
 
     val totalReadable = remember(vm.totalMs) { msToReadable(vm.totalMs) }
     LaunchedEffect(totalReadable) { onHeaderNoteChange("Hôm nay: $totalReadable") }
@@ -204,7 +215,7 @@ private fun DashboardScreen(
     val total = vm.totalMs.toFloat().coerceAtLeast(1f)
     val slices = vm.usages.take(6).map { it.label to (it.totalForegroundMs / total) }
 
-    // Dialog nhắc quyền overlay
+    // Dialog xin quyền Overlay
     if (showOverlayPermissionDialog) {
         OverlayPermissionDialog(
             onDismiss = { showOverlayPermissionDialog = false },
@@ -215,17 +226,27 @@ private fun DashboardScreen(
         )
     }
 
-    // ---- Layout: Header + Chart cố định ở trên, danh sách cuộn được ----
+    // Giao diện chính
     Column(modifier = Modifier.fillMaxSize()) {
-        // Phần header + chart CỐ ĐỊNH (không cuộn)
+        // Phần Header cố định (Nút chuyển ngày + Biểu đồ)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
                 .padding(horizontal = 16.dp)
         ) {
-            // Header: Chip vàng + số giờ lớn
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+
+            // --- NÚT CHUYỂN NGÀY ---
+            DayPagerRow(
+                currentDateText = vm.getDateText(),
+                onPrev = { vm.previousDay() },
+                onNext = { vm.nextDay() },
+                isNextEnabled = !vm.isToday(vm.selectedDateMs)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -247,7 +268,6 @@ private fun DashboardScreen(
                 )
             }
 
-            // Pie chart
             Spacer(Modifier.height(8.dp))
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -261,7 +281,7 @@ private fun DashboardScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // Phần danh sách app - CUỘN ĐƯỢC
+        // Danh sách App (Cuộn được)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -270,7 +290,6 @@ private fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             itemsIndexed(vm.usages, key = { _, u -> u.iconPackage ?: u.packageName }) { index, u ->
-                // Key dùng để lưu limit: ưu tiên packageName thật
                 val limitKey = u.iconPackage ?: u.packageName
                 val limitMinutes = vm.limits[limitKey]
 
@@ -286,43 +305,35 @@ private fun DashboardScreen(
                         showLimitDialog = true
                     },
                     onClickRemoveLimit = if (limitMinutes != null) {
-                        {
-                            vm.removeLimit(limitKey)
-                        }
+                        { vm.removeLimit(limitKey) }
                     } else null
                 )
             }
-
-            // Spacer cuối để tránh bị che bởi bottom bar
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
 
-    // Dialog chọn thời gian 00:00 - 23:59
+    // Dialog đặt giới hạn
     if (showLimitDialog && editingApp != null && editingKey != null) {
         TimeLimitDialog(
             initialMinutes = editingCurrentLimitMinutes,
             onDismiss = { showLimitDialog = false },
             onConfirm = { minutes ->
-                // Kiểm tra quyền overlay khi set limit
                 if (!hasOverlayPermission.value) {
                     showOverlayPermissionDialog = true
                 }
                 val app = editingApp!!
                 val key = editingKey!!
-
                 vm.setLimit(
                     pkg = key,
                     minutes = minutes,
-                    baselineMs = app.totalForegroundMs // tổng ms đã dùng tới lúc set
+                    baselineMs = app.totalForegroundMs
                 )
                 showLimitDialog = false
             }
         )
     }
 }
-
-/* ====================== Helpers (trong file này) ====================== */
 
 @Composable
 private fun Pill(
@@ -344,43 +355,55 @@ private fun Pill(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
+// Hàng chứa nút chuyển ngày
 @Composable
 private fun DayPagerRow(
+    currentDateText: String,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    isNextEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val locale = Locale.forLanguageTag("vi-VN")
-    // ví dụ "Th 4, 1 tháng 10"
-    val label = remember {
-        val today = LocalDate.now()
-        val dow = today.dayOfWeek.value % 7 + 1 // 1..7
-        val dowText = "Th $dow"
-        val dateText = today.format(DateTimeFormatter.ofPattern("d 'tháng' M", locale))
-        "$dowText, $dateText"
-    }
-
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        horizontalArrangement = Arrangement.Center,
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = { /* TODO: sang ngày trước */ })
-        Spacer(Modifier.width(10.dp))
-        Pill(
-            text = label,
-            bg = Color(0xFFE0C378),
-            fg = Color(0xFF3A2A11),
-            horizontalPadding = 16.dp,
-            verticalPadding = 8.dp,
-            radius = 12.dp
-        )
-        Spacer(Modifier.width(10.dp))
-        RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = { /* TODO: sang ngày sau */ })
+        // 1. Nút Trái (Đặt trong Box để chiếm không gian cố định bên trái)
+        Box(
+            modifier = Modifier.weight(1f), // Chiếm 1 phần
+            contentAlignment = Alignment.CenterStart // Căn trái
+        ) {
+            RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = onPrev)
+        }
+
+        // 2. Chữ Ngày Tháng (Đặt trong Box ở giữa, chiếm phần lớn không gian)
+        Box(
+            modifier = Modifier.weight(2f), // Chiếm 2 phần (rộng gấp đôi 2 bên để chữ không bị chật)
+            contentAlignment = Alignment.Center // Căn giữa tuyệt đối
+        ) {
+            Text(
+                text = currentDateText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2E7D32)
+            )
+        }
+
+        // 3. Nút Phải (Đặt trong Box bên phải)
+        Box(
+            modifier = Modifier.weight(1f), // Chiếm 1 phần (bằng nút trái)
+            contentAlignment = Alignment.CenterEnd // Căn phải
+        ) {
+            if (isNextEnabled) {
+                RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = onNext)
+            } else {
+                // Quan trọng: Kể cả khi ẩn nút, vẫn phải render một cái hộp rỗng cùng kích thước
+                // để giữ cho chữ ở giữa không bị lệch.
+                Spacer(Modifier.size(40.dp))
+            }
+        }
     }
 }
-
 @Composable
 private fun RoundIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -389,7 +412,8 @@ private fun RoundIconButton(
     Surface(
         color = Color(0xFFEEE8D6),
         shape = CircleShape,
-        shadowElevation = 1.dp
+        shadowElevation = 1.dp,
+        modifier = Modifier.size(40.dp)
     ) {
         IconButton(onClick = onClick) {
             Icon(icon, contentDescription = null, tint = Color(0xFF3A2A11))
@@ -397,9 +421,6 @@ private fun RoundIconButton(
     }
 }
 
-/**
- * Dialog cho phép user chọn giới hạn thời gian 00:00 - 23:59
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimeLimitDialog(
@@ -410,7 +431,6 @@ private fun TimeLimitDialog(
     var hourText by remember { mutableStateOf("0") }
     var minuteText by remember { mutableStateOf("0") }
 
-    // Khi mở dialog, map minutes -> giờ/phút
     LaunchedEffect(initialMinutes) {
         val total = initialMinutes ?: 0
         val h = total / 60
@@ -467,13 +487,6 @@ private fun TimeLimitDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (valid) Color(0xFF2E7D32) else Color.Red
                 )
-                if (!valid) {
-                    Text(
-                        text = "Thời gian phải lớn hơn 0 phút.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Red
-                    )
-                }
             }
         },
         confirmButton = {

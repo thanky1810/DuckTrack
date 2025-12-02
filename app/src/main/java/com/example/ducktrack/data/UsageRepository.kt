@@ -116,37 +116,61 @@ class UsageRepository(private val ctx: Context) {
     }
 
     /* =========================================================
-       4. HÀM CHÍNH QUERY TODAY
+       4. HÀM QUERY THEO NGÀY (Nâng cấp từ queryToday)
+       dateTimestamp: Là một mốc thời gian bất kỳ trong ngày muốn xem
        ========================================================= */
-    fun queryToday(): List<AppUsage> {
+    fun queryUsageForDate(dateTimestamp: Long): List<AppUsage> {
         val pm = ctx.packageManager
-        val end = System.currentTimeMillis()
-        val start = Calendar.getInstance().apply {
+        val usm = usageManager(ctx)
+
+        // 1. Xác định mốc Bắt đầu (00:00:00) và Kết thúc (23:59:59) của ngày được chọn
+        val startCalendar = Calendar.getInstance().apply {
+            timeInMillis = dateTimestamp
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        }
+        val startTime = startCalendar.timeInMillis
 
-        // Bước 1: Thử cách 1
-        var rawMap = computeByUsageStats(start, end)
+        val endCalendar = Calendar.getInstance().apply {
+            timeInMillis = dateTimestamp
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        // Lưu ý: Nếu xem ngày hôm nay, thì 'end' không được vượt quá giờ hiện tại
+        // để tránh sai số liệu tương lai (dù không có data nhưng logic nên chặt chẽ)
+        val now = System.currentTimeMillis()
+        val endTime = if (endCalendar.timeInMillis > now) now else endCalendar.timeInMillis
 
-        // Bước 2: Nếu dữ liệu quá ít -> Thử cách 2
+        // 2. Thử Cách 1: UsageStats
+        var rawMap = computeByUsageStats(startTime, endTime)
+
+        // 3. Nếu dữ liệu quá ít -> Thử Cách 2: Events
         val totalMs = rawMap.values.sum()
         if (rawMap.isEmpty() || totalMs < 60000) {
-            Log.d(TAG, "Fallback to Events...")
-            rawMap = computeByEvents(start, end)
+            // Chỉ fallback nếu là ngày hôm nay hoặc hôm qua (Events thường chỉ lưu vài ngày)
+            // Nếu xem quá khứ xa, UsageStats thường ổn định hơn Events đã bị xóa.
+            Log.d(TAG, "Fallback to Events for date: $dateTimestamp")
+            rawMap = computeByEvents(startTime, endTime)
         }
 
-        // Bước 3: Xuất kết quả
+        // 4. Xuất kết quả
         return rawMap.map { (pkg, ms) ->
             AppUsage(
                 packageName = pkg,
-                label = getAppLabel(pm, pkg), // Tự động lấy tên
+                label = getAppLabel(pm, pkg),
                 totalForegroundMs = ms,
-                iconPackage = pkg             // Tự động lấy icon
+                iconPackage = pkg
             )
         }
             .sortedByDescending { it.totalForegroundMs }
+    }
+
+    // Hàm giữ tương thích cũ (nếu cần), gọi lại hàm trên với thời gian hiện tại
+    fun queryToday(): List<AppUsage> {
+        return queryUsageForDate(System.currentTimeMillis())
     }
 }
