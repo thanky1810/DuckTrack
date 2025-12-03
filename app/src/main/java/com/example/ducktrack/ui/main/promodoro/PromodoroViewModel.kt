@@ -239,10 +239,24 @@ class PromodoroViewModel(application: Application) : AndroidViewModel(applicatio
     fun onSeedSelected(seed: SeedType) { _uiState.update { it.copy(selectedSeed = seed) } }
     fun autoHarvest() {
         viewModelScope.launch {
+            // Cộng điểm
             repository.addPoints(50)
-            repository.addGrownTree(_uiState.value.selectedSeed)
+
+            // Tạo chuỗi cấu hình: Focus/Break/Sessions/LongBreak
+            // Ví dụ: 25/5/4/15
+            val f = _uiState.value.focusDurationMillis / 60000
+            val b = _uiState.value.breakDurationMillis / 60000
+            val s = _uiState.value.sessionsBeforeLongBreak
+            val l = _uiState.value.longBreakDurationMillis / 60000
+
+            val configString = "$f / $b / $s / $l"
+
+            // Lưu cây kèm cấu hình lên Cloud
+            repository.addGrownTreeToCloud(_uiState.value.selectedSeed, configString)
         }
     }
+
+
     fun onHarvestClick() {}
     fun onDismissHarvestDialog() { _uiState.update { it.copy(promodoroState = PromodoroState.Ready, currentSessionCount = 0, isTimerRunning = false) } }
     fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }

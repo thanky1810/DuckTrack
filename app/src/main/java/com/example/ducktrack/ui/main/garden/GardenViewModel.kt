@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
+import com.example.ducktrack.data.model.GrownTree
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,65 +13,124 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
-// 1. ViewModel -> AndroidViewModel(application)
 class GardenViewModel(application: Application) : AndroidViewModel(application) {
 
-    // 2.  Lấy repository từ Application
     private val repository = (application as MyApplication).repository
 
     private val _uiState = MutableStateFlow(GardenUiState())
     val uiState: StateFlow<GardenUiState> = _uiState.asStateFlow()
 
+    // Biến lưu ngày đang chọn (Timestamp)
+    private val _selectedDateMs = MutableStateFlow(System.currentTimeMillis())
+
     init {
-        // 3. Cách collect Flow từ repository
+        // Kết hợp dữ liệu từ: Điểm số, Cây từ Cloud, và Ngày đang chọn
         combine(
             repository.userPoints,
-            repository.unlockedSeeds,
-            repository.grownTrees
-        ) { points, unlocked, grown ->
+            repository.getGrownTreesStream(),
+            _selectedDateMs
+        ) { points, allTreesFromCloud, selectedDate ->
 
-            // 1. Tạo danh sách cửa hàng
-            val storeItems = SeedType.values().map { seed ->
-                StoreItem(
-                    seedType = seed,
-                    isUnlocked = seed in unlocked
+            // 1. LOGIC LỌC CÂY THEO NGÀY
+            val startOfDay = getStartOfDay(selectedDate)
+            val endOfDay = getEndOfDay(selectedDate)
+
+            val treesToday = allTreesFromCloud.filter {
+                it.plantedAt in startOfDay..endOfDay
+            }.map { treeFirestore ->
+                // Convert ID string sang Enum
+                val type = SeedType.values().find { it.id == treeFirestore.seedId } ?: SeedType.NORMAL
+
+                GrownTreeUI(
+                    id = treeFirestore.id, // ID từ Firestore
+                    seedType = type,
+                    plantedAt = treeFirestore.plantedAt,
+                    config = treeFirestore.config // Map chuỗi cấu hình sang UI
                 )
             }
 
-            // 2. Tạo danh sách mảnh đất (12 ô)
-            val plots = List(12) { index ->
-                grown.getOrNull(index) // Lấy cây, nếu không có thì là null
-            }
+            // 2. TẠO DANH SÁCH CỬA HÀNG (Giả sử store items luôn available)
+            // Nếu bạn muốn check unlockedSeeds từ Room, bạn có thể combine thêm flow unlockedSeeds
+            // Ở đây mình tạm để tất cả là true hoặc logic đơn giản
+            val storeItems = SeedType.values().map { StoreItem(it, true) }
 
-            GardenUiState(
+            // 3. CẬP NHẬT UI
+            val dateText = formatDate(selectedDate)
+            val isToday = isSameDay(selectedDate, System.currentTimeMillis())
+
+            // Trả về state mới, giữ nguyên giá trị showDialog cũ nếu có
+            _uiState.value.copy(
                 userPoints = points,
                 storeItems = storeItems,
-                gardenPlots = plots
+                treesForSelectedDate = treesToday,
+                dateText = dateText,
+                isToday = isToday
             )
-        }
-            .onEach { newState ->
-                _uiState.value = newState // Cập nhật state
-            }
-            .launchIn(viewModelScope) // Tự động chạy và hủy
+        }.onEach { newState ->
+            _uiState.value = newState
+        }.launchIn(viewModelScope)
     }
 
-    // 4. onUnlockSeed phải dùng viewModelScope
+    // --- CÁC HÀM XỬ LÝ SỰ KIỆN TỪ UI (ĐÃ THÊM LẠI) ---
+
     fun onUnlockSeed(seed: SeedType) {
         viewModelScope.launch {
+            // Gọi repository để trừ điểm và mở khóa
             val success = repository.unlockSeed(seed)
             if (!success) {
-                _uiState.update {
-                    it.copy(showNotEnoughPointsDialog = true)
-                }
+                // Nếu không đủ điểm -> Hiện dialog
+                _uiState.update { it.copy(showNotEnoughPointsDialog = true) }
             }
         }
     }
 
-    //  Dùng để tắt dialog khi người dùng nhấn "Đã hiểu"
     fun onDismissNotEnoughPointsDialog() {
-        _uiState.update {
-            it.copy(showNotEnoughPointsDialog = false)
+        _uiState.update { it.copy(showNotEnoughPointsDialog = false) }
+    }
+
+    // --- CÁC HÀM ĐỔI NGÀY ---
+
+    fun previousDay() {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = _selectedDateMs.value
+        cal.add(Calendar.DAY_OF_YEAR, -1)
+        _selectedDateMs.value = cal.timeInMillis
+    }
+
+    fun nextDay() {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = _selectedDateMs.value
+        if (!isSameDay(cal.timeInMillis, System.currentTimeMillis())) {
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+            _selectedDateMs.value = cal.timeInMillis
         }
+    }
+
+    // --- HELPER NGÀY GIỜ ---
+
+    private fun getStartOfDay(time: Long): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = time }
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    private fun getEndOfDay(time: Long): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = time }
+        cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(Calendar.SECOND, 59); cal.set(Calendar.MILLISECOND, 999)
+        return cal.timeInMillis
+    }
+
+    private fun isSameDay(t1: Long, t2: Long): Boolean {
+        val c1 = Calendar.getInstance().apply { timeInMillis = t1 }
+        val c2 = Calendar.getInstance().apply { timeInMillis = t2 }
+        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) && c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun formatDate(time: Long): String {
+        val date = java.util.Date(time)
+        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", java.util.Locale("vi", "VN"))
+        return if (isSameDay(time, System.currentTimeMillis())) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
     }
 }
