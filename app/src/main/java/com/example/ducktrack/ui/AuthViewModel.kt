@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import com.example.ducktrack.utils.CsvExporter
+import java.io.File
 
 data class UserInfo(
     val name: String,
@@ -217,6 +219,41 @@ class AuthViewModel(context: Context) : ViewModel() {
             firebaseAuth.currentUser?.unlink(id)
                 ?.addOnSuccessListener { onSuccess() }
                 ?.addOnFailureListener { onError(it.message ?: "") }
+        }
+    }
+
+    fun exportData(context: Context, onSuccess: (File) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _isUploading.value = true // Tận dụng biến loading này để hiện xoay xoay nếu muốn
+            try {
+                // 1. Đảm bảo lấy data mới nhất từ Firestore trước khi xuất
+                val user = firebaseAuth.currentUser
+                if (user == null) {
+                    onError("Chưa đăng nhập!")
+                    _isUploading.value = false
+                    return@launch
+                }
+
+                // Load lại info (tái sử dụng logic của loadUserInfo nhưng dạng suspend để đợi)
+                // Hoặc đơn giản là dùng data đang cache nếu chấp nhận độ trễ
+                // Ở đây mình gọi loadUserInfo và export trong callback cho chắc ăn
+                loadUserInfo { latestInfo ->
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val file = CsvExporter.exportUserData(context, latestInfo)
+                        withContext(Dispatchers.Main) {
+                            _isUploading.value = false
+                            if (file != null) {
+                                onSuccess(file)
+                            } else {
+                                onError("Lỗi khi tạo file CSV")
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _isUploading.value = false
+                onError(e.message ?: "Lỗi không xác định")
+            }
         }
     }
 }
