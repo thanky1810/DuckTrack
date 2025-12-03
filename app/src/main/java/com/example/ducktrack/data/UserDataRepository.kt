@@ -1,3 +1,4 @@
+// FILE: UserDataRepository.kt
 package com.example.ducktrack.data
 
 import android.util.Log
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-
+import com.example.ducktrack.ui.main.tasks.TodoTask
 class UserDataRepository(private val userDao: UserDao) {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -38,7 +39,6 @@ class UserDataRepository(private val userDao: UserDao) {
 
         val collection = firestore.collection("users").document(uid).collection("garden")
 
-        // Lấy cây, sắp xếp mới nhất lên đầu
         val listener = collection
             .orderBy("plantedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -47,7 +47,10 @@ class UserDataRepository(private val userDao: UserDao) {
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val trees = snapshot.toObjects(GrownTree::class.java)
+                    // Map ID document vào object GrownTree để xử lý nếu cần
+                    val trees = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(GrownTree::class.java)?.copy(id = doc.id)
+                    }
                     trySend(trees)
                 }
             }
@@ -78,14 +81,13 @@ class UserDataRepository(private val userDao: UserDao) {
         }
     }
 
-    // CẬP NHẬT HÀM NÀY: Thêm tham số config
     suspend fun addGrownTreeToCloud(seed: SeedType, configString: String) {
         val uid = auth.currentUser?.uid ?: return
 
         val newTree = GrownTree(
             seedId = seed.id,
             plantedAt = System.currentTimeMillis(),
-            config = configString // Lưu chuỗi cấu hình
+            config = configString
         )
 
         try {
@@ -125,5 +127,94 @@ class UserDataRepository(private val userDao: UserDao) {
                 }
             } catch (e: Exception) { e.printStackTrace() }
         }
+    }
+
+    // --- PHẦN 5: QUẢN LÝ TASK (NHIỆM VỤ) TRÊN CLOUD ---
+
+    fun getTasksStream(dateMs: Long): Flow<List<TodoTask>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            close()
+            return@callbackFlow
+        }
+
+        val startOfDay = getStartOfDay(dateMs)
+        val endOfDay = getEndOfDay(dateMs)
+
+        val collection = firestore.collection("users").document(uid).collection("tasks")
+
+        val listener = collection
+            .whereGreaterThanOrEqualTo("date", startOfDay)
+            .whereLessThanOrEqualTo("date", endOfDay)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    val tasks = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(TodoTask::class.java)?.copy(id = doc.id)
+                    }
+                    val sortedTasks = tasks.sortedWith(compareByDescending<TodoTask> { it.isPinned }
+                        .thenBy { it.isCompleted }
+                        .thenBy { it.id })
+                    trySend(sortedTasks)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun addTaskToCloud(description: String, dateMs: Long) {
+        val uid = auth.currentUser?.uid ?: return
+        val newTask = TodoTask(
+            description = description,
+            isCompleted = false,
+            isPinned = false,
+            date = dateMs
+        )
+        try {
+            firestore.collection("users").document(uid).collection("tasks").add(newTask).await()
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    suspend fun updateTaskInCloud(task: TodoTask) {
+        val uid = auth.currentUser?.uid ?: return
+        if (task.id.isEmpty()) return
+        try {
+            firestore.collection("users").document(uid).collection("tasks")
+                .document(task.id).set(task).await()
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    suspend fun deleteMultipleTasks(taskIds: Set<String>) {
+        val uid = auth.currentUser?.uid ?: return
+        val batch = firestore.batch()
+        val colRef = firestore.collection("users").document(uid).collection("tasks")
+        taskIds.forEach { id -> if (id.isNotEmpty()) batch.delete(colRef.document(id)) }
+        try { batch.commit().await() } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    suspend fun pinMultipleTasks(taskIds: Set<String>) {
+        val uid = auth.currentUser?.uid ?: return
+        val batch = firestore.batch()
+        val colRef = firestore.collection("users").document(uid).collection("tasks")
+        taskIds.forEach { id -> if (id.isNotEmpty()) batch.update(colRef.document(id), "isPinned", true) }
+        try { batch.commit().await() } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    // ... (Giữ nguyên getStartOfDay, getEndOfDay)
+    private fun getStartOfDay(time: Long): Long {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = time }
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    private fun getEndOfDay(time: Long): Long {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = time }
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 23)
+        cal.set(java.util.Calendar.MINUTE, 59)
+        cal.set(java.util.Calendar.SECOND, 59)
+        cal.set(java.util.Calendar.MILLISECOND, 999)
+        return cal.timeInMillis
     }
 }

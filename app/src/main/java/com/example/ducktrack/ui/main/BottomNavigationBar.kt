@@ -1,3 +1,4 @@
+// FILE: BottomNavigationBar.kt
 package com.example.ducktrack.ui.main
 
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,13 +30,14 @@ fun BottomNavigationBar(
     val items = listOf(
         BottomNavItem("Trang chủ", Icons.Default.Home, Routes.Dashboard),
         BottomNavItem("Nhiệm vụ", Icons.Default.DateRange, Routes.Tasks),
-        BottomNavItem("Promodoro", Icons.Default.AddCircle, Routes.Pomodoro),
+        // Đã sửa "Promodoro" thành "Pomodoro" cho ngắn gọn và chuẩn chính tả
+        BottomNavItem("Pomodoro", Icons.Default.AddCircle, Routes.Pomodoro),
         BottomNavItem("Vườn cây", Icons.Default.Star, Routes.Garden),
         BottomNavItem("Cài đặt", Icons.Default.Person, Routes.Settings),
     )
 
     NavigationBar(
-        // Ghi đè window insets mặc định để ngăn nó thêm khoảng đệm thừa ở dưới cùng
+        // Ghi đè window insets để ngăn khoảng đệm thừa
         windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -47,18 +49,12 @@ fun BottomNavigationBar(
                 label = { Text(item.label) },
                 selected = currentRoute == item.route,
                 onClick = {
-                    onTabSelected(item.label) // Cập nhật tiêu đề trang
+                    onTabSelected(item.label)
                     navController.navigate(item.route) {
-                        // Pop up to the start destination of the graph to
-                        // avoid building up a large stack of destinations
-                        // on the back stack as users select items
                         popUpTo(navController.graph.startDestinationId) {
                             saveState = true
                         }
-                        // Avoid multiple copies of the same destination when
-                        // re-selecting the same item
                         launchSingleTop = true
-                        // Restore state when re-selecting a previously selected item
                         restoreState = true
                     }
                 }
@@ -66,4 +62,3 @@ fun BottomNavigationBar(
         }
     }
 }
-

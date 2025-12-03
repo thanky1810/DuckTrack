@@ -24,6 +24,7 @@ material3 = "1.4.0"
 firebaseAnalytics = "23.0.0"
 firebaseFirestore = "26.0.2"
 lottie = "6.3.0"
+firebaseStorageKtx = "22.0.1"
 
 
 [libraries]
@@ -59,6 +60,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3",
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics", version.ref = "firebaseAnalytics" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
+firebase-storage-ktx = { group = "com.google.firebase", name = "firebase-storage-ktx", version.ref = "firebaseStorageKtx" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

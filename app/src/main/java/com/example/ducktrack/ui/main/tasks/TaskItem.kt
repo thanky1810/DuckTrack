@@ -1,9 +1,9 @@
-
+// FILE: TaskItem.kt
 package com.example.ducktrack.ui.main.tasks
 
+// ... (imports giữ nguyên)
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TaskItem(
-    modifier: Modifier = Modifier, // Thêm tham số modifier
-    task: Task,
+    modifier: Modifier = Modifier,
+    task: TodoTask, // Đổi Task -> TodoTask
     selectionColor: Color,
     textColor: Color,
     pinColor: Color,
@@ -34,10 +34,10 @@ fun TaskItem(
     onClick: () -> Unit,
     onLongPress: () -> Unit,
     onPinClick: () -> Unit,
-    onEditClick: () -> Unit // Thêm callback cho nút Sửa
+    onEditClick: () -> Unit
 ) {
+    // Code logic bên dưới giữ nguyên như cũ, chỉ đổi kiểu dữ liệu đầu vào
     val textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
-
     val finalBgColor = when {
         isSelected -> selectionColor
         task.isCompleted -> Color(0xFFE6F8E8)
@@ -45,27 +45,18 @@ fun TaskItem(
     }
 
     Row(
-        // Áp dụng modifier từ tham số
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 2.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = Color.Black.copy(alpha = 0.1f)
-            )
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.1f))
             .clip(RoundedCornerShape(16.dp))
             .background(finalBgColor)
-            .combinedClickable(
-                onClick = { onClick() },
-                onLongClick = { onLongPress() }
-            )
-            .heightIn(min = 56.dp) // Dùng heightIn để tự dãn
-            .padding(horizontal = 8.dp),
+            .combinedClickable(onClick = { onClick() }, onLongClick = { onLongPress() })
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
             checked = task.isCompleted,
-            onCheckedChange = null,
+            onCheckedChange = { onClick() },
             colors = CheckboxDefaults.colors(
                 checkedColor = Color(0xFF62B26A),
                 uncheckedColor = Color(0xFFCCCCCC),
@@ -74,46 +65,18 @@ fun TaskItem(
                 checkmarkColor = Color.White
             )
         )
-
         Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = task.description,
-            color = textColor,
-            textDecoration = textDecoration,
-            fontSize = 16.sp,
-            fontFamily = FontFamily.SansSerif,
-            modifier = Modifier.weight(1f)
-        )
-
+        Text(text = task.description, color = textColor, textDecoration = textDecoration, fontSize = 16.sp, fontFamily = FontFamily.SansSerif, modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.width(8.dp))
-
-        // Nút Sửa
         if (!task.isCompleted && !isSelected) {
-            IconButton(
-                onClick = onEditClick,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Sửa nhiệm vụ",
-                    tint = Color(0xFF9E9E9E),
-                    modifier = Modifier.size(20.dp)
-                )
+            IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
+                Icon(imageVector = Icons.Default.Edit, contentDescription = "Sửa", tint = Color(0xFF9E9E9E), modifier = Modifier.size(20.dp))
             }
         }
-
-        // Nút Ghim
         if (task.isPinned) {
-            Icon(
-                imageVector = Icons.Filled.PushPin,
-                contentDescription = "Đã ghim",
-                tint = pinColor,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { onPinClick() }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = onPinClick, modifier = Modifier.size(36.dp)) {
+                Icon(imageVector = Icons.Filled.PushPin, contentDescription = "Ghim", tint = pinColor, modifier = Modifier.size(20.dp))
+            }
         }
     }
 }

@@ -142,7 +142,7 @@ fun MainScreen(
                                     launchSingleTop = true
                                     restoreState = false
                                 }
-                                currentPageTitle = "Promodoro"
+                                currentPageTitle = "Pomodoro"
                             }
                         )
                     }
@@ -150,7 +150,14 @@ fun MainScreen(
 
                 composable(Routes.Settings) {
                     LaunchedEffect(Unit) { headerNote = null }
-                    SettingsScreen(onLogout = onLogout)
+                    SettingsScreen(
+                        onLogout = onLogout,
+                        // --- ĐÃ SỬA LỖI TẠI ĐÂY ---
+                        // Truyền callback để SettingsScreen có thể gọi mainNavController điều hướng ra UserProfile
+                        onNavigateToProfile = {
+                            mainNavController.navigate(Routes.UserProfile)
+                        }
+                    )
                 }
             }
         }
