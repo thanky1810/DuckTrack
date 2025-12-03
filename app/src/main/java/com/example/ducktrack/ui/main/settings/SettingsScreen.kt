@@ -40,7 +40,10 @@ import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
-
+import android.content.Intent
+import androidx.core.content.FileProvider
+import java.io.File
+import android.content.Context
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
@@ -117,7 +120,20 @@ fun SettingsScreen(
         Text("Dữ liệu & Ứng dụng", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                SettingActionRow(Icons.Default.Download, "Xuất dữ liệu (Export)", "Tải về lịch sử cây trồng & task") { Toast.makeText(context, "Tính năng đang phát triển!", Toast.LENGTH_SHORT).show() }
+
+                // --- SỬA ĐOẠN NÀY ---
+                SettingActionRow(Icons.Default.Download, "Xuất dữ liệu (Export)", "Tải về lịch sử cây trồng & task") {
+                    authViewModel.exportData(context,
+                        onSuccess = { file ->
+                            shareCsvFile(context, file)
+                        },
+                        onError = { errorMsg ->
+                            Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+                // ---------------------
+
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
                 SettingActionRow(Icons.Default.Info, "Về chúng tôi", "Thông tin nhóm phát triển") { showAboutUsDialog = true }
             }
@@ -170,6 +186,30 @@ fun SettingsScreen(
             confirmButton = { TextButton(onClick = { showAboutUsDialog = false }) { Text("Đóng") } },
             containerColor = Color.White, shape = RoundedCornerShape(16.dp)
         )
+    }
+}
+
+fun shareCsvFile(context: Context, file: File) {
+    try {
+        // Lưu ý: Cần cấu hình FileProvider trong AndroidManifest.xml (xem hướng dẫn Bước 4 bên dưới)
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider", // Authority phải khớp với Manifest
+            file
+        )
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_SUBJECT, "DuckTrack Data Export")
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        val chooser = Intent.createChooser(intent, "Lưu hoặc chia sẻ file CSV")
+        context.startActivity(chooser)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Không thể chia sẻ file: ${e.message}", Toast.LENGTH_LONG).show()
+        e.printStackTrace()
     }
 }
 
