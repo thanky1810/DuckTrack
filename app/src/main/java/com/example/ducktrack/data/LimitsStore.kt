@@ -13,7 +13,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Extension DataStore phải ở top-level (không đặt trong class)
+// Extension DataStore phải ở top-level
 val Context.limitsDataStore by preferencesDataStore("limits_store")
 
 data class BaselineInfo(
@@ -25,19 +25,14 @@ class LimitsStore(private val ctx: Context) {
 
     private object Keys {
         val LIMITS = stringPreferencesKey("limits_json")
-        // trạng thái bật/tắt monitoring
         val MONITORING_ENABLED = booleanPreferencesKey("monitoring_enabled")
-        // baseline cho từng app
         val BASELINES = stringPreferencesKey("limits_baselines_json")
+
+        // --- QUAN TRỌNG: Phải khai báo Key này ở đây ---
+        val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
     }
 
     // ---------------------- GIỚI HẠN ----------------------
-
-    /**
-     * Ghi: map<packageName, minutes>
-     * Dùng cho các trường hợp chỉ thay đổi phút (vd: +15 phút),
-     * KHÔNG đụng tới baseline.
-     */
     suspend fun setLimit(pkg: String, minutes: Int) {
         ctx.limitsDataStore.edit { pref ->
             val current = pref[Keys.LIMITS] ?: "{}"
@@ -47,21 +42,12 @@ class LimitsStore(private val ctx: Context) {
         }
     }
 
-    /**
-     * Ghi limit + đồng thời lưu baseline:
-     *  - ngày hiện tại
-     *  - tổng ms đã dùng tới thời điểm set (baselineMs)
-     *
-     * Dùng khi user SET / ĐỔI limit từ UI.
-     */
     suspend fun setLimitWithBaseline(pkg: String, minutes: Int, baselineMs: Long) {
         ctx.limitsDataStore.edit { pref ->
-            // 1. Lưu giới hạn phút
             val limitsJson = JSONObject(pref[Keys.LIMITS] ?: "{}")
             limitsJson.put(pkg, minutes)
             pref[Keys.LIMITS] = limitsJson.toString()
 
-            // 2. Lưu baseline
             val baselineJson = JSONObject(pref[Keys.BASELINES] ?: "{}")
             val dayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
@@ -74,18 +60,14 @@ class LimitsStore(private val ctx: Context) {
         }
     }
 
-    // Xóa giới hạn + xóa luôn baseline của app đó
     suspend fun removeLimit(pkg: String) {
         ctx.limitsDataStore.edit { pref ->
-            // Xóa minute limit
             run {
                 val current = pref[Keys.LIMITS] ?: "{}"
                 val map = JSONObject(current)
                 map.remove(pkg)
                 pref[Keys.LIMITS] = map.toString()
             }
-
-            // Xóa baseline
             run {
                 val currentBase = pref[Keys.BASELINES] ?: "{}"
                 val baseMap = JSONObject(currentBase)
@@ -95,7 +77,6 @@ class LimitsStore(private val ctx: Context) {
         }
     }
 
-    // Lấy tất cả giới hạn: Map<packageName, minutes>
     suspend fun getAll(): Map<String, Int> {
         val obj = ctx.limitsDataStore.data
             .map { pref -> JSONObject(pref[Keys.LIMITS] ?: "{}") }
@@ -103,7 +84,6 @@ class LimitsStore(private val ctx: Context) {
         return obj.keys().asSequence().associateWith { obj.getInt(it) }
     }
 
-    // Lấy toàn bộ baseline: Map<packageName, BaselineInfo>
     suspend fun getAllBaselines(): Map<String, BaselineInfo> {
         val obj = ctx.limitsDataStore.data
             .map { pref -> JSONObject(pref[Keys.BASELINES] ?: "{}") }
@@ -119,21 +99,22 @@ class LimitsStore(private val ctx: Context) {
     }
 
     // ----------------- TRẠNG THÁI GIÁM SÁT -----------------
-
-    /**
-     * Lấy trạng thái giám sát (dùng Flow để lắng nghe thay đổi)
-     */
     val isMonitoringEnabled: Flow<Boolean> = ctx.limitsDataStore.data
-        .map { pref ->
-            pref[Keys.MONITORING_ENABLED] ?: false // Mặc định là 'tắt'
-        }
+        .map { pref -> pref[Keys.MONITORING_ENABLED] ?: false }
 
-    /**
-     * Lưu trạng thái giám sát
-     */
     suspend fun setMonitoringEnabled(enabled: Boolean) {
         ctx.limitsDataStore.edit { pref ->
             pref[Keys.MONITORING_ENABLED] = enabled
+        }
+    }
+
+    // --- ONBOARDING ---
+    val onboardingCompleted: Flow<Boolean> = ctx.limitsDataStore.data
+        .map { pref -> pref[Keys.ONBOARDING_COMPLETED] ?: false }
+
+    suspend fun saveOnboardingCompleted() {
+        ctx.limitsDataStore.edit { pref ->
+            pref[Keys.ONBOARDING_COMPLETED] = true
         }
     }
 }
