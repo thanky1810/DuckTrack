@@ -56,7 +56,7 @@ fun PermissionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppColors.BackgroundWhite) // Nền trắng
+                .background(MaterialTheme.colorScheme.background) // Nền trắng
                 .padding(inner)
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()

@@ -1,6 +1,9 @@
 package com.example.ducktrack.ui.main.promodoro
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -28,7 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
-import com.example.ducktrack.utils.* // Đảm bảo import đúng các file utils màu sắc của bạn
+import com.example.ducktrack.utils.*
 import kotlinx.coroutines.launch
 
 @Composable
@@ -38,34 +41,45 @@ fun PromodoroScreen(
     onStartFocus: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // --- Animation ---
     val scope = rememberCoroutineScope()
     val duckScale = remember { Animatable(1f) }
     val plantScale = remember { Animatable(1f) }
 
-    // Chạy hiệu ứng nảy khi trạng thái thay đổi
-    LaunchedEffect(uiState.promodoroState) {
-        scope.launch {
-            duckScale.animateTo(1.2f, tween(150))
-            duckScale.animateTo(1f, tween(150))
+    // --- SỬA LỖI TẠI ĐÂY ---
+    val currentContext = LocalContext.current
+    // Dùng remember để không phải tìm lại Activity mỗi lần recompose
+    val activity = remember(currentContext) { currentContext.findActivity() }
+
+    // --- LOGIC GIỮ MÀN HÌNH SÁNG ---
+    DisposableEffect(uiState.isKeepScreenOn, uiState.isTimerRunning) {
+        if (uiState.isKeepScreenOn && uiState.isTimerRunning) {
+            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
-        scope.launch {
-            plantScale.animateTo(1.2f, tween(150))
-            plantScale.animateTo(1f, tween(150))
+        onDispose {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
-    // --- Tính toán hiển thị ---
+    // Màu Động
+    val bgColor = MaterialTheme.colorScheme.background
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val cardColor = MaterialTheme.colorScheme.surface
+    val cardBorder = MaterialTheme.colorScheme.outlineVariant
+
+    LaunchedEffect(uiState.promodoroState) {
+        scope.launch { duckScale.animateTo(1.2f, tween(150)); duckScale.animateTo(1f, tween(150)) }
+        scope.launch { plantScale.animateTo(1.2f, tween(150)); plantScale.animateTo(1f, tween(150)) }
+    }
+
     val focusMin = uiState.focusDurationMillis / 60000
     val breakMin = uiState.breakDurationMillis / 60000
     val sessions = uiState.sessionsBeforeLongBreak
     val longBreakMin = uiState.longBreakDurationMillis / 60000
-
     val configDisplayString = "$focusMin / $breakMin / $sessions / $longBreakMin"
 
-
-    // Text & Image Resources theo trạng thái
     val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.promodoroState) {
         PromodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
         PromodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
@@ -74,233 +88,90 @@ fun PromodoroScreen(
         PromodoroState.Failed -> Quadruple(R.drawable.duck_crying, R.drawable.plant_dead, "Thất bại", "Đã dừng lại.")
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(screenBgColor)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(bgColor)) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
-            // --- HEADER TITLE ---
-            Text(
-                text = "Chế Độ Tập Trung 🌿",
-                color = darkGreenText,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+            Text("Chế Độ Tập Trung 🌿", color = primaryColor, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- CARD 1: THÔNG TIN & ĐIỀU KHIỂN ---
+            // CARD 1
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = cardBgColor),
-                border = BorderStroke(2.dp, card1BorderColor)
+                colors = CardDefaults.cardColors(containerColor = cardColor),
+                border = BorderStroke(1.dp, cardBorder)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Hiển thị Phiên hiện tại
-                    val sessionDisplay = if (uiState.promodoroState == PromodoroState.Break)
-                        "Nghỉ giải lao"
-                    else
-                        "Tập trung / Nghỉ ngắn / Số phiên / Nghỉ dài"
-
-                    Text(
-                        text = sessionDisplay,
-                        color = tealColor,
-                        fontSize = 14.sp, // Giảm cỡ chữ xuống 12sp (hoặc 11sp) để vừa 1 dòng
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center, // Căn giữa
-                        modifier = Modifier.fillMaxWidth(), // Chiếm hết chiều ngang để căn giữa chuẩn
-                        maxLines = 1 // Ép buộc chỉ hiển thị 1 dòng
-                    )
-
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    val sessionDisplay = if (uiState.promodoroState == PromodoroState.Break) "Nghỉ giải lao" else "Tập trung / Nghỉ ngắn / Số phiên / Nghỉ dài"
+                    Text(text = sessionDisplay, color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = configDisplayString,
-                        color = darkGreenText,
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(timerCardText, color = grayText, fontSize = 14.sp, textAlign = TextAlign.Center)
-
+                    Text(text = configDisplayString, color = textColor, fontSize = 40.sp, fontWeight = FontWeight.Bold)
+                    Text(timerCardText, color = Color.Gray, fontSize = 14.sp, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- Button Row ---
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        // Nút Cấu hình
-                        OutlinedButton(
-                            onClick = { viewModel.onSettingsClick() },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Cấu hình")
-                            Icon(Icons.Default.ArrowDropDown, null)
-                        }
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                        OutlinedButton(onClick = { viewModel.onSettingsClick() }, shape = RoundedCornerShape(12.dp)) { Text("Cấu hình"); Icon(Icons.Default.ArrowDropDown, null) }
 
-                        // Logic màu nút và text
                         val (mainButtonColor, mainButtonText) = when (uiState.promodoroState) {
-                            PromodoroState.Running -> Pair(redButton, "Đang chạy...")
-                            PromodoroState.Break -> Pair(yellowButton, "Nghỉ ngơi")
-                            else -> Pair(yellowButton, "Bắt đầu")
+                            PromodoroState.Running -> Pair(Color(0xFFD9534F), "Đang chạy...")
+                            PromodoroState.Break -> Pair(Color(0xFFF5A623), "Nghỉ ngơi")
+                            else -> Pair(Color(0xFFF5A623), "Bắt đầu")
                         }
 
-                        // Nút Bắt đầu / Tiếp tục
                         Button(
                             onClick = {
                                 when (uiState.promodoroState) {
-                                    PromodoroState.Ready,
-                                    PromodoroState.Finished,
-                                    PromodoroState.Failed -> {
-                                        viewModel.startNewSession() // Reset và chạy mới
-                                        onStartFocus() // Chuyển sang màn hình Timer
-                                    }
-                                    PromodoroState.Running,
-                                    PromodoroState.Break -> {
-                                        onStartFocus() // Chỉ chuyển màn hình
-                                    }
+                                    PromodoroState.Ready, PromodoroState.Finished, PromodoroState.Failed -> { viewModel.startNewSession(); onStartFocus() }
+                                    PromodoroState.Running, PromodoroState.Break -> onStartFocus()
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = mainButtonColor),
                             shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(mainButtonText, color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
+                        ) { Text(mainButtonText, color = Color.Black, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- CARD 2: CHỌN HẠT GIỐNG ---
-            Text(
-                "🌱 Lựa chọn hạt giống",
-                color = darkGreenText,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // CARD 2 (Seeds)
+            Text("🌱 Lựa chọn hạt giống", color = primaryColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = cardBgColor),
-                border = BorderStroke(2.dp, card2and3BorderColor)
-            ) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = cardColor), border = BorderStroke(1.dp, cardBorder)) {
+                LazyRow(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(uiState.availableSeeds) { seed ->
-                        SeedChoiceCard(
-                            label = seed.displayName,
-                            subtitle = if (seed.cost == 0) "Mặc định" else null,
-                            image = painterResource(id = seed.selectionIcon),
-                            isSelected = uiState.selectedSeed == seed,
-                            onClick = { viewModel.onSeedSelected(seed) }
-                        )
+                        SeedChoiceCard(label = seed.displayName, subtitle = if (seed.cost == 0) "Mặc định" else null, image = painterResource(id = seed.selectionIcon), isSelected = uiState.selectedSeed == seed, onClick = { viewModel.onSeedSelected(seed) })
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- CARD 3: TRẠNG THÁI CÂY TRỒNG ---
-            Text(
-                "💎 Trồng cây",
-                color = darkGreenText,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // CARD 3 (Status)
+            Text("💎 Trồng cây", color = primaryColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = cardBgColor),
-                border = BorderStroke(2.dp, card2and3BorderColor)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Hạt giống: ${uiState.selectedSeed.displayName}", color = grayText, fontSize = 14.sp)
-
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = cardColor), border = BorderStroke(1.dp, cardBorder)) {
+                Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Hạt giống: ${uiState.selectedSeed.displayName}", color = Color.Gray, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // Hình ảnh Vịt và Cây
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(180.dp),
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        Image(
-                            painter = painterResource(id = duckImageRes),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .height(100.dp)
-                                .graphicsLayer(scaleX = duckScale.value, scaleY = duckScale.value),
-                            contentScale = ContentScale.Fit
-                        )
-                        Image(
-                            painter = painterResource(id = plantImageRes),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .height(140.dp)
-                                .graphicsLayer(scaleX = plantScale.value, scaleY = plantScale.value),
-                            contentScale = ContentScale.Fit
-                        )
+                    Row(modifier = Modifier.fillMaxWidth().height(180.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Image(painter = painterResource(id = duckImageRes), contentDescription = null, modifier = Modifier.height(100.dp).graphicsLayer(scaleX = duckScale.value, scaleY = duckScale.value), contentScale = ContentScale.Fit)
+                        Image(painter = painterResource(id = plantImageRes), contentDescription = null, modifier = Modifier.height(140.dp).graphicsLayer(scaleX = plantScale.value, scaleY = plantScale.value), contentScale = ContentScale.Fit)
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // --- Trạng thái Hoàn thành / Thu hoạch ---
                     if (uiState.promodoroState == PromodoroState.Finished) {
-                        Button(
-                            onClick = { /* Button chỉ để hiển thị trạng thái */ },
-                            enabled = false,
-                            colors = ButtonDefaults.buttonColors(
-                                disabledContainerColor = Color(0xFFFFC107), // Màu vàng Gold
-                                disabledContentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                        ) {
-                            Text(
-                                text = "Đã thu hoạch +50 ⭐", // Thêm icon sao cho sinh động
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Button(onClick = {}, enabled = false, colors = ButtonDefaults.buttonColors(disabledContainerColor = Color(0xFFFFC107), disabledContentColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("Đã thu hoạch +50 ⭐", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                     } else {
-                        Text(statusText, color = darkGreenText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(statusText, color = primaryColor, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
             Spacer(modifier = Modifier.height(60.dp))
         }
 
-        // --- Dialogs ---
+        // Dialogs
         if (uiState.showSettingsDialog) {
             TimeSettingsDialog(
                 initialFocusMinutes = (uiState.focusDurationMillis / 60000).toString(),
@@ -316,7 +187,14 @@ fun PromodoroScreen(
     }
 }
 
-// Helper class để return nhiều giá trị trong 'when' expression
+// --- HÀM HỖ TRỢ TÌM ACTIVITY TỪ CONTEXT (ĐÃ THÊM MỚI) ---
+fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
+
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
-
