@@ -10,7 +10,7 @@ enum class BackgroundSound(val displayName: String, val resId: Int?) {
     SEA("Sóng biển 🌊", R.raw.sea_wave)
 }
 // 1. Các trạng thái của timer
-enum class PomodoroState {
+enum class PromodoroState {
     Ready,
     Running,
     Break,
@@ -20,7 +20,7 @@ enum class PomodoroState {
 
 // 2. Data class chứa toàn bộ trạng thái cho UI
 data class PomodoroUiState(
-    val pomodoroState: PomodoroState = PomodoroState.Ready,
+    val promodoroState: PromodoroState = PromodoroState.Ready,
 
     // --- CÁC BIẾN THỜI GIAN ---
     val focusDurationMillis: Long = 25 * 60 * 1000L,

@@ -46,7 +46,7 @@ fun TimeSettingsDialog(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Cài đặt Pomodoro", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = mainGreen)
+                    Text("Cài đặt Promodoro", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = mainGreen)
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Hàng 1
@@ -139,7 +139,7 @@ fun TimeSettingsDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
-                        Text("Lưu cài đặt", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Lưu cấu hình", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {

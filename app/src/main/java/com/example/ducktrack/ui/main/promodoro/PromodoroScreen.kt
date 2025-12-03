@@ -32,9 +32,9 @@ import com.example.ducktrack.utils.* // Đảm bảo import đúng các file uti
 import kotlinx.coroutines.launch
 
 @Composable
-fun PomodoroScreen(
+fun PromodoroScreen(
     context: Context = LocalContext.current.applicationContext,
-    viewModel: PomodoroViewModel,
+    viewModel: PromodoroViewModel,
     onStartFocus: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -45,7 +45,7 @@ fun PomodoroScreen(
     val plantScale = remember { Animatable(1f) }
 
     // Chạy hiệu ứng nảy khi trạng thái thay đổi
-    LaunchedEffect(uiState.pomodoroState) {
+    LaunchedEffect(uiState.promodoroState) {
         scope.launch {
             duckScale.animateTo(1.2f, tween(150))
             duckScale.animateTo(1f, tween(150))
@@ -64,13 +64,14 @@ fun PomodoroScreen(
 
     val configDisplayString = "$focusMin / $breakMin / $sessions / $longBreakMin"
 
+
     // Text & Image Resources theo trạng thái
-    val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.pomodoroState) {
-        PomodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
-        PomodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
-        PomodoroState.Break -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Đến giờ nghỉ ngơi rồi!")
-        PomodoroState.Finished -> Quadruple(R.drawable.duck_happy, R.drawable.plant_grown, "Thu hoạch thôi!", "Hoàn thành! Thu hoạch ngay.")
-        PomodoroState.Failed -> Quadruple(R.drawable.duck_crying, R.drawable.plant_dead, "Thất bại", "Đã dừng lại.")
+    val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.promodoroState) {
+        PromodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
+        PromodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
+        PromodoroState.Break -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Đến giờ nghỉ ngơi rồi!")
+        PromodoroState.Finished -> Quadruple(R.drawable.duck_happy, R.drawable.plant_grown, "Thu hoạch thôi!", "Hoàn thành! Thu hoạch ngay.")
+        PromodoroState.Failed -> Quadruple(R.drawable.duck_crying, R.drawable.plant_dead, "Thất bại", "Đã dừng lại.")
     }
 
     Box(
@@ -109,12 +110,20 @@ fun PomodoroScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Hiển thị Phiên hiện tại
-                    val sessionDisplay = if (uiState.pomodoroState == PomodoroState.Break)
+                    val sessionDisplay = if (uiState.promodoroState == PromodoroState.Break)
                         "Nghỉ giải lao"
                     else
-                        "Phiên ${uiState.currentSessionCount + 1} / $sessions"
+                        "Tập trung / Nghỉ ngắn / Số phiên / Nghỉ dài"
 
-                    Text(sessionDisplay, color = tealColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = sessionDisplay,
+                        color = tealColor,
+                        fontSize = 14.sp, // Giảm cỡ chữ xuống 12sp (hoặc 11sp) để vừa 1 dòng
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center, // Căn giữa
+                        modifier = Modifier.fillMaxWidth(), // Chiếm hết chiều ngang để căn giữa chuẩn
+                        maxLines = 1 // Ép buộc chỉ hiển thị 1 dòng
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -145,24 +154,24 @@ fun PomodoroScreen(
                         }
 
                         // Logic màu nút và text
-                        val (mainButtonColor, mainButtonText) = when (uiState.pomodoroState) {
-                            PomodoroState.Running -> Pair(redButton, "Đang chạy...")
-                            PomodoroState.Break -> Pair(yellowButton, "Nghỉ ngơi")
+                        val (mainButtonColor, mainButtonText) = when (uiState.promodoroState) {
+                            PromodoroState.Running -> Pair(redButton, "Đang chạy...")
+                            PromodoroState.Break -> Pair(yellowButton, "Nghỉ ngơi")
                             else -> Pair(yellowButton, "Bắt đầu")
                         }
 
                         // Nút Bắt đầu / Tiếp tục
                         Button(
                             onClick = {
-                                when (uiState.pomodoroState) {
-                                    PomodoroState.Ready,
-                                    PomodoroState.Finished,
-                                    PomodoroState.Failed -> {
+                                when (uiState.promodoroState) {
+                                    PromodoroState.Ready,
+                                    PromodoroState.Finished,
+                                    PromodoroState.Failed -> {
                                         viewModel.startNewSession() // Reset và chạy mới
                                         onStartFocus() // Chuyển sang màn hình Timer
                                     }
-                                    PomodoroState.Running,
-                                    PomodoroState.Break -> {
+                                    PromodoroState.Running,
+                                    PromodoroState.Break -> {
                                         onStartFocus() // Chỉ chuyển màn hình
                                     }
                                 }
@@ -264,7 +273,7 @@ fun PomodoroScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- Trạng thái Hoàn thành / Thu hoạch ---
-                    if (uiState.pomodoroState == PomodoroState.Finished) {
+                    if (uiState.promodoroState == PromodoroState.Finished) {
                         Button(
                             onClick = { /* Button chỉ để hiển thị trạng thái */ },
                             enabled = false,

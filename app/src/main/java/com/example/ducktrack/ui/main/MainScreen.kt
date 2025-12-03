@@ -37,8 +37,8 @@ import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.OverlayPermissionDialog
 import com.example.ducktrack.ui.components.PieChart
 import com.example.ducktrack.ui.main.garden.GardenScreen
-import com.example.ducktrack.ui.main.promodoro.PomodoroScreen
-import com.example.ducktrack.ui.main.promodoro.PomodoroViewModel
+import com.example.ducktrack.ui.main.promodoro.PromodoroScreen
+import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
@@ -56,7 +56,7 @@ fun MainScreen(
     onLogout: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
     // NHẬN SHARED VIEWMODEL và CALLBACK MỚI
-    pomodoroViewModel: PomodoroViewModel,
+    promodoroViewModel: PromodoroViewModel,
     onNavigateToFocus: () -> Unit
 ) {
     val bottomNavController = rememberNavController()
@@ -125,8 +125,8 @@ fun MainScreen(
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Pomodoro + currentRoute) {
-                        PomodoroScreen(
-                            viewModel = pomodoroViewModel,
+                        PromodoroScreen(
+                            viewModel = promodoroViewModel,
                             onStartFocus = onNavigateToFocus
                         )
                     }
@@ -142,7 +142,7 @@ fun MainScreen(
                                     launchSingleTop = true
                                     restoreState = false
                                 }
-                                currentPageTitle = "Pomodoro"
+                                currentPageTitle = "Promodoro"
                             }
                         )
                     }
