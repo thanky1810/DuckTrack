@@ -1,10 +1,14 @@
 // FILE: SettingsScreen.kt
 package com.example.ducktrack.ui.main.settings
 
+// ... (Giữ nguyên imports)
 import android.app.Activity
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,28 +44,25 @@ import com.example.ducktrack.utils.PermissionHelper
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
-    onNavigateToProfile: () -> Unit, // Callback chuyển trang
+    onNavigateToProfile: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext)
     )
 ) {
     val context = LocalContext.current
+    // Dùng màu cứng hoặc từ theme đều được vì Theme giờ luôn là Light
     val primaryColor = AppColors.TextGreen
 
-    // Data State
     var userInfo by remember { mutableStateOf<UserInfo?>(null) }
     var linkedProviders by remember { mutableStateOf(authViewModel.getLinkedProviders()) }
 
-    // Setting Toggles State
-    val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
+    // Đã xóa isDarkMode state
     val isVibration by settingsViewModel.isVibration.collectAsState()
     val isKeepScreenOn by settingsViewModel.isKeepScreenOn.collectAsState()
 
-    // Dialog State
     var showAboutUsDialog by remember { mutableStateOf(false) }
 
-    // Load data
     LaunchedEffect(Unit) {
         authViewModel.loadUserInfo { info -> userInfo = info }
         linkedProviders = authViewModel.getLinkedProviders()
@@ -70,77 +71,42 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Cài đặt", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+        Text("Cài đặt", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
 
-        // --- 1. THẺ THÔNG TIN USER (BẤM VÀO ĐỂ XEM PROFILE) ---
+        // --- 1. THẺ USER ---
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onNavigateToProfile() }, // Bấm vào đây chuyển trang
+            modifier = Modifier.fillMaxWidth().clickable { onNavigateToProfile() },
             colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.1f)),
             shape = RoundedCornerShape(12.dp),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(20.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Avatar (Chỉ hiển thị)
+            Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(70.dp)) {
                     val base64Str = userInfo?.photoBase64
-                    val bitmap = remember(base64Str) {
-                        try {
-                            val b = Base64.decode(base64Str, Base64.DEFAULT)
-                            BitmapFactory.decodeByteArray(b, 0, b.size).asImageBitmap()
-                        } catch (e: Exception) { null }
-                    }
-
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap, contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Image(
-                            painter = painterResource(R.drawable.duck_waiting), contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
+                    val bitmap = remember(base64Str) { try { val b = Base64.decode(base64Str, Base64.DEFAULT); BitmapFactory.decodeByteArray(b, 0, b.size).asImageBitmap() } catch (e: Exception) { null } }
+                    if (bitmap != null) Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape), contentScale = ContentScale.Crop)
+                    else Image(painter = painterResource(R.drawable.duck_waiting), contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape), contentScale = ContentScale.Crop)
                 }
-
                 Spacer(modifier = Modifier.width(16.dp))
-
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = userInfo?.name ?: "Đang tải...",
-                        fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black
-                    )
-                    Text(
-                        text = "Xem hồ sơ chi tiết & thống kê",
-                        fontSize = 12.sp, color = AppColors.TextGreen
-                    )
+                    Text(text = userInfo?.name ?: "Đang tải...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Text(text = "Xem hồ sơ chi tiết & thống kê", fontSize = 12.sp, color = primaryColor)
                 }
-
-                Icon(Icons.Default.ChevronRight, null, tint = AppColors.TextGreen)
+                Icon(Icons.Default.ChevronRight, null, tint = primaryColor)
             }
         }
 
-        // --- 2. GIAO DIỆN & TRẢI NGHIỆM ---
-        Text("Giao diện & Trải nghiệm", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
-            shape = RoundedCornerShape(12.dp)
-        ) {
+        // --- 2. TRẢI NGHIỆM ---
+        Text("Trải nghiệm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                SettingSwitchRow("Chế độ Tối (Dark Mode)", "Giao diện tối màu bảo vệ mắt", isDarkMode) { settingsViewModel.setDarkMode(it) }
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                // Đã xóa SettingSwitchRow "Chế độ Tối"
+
                 SettingSwitchRow("Rung khi hết giờ", "Rung điện thoại khi hoàn thành phiên", isVibration) { settingsViewModel.setVibration(it) }
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
                 SettingSwitchRow("Giữ màn hình sáng", "Không tắt màn hình khi đang tập trung", isKeepScreenOn) { settingsViewModel.setKeepScreenOn(it) }
@@ -148,25 +114,17 @@ fun SettingsScreen(
         }
 
         // --- 3. DỮ LIỆU & ỨNG DỤNG ---
-        Text("Dữ liệu & Ứng dụng", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
-            shape = RoundedCornerShape(12.dp)
-        ) {
+        Text("Dữ liệu & Ứng dụng", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                SettingActionRow(Icons.Default.Download, "Xuất dữ liệu (Export)", "Tải về lịch sử cây trồng & task") {
-                    Toast.makeText(context, "Tính năng đang phát triển!", Toast.LENGTH_SHORT).show()
-                }
+                SettingActionRow(Icons.Default.Download, "Xuất dữ liệu (Export)", "Tải về lịch sử cây trồng & task") { Toast.makeText(context, "Tính năng đang phát triển!", Toast.LENGTH_SHORT).show() }
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                SettingActionRow(Icons.Default.Info, "Về chúng tôi", "Thông tin nhóm phát triển") {
-                    showAboutUsDialog = true
-                }
+                SettingActionRow(Icons.Default.Info, "Về chúng tôi", "Thông tin nhóm phát triển") { showAboutUsDialog = true }
             }
         }
 
         // --- 4. LIÊN KẾT TÀI KHOẢN ---
-        Text("Liên kết tài khoản", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+        Text("Liên kết tài khoản", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
                 AccountLinkRow(R.drawable.ic_google, "Google", linkedProviders.contains("google.com"),
@@ -190,7 +148,7 @@ fun SettingsScreen(
         }
     }
 
-    // --- Dialog About Us ---
+    // Dialog About Us
     if (showAboutUsDialog) {
         AlertDialog(
             onDismissRequest = { showAboutUsDialog = false },
@@ -204,8 +162,7 @@ fun SettingsScreen(
                     Text("- Vũ Trí Dũng (Dev)")
                     Text("- Nguyễn Thị Hương Giang (Dev)")
                     Spacer(Modifier.height(8.dp))
-                    Text("Sản phẩm được xây dựng nên để phục vụ báo cáo cuối học phần môn lập trình thiết bị di động. " +
-                            "Nên sản phẩm của chúng mình sẽ chưa được hoàn chỉnh toàn diện 100%.")
+                    Text("Sản phẩm được xây dựng nên để phục vụ báo cáo cuối học phần môn lập trình thiết bị di động...")
                     Spacer(Modifier.height(8.dp))
                     Text("Cảm ơn bạn đã sử dụng DuckTrack!")
                 }
@@ -216,13 +173,12 @@ fun SettingsScreen(
     }
 }
 
-// --- CÁC COMPOSABLE PHỤ TRỢ (Để chung file này cho gọn) ---
-
+// ... (Giữ nguyên các Composable phụ trợ: SettingSwitchRow, SettingActionRow, AccountLinkRow, MonitoringControlSection) ...
 @Composable
 fun SettingSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Color.Black)
             Text(subtitle, fontSize = 12.sp, color = Color.Gray)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AppColors.ButtonGreen))
@@ -235,7 +191,7 @@ fun SettingActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, titl
         Icon(icon, null, tint = AppColors.TextGreen, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Color.Black)
             Text(subtitle, fontSize = 12.sp, color = Color.Gray)
         }
         Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
@@ -247,7 +203,7 @@ fun AccountLinkRow(iconRes: Int, providerName: String, isLinked: Boolean, onLink
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(12.dp))
-        Text(text = providerName, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        Text(text = providerName, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), color = Color.Black)
         if (isLinked) TextButton(onClick = onUnlink) { Text("Đã kết nối", color = AppColors.TextGreen, fontWeight = FontWeight.Bold) }
         else Button(onClick = onLink, colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), modifier = Modifier.height(36.dp)) { Text("Kết nối", fontSize = 12.sp) }
     }
@@ -261,7 +217,7 @@ private fun MonitoringControlSection(viewModel: SettingsViewModel) {
     LaunchedEffect(Unit) { hasOverlayPermission = PermissionHelper.hasOverlayPermission(context) }
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(0.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Giám sát thời gian sử dụng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("Giám sát thời gian sử dụng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.Black)
             if (!hasOverlayPermission) {
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)), shape = RoundedCornerShape(8.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {

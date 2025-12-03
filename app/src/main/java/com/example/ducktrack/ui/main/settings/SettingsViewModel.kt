@@ -1,3 +1,4 @@
+// FILE: SettingsViewModel.kt
 package com.example.ducktrack.ui.main.settings
 
 import android.app.Application
@@ -17,16 +18,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val limitsStore = LimitsStore(app)
     private val userPrefs = UserPreferences(app)
 
-    // --- Các luồng dữ liệu (State) ---
     val isMonitoringEnabled = limitsStore.isMonitoringEnabled
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
-
-    val isDarkMode = userPrefs.isDarkMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // Đã xóa isDarkMode state
 
     val isVibration = userPrefs.isVibrationEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -34,23 +29,14 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     val isKeepScreenOn = userPrefs.isKeepScreenOn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // --- Các hàm xử lý sự kiện (ĐÃ BỔ SUNG ĐẦY ĐỦ) ---
-
     fun setMonitoringEnabled(enabled: Boolean) {
         viewModelScope.launch {
             limitsStore.setMonitoringEnabled(enabled)
-            // Khởi động hoặc dừng Service
-            if (enabled) {
-                startMonitoringService()
-            } else {
-                stopMonitoringService()
-            }
+            if (enabled) startMonitoringService() else stopMonitoringService()
         }
     }
 
-    fun setDarkMode(enabled: Boolean) {
-        viewModelScope.launch { userPrefs.setDarkMode(enabled) }
-    }
+    // Đã xóa setDarkMode function
 
     fun setVibration(enabled: Boolean) {
         viewModelScope.launch { userPrefs.setVibration(enabled) }
@@ -60,7 +46,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { userPrefs.setKeepScreenOn(enabled) }
     }
 
-    // --- Helper Functions ---
     private fun startMonitoringService() {
         val context = getApplication<Application>()
         val intent = Intent(context, UsageMonitorService::class.java).apply {

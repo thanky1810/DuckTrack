@@ -47,5 +47,8 @@ data class PomodoroUiState(
     val showFailedDialog: Boolean = false,
     val showHarvestDialog: Boolean = false,
 
-    val selectedSound: BackgroundSound = BackgroundSound.OFF
+    val selectedSound: BackgroundSound = BackgroundSound.OFF,
+
+    val isVibrationEnabled: Boolean = true, // Mặc định bật
+    val isKeepScreenOn: Boolean = false     // Mặc định tắt
 )

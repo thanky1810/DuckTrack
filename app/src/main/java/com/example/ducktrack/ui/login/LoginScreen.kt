@@ -103,7 +103,7 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppColors.BackgroundWhite)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(inner),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
