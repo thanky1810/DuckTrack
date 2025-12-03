@@ -29,7 +29,7 @@ fun BottomNavigationBar(
     val items = listOf(
         BottomNavItem("Trang chủ", Icons.Default.Home, Routes.Dashboard),
         BottomNavItem("Nhiệm vụ", Icons.Default.DateRange, Routes.Tasks),
-        BottomNavItem("Pomodoro", Icons.Default.AddCircle, Routes.Pomodoro),
+        BottomNavItem("Promodoro", Icons.Default.AddCircle, Routes.Pomodoro),
         BottomNavItem("Vườn cây", Icons.Default.Star, Routes.Garden),
         BottomNavItem("Cài đặt", Icons.Default.Person, Routes.Settings),
     )

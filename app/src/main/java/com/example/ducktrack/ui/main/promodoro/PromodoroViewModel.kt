@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class PomodoroViewModel(application: Application) : AndroidViewModel(application) {
+class PromodoroViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as MyApplication).repository
 
@@ -102,7 +102,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         val currentState = _uiState.value
         if (currentState.isTimerRunning) {
             // Đang chạy -> Bấm dừng
-            if (currentState.pomodoroState == PomodoroState.Running) {
+            if (currentState.promodoroState == PromodoroState.Running) {
                 stopTimer(isFailed = true)
             } else {
                 pauseTimer()
@@ -137,7 +137,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
 
         val state = _uiState.value
 
-        if (state.pomodoroState == PomodoroState.Running) {
+        if (state.promodoroState == PromodoroState.Running) {
             // KẾT THÚC PHIÊN TẬP TRUNG
             autoHarvest()
             val completedSessions = state.currentSessionCount + 1
@@ -148,7 +148,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
 
                 _uiState.update {
                     it.copy(
-                        pomodoroState = PomodoroState.Finished,
+                        promodoroState = PromodoroState.Finished,
                         isTimerRunning = false,
                         currentSessionCount = completedSessions,
                         remainingTimeMillis = 0
@@ -163,7 +163,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
 
                 _uiState.update {
                     it.copy(
-                        pomodoroState = PomodoroState.Break,
+                        promodoroState = PromodoroState.Break,
                         currentSessionCount = completedSessions,
                         remainingTimeMillis = breakTime,
                         isTimerRunning = true
@@ -172,13 +172,13 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
                 resumeTimer() // Tự động chạy nghỉ (và nhạc nền lại phát nếu user chọn nhạc)
             }
 
-        } else if (state.pomodoroState == PomodoroState.Break) {
+        } else if (state.promodoroState == PromodoroState.Break) {
             // ==> HẾT GIỜ NGHỈ: Phát tiếng chuông để báo vào làm việc
             playEffect(R.raw.japanese_school_bell)
 
             _uiState.update {
                 it.copy(
-                    pomodoroState = PomodoroState.Running,
+                    promodoroState = PromodoroState.Running,
                     remainingTimeMillis = it.focusDurationMillis,
                     isTimerRunning = true
                 )
@@ -195,7 +195,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         if (isFailed) {
             _uiState.update {
                 it.copy(
-                    pomodoroState = PomodoroState.Failed,
+                    promodoroState = PromodoroState.Failed,
                     isTimerRunning = false,
                     remainingTimeMillis = it.focusDurationMillis,
                     showFailedDialog = true
@@ -217,7 +217,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         val focusTime = _uiState.value.focusDurationMillis
         _uiState.update {
             it.copy(
-                pomodoroState = PomodoroState.Running,
+                promodoroState = PromodoroState.Running,
                 currentSessionCount = 0,
                 remainingTimeMillis = focusTime,
                 isTimerRunning = true
@@ -244,7 +244,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         }
     }
     fun onHarvestClick() {}
-    fun onDismissHarvestDialog() { _uiState.update { it.copy(pomodoroState = PomodoroState.Ready, currentSessionCount = 0, isTimerRunning = false) } }
+    fun onDismissHarvestDialog() { _uiState.update { it.copy(promodoroState = PromodoroState.Ready, currentSessionCount = 0, isTimerRunning = false) } }
     fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }
     fun onDismissSettingsDialog() { _uiState.update { it.copy(showSettingsDialog = false) } }
     fun onDismissFailedDialog() { _uiState.update { it.copy(showFailedDialog = false) } }

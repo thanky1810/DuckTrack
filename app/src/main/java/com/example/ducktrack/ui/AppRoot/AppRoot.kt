@@ -26,7 +26,7 @@ import com.example.ducktrack.ui.login.LoginScreen
 import com.example.ducktrack.ui.main.MainScreen
 import com.example.ducktrack.ui.main.ViewModelFactory
 import com.example.ducktrack.ui.main.promodoro.FocusModeScreen
-import com.example.ducktrack.ui.main.promodoro.PomodoroViewModel
+import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
 import com.example.ducktrack.ui.permission.PermissionScreen
 import com.example.ducktrack.ui.theme.DuckTrackTheme
 import com.example.ducktrack.utils.hasUsageAccess
@@ -61,7 +61,7 @@ fun AppRoot(
 
     // --- KHỞI TẠO SHARED POMODORO VIEWMODEL TẠI ĐÂY ---
     // Để đảm bảo Timer không bị reset khi chuyển màn hình
-    val pomodoroViewModel: PomodoroViewModel = viewModel(
+    val promodoroViewModel: PromodoroViewModel = viewModel(
         factory = ViewModelFactory(appContext as MyApplication)
     )
 
@@ -142,7 +142,7 @@ fun AppRoot(
                                 popUpTo(Routes.Main) { inclusive = true }
                             }
                         },
-                        pomodoroViewModel = pomodoroViewModel, // <-- Truyền vào
+                        promodoroViewModel = promodoroViewModel, // <-- Truyền vào
                         onNavigateToFocus = { // <-- Callback mở màn hình Focus
                             nav.navigate(Routes.FocusMode)
                         }
@@ -152,7 +152,7 @@ fun AppRoot(
                 // ROUTE FOCUS MODE: Màn hình Full Screen mới
                 composable(Routes.FocusMode) {
                     FocusModeScreen(
-                        viewModel = pomodoroViewModel, // <-- Dùng chung ViewModel để đồng bộ giờ
+                        viewModel = promodoroViewModel, // <-- Dùng chung ViewModel để đồng bộ giờ
                         onExit = {
                             nav.popBackStack() // Quay về Main
                         }

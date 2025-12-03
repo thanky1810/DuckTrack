@@ -28,7 +28,7 @@ import com.example.ducktrack.utils.formatTime
 
 @Composable
 fun FocusModeScreen(
-    viewModel: PomodoroViewModel,
+    viewModel: PromodoroViewModel,
     onExit: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -41,13 +41,13 @@ fun FocusModeScreen(
         showConfirmExitDialog = true
     }
 
-    LaunchedEffect(uiState.pomodoroState) {
-        if (uiState.pomodoroState == PomodoroState.Finished) {
+    LaunchedEffect(uiState.promodoroState) {
+        if (uiState.promodoroState == PromodoroState.Finished) {
             onExit()
         }
     }
 
-    val isBreak = uiState.pomodoroState == PomodoroState.Break
+    val isBreak = uiState.promodoroState == PromodoroState.Break
     val currentSessionDisplay = uiState.currentSessionCount + 1
     val targetSession = uiState.sessionsBeforeLongBreak
 
