@@ -100,6 +100,7 @@ dependencies {
 
 
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation(libs.lottie.compose)
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
