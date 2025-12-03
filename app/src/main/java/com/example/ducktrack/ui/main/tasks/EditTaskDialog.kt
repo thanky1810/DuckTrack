@@ -1,4 +1,4 @@
-
+// FILE: EditTaskDialog.kt
 package com.example.ducktrack.ui.main.tasks
 
 import androidx.compose.foundation.layout.Column
@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTaskDialog(
-    task: Task,
+    task: TodoTask, // Đổi Task -> TodoTask
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -41,22 +41,14 @@ fun EditTaskDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(newText) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF62B26A)
-                )
-            ) {
-                Text("Lưu")
-            }
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF62B26A))
+            ) { Text("Lưu") }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFF888888)
-                )
-            ) {
-                Text("Hủy")
-            }
+                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF888888))
+            ) { Text("Hủy") }
         }
     )
 }

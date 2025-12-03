@@ -1,3 +1,4 @@
+// FILE: AppRoot.kt
 package com.example.ducktrack.ui.AppRoot
 
 import android.content.Context
@@ -5,8 +6,6 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -15,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -32,6 +30,7 @@ import com.example.ducktrack.ui.main.MainScreen
 import com.example.ducktrack.ui.main.ViewModelFactory
 import com.example.ducktrack.ui.main.promodoro.FocusModeScreen
 import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
+import com.example.ducktrack.ui.main.settings.UserProfileScreen
 import com.example.ducktrack.ui.onboarding.OnboardingScreen
 import com.example.ducktrack.ui.permission.PermissionScreen
 import com.example.ducktrack.ui.splash.SplashScreen
@@ -65,7 +64,7 @@ fun AppRoot(
     val activityContext = LocalContext.current
     val nav = rememberNavController()
 
-    // --- 1. SETUP DATA STORE & AUTH ---
+    // --- SETUP DATA STORE & AUTH ---
     val limitsStore = remember { LimitsStore(appContext) }
     val isOnboardingCompleted by limitsStore.onboardingCompleted.collectAsState(initial = null)
 
@@ -86,76 +85,57 @@ fun AppRoot(
             NavHost(
                 navController = nav,
                 startDestination = Routes.Splash,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
-                // --- MÀN HÌNH SPLASH ---
+                // --- SPLASH ---
                 composable(Routes.Splash) {
                     SplashScreen(
-                        // Truyền trạng thái dữ liệu vào Splash
                         isDataReady = (isOnboardingCompleted != null),
                         onSplashFinished = {
-                            // Khi Splash chạy xong Animation + Có dữ liệu
                             val nextRoute = if (isOnboardingCompleted == false) {
-                                Routes.Onboarding // Người mới -> Onboarding
+                                Routes.Onboarding
                             } else {
-                                // Người cũ -> Kiểm tra Đăng nhập & Quyền
                                 if (isAuthenticated) {
                                     if (hasPermission) Routes.Main else Routes.Permission
                                 } else {
                                     Routes.Home
                                 }
                             }
-
-                            // Điều hướng và XÓA Splash khỏi lịch sử (để không Back lại được)
-                            nav.navigate(nextRoute) {
-                                popUpTo(Routes.Splash) { inclusive = true }
-                            }
+                            nav.navigate(nextRoute) { popUpTo(Routes.Splash) { inclusive = true } }
                         }
                     )
                 }
 
-                // --- MÀN HÌNH ONBOARDING ---
+                // --- ONBOARDING ---
                 composable(Routes.Onboarding) {
                     OnboardingScreen(
                         onFinish = {
-                            // Lưu trạng thái đã xem vào DataStore
-                            CoroutineScope(Dispatchers.IO).launch {
-                                limitsStore.saveOnboardingCompleted()
-                            }
-                            // Chuyển sang màn hình Giới thiệu (Home)
-                            nav.navigate(Routes.Home) {
-                                popUpTo(Routes.Onboarding) { inclusive = true }
-                            }
+                            CoroutineScope(Dispatchers.IO).launch { limitsStore.saveOnboardingCompleted() }
+                            nav.navigate(Routes.Home) { popUpTo(Routes.Onboarding) { inclusive = true } }
                         }
                     )
                 }
 
-                // --- MÀN HÌNH GIỚI THIỆU (Introduce) ---
+                // --- HOME / INTRO ---
                 composable(Routes.Home) {
-                    introduceScreen(
-                        onGoLogin = { nav.navigate(Routes.Login) }
-                    )
+                    introduceScreen(onGoLogin = { nav.navigate(Routes.Login) })
                 }
 
-                // --- MÀN HÌNH LOGIN ---
+                // --- LOGIN ---
                 composable(Routes.Login) {
                     LoginScreen(
                         googleSignInClient = googleSignInClient,
                         onLogin = {
                             if (checkUsageAccessPermission(appContext)) {
-                                nav.navigate(Routes.Main) {
-                                    popUpTo(Routes.Home) { inclusive = true }
-                                }
+                                nav.navigate(Routes.Main) { popUpTo(Routes.Home) { inclusive = true } }
                             } else {
-                                nav.navigate(Routes.Permission) {
-                                    popUpTo(Routes.Home) { inclusive = true }
-                                }
+                                nav.navigate(Routes.Permission) { popUpTo(Routes.Home) { inclusive = true } }
                             }
                         }
                     )
                 }
 
-                // --- MÀN HÌNH CẤP QUYỀN ---
+                // --- PERMISSION ---
                 composable(Routes.Permission) {
                     PermissionScreen(
                         onGoToSettings = {
@@ -163,24 +143,14 @@ fun AppRoot(
                                 val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 activityContext.startActivity(intent)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
+                            } catch (e: Exception) { e.printStackTrace() }
                         },
-                        onCancel = {
-                            nav.navigate(Routes.Main) {
-                                popUpTo(Routes.Permission) { inclusive = true }
-                            }
-                        },
-                        onPermissionGranted = {
-                            nav.navigate(Routes.Main) {
-                                popUpTo(Routes.Permission) { inclusive = true }
-                            }
-                        }
+                        onCancel = { nav.navigate(Routes.Main) { popUpTo(Routes.Permission) { inclusive = true } } },
+                        onPermissionGranted = { nav.navigate(Routes.Main) { popUpTo(Routes.Permission) { inclusive = true } } }
                     )
                 }
 
-                // --- MÀN HÌNH CHÍNH (MAIN) ---
+                // --- MAIN SCREEN (Chứa Dashboard, Settings, etc.) ---
                 composable(Routes.Main) {
                     val currentHasPermission = checkUsageAccessPermission(appContext)
                     MainScreen(
@@ -188,25 +158,21 @@ fun AppRoot(
                         hasPermission = currentHasPermission,
                         onLogout = {
                             authViewModel.logout()
-                            nav.navigate(Routes.Home) {
-                                popUpTo(Routes.Main) { inclusive = true }
-                            }
+                            nav.navigate(Routes.Home) { popUpTo(Routes.Main) { inclusive = true } }
                         },
                         promodoroViewModel = promodoroViewModel,
-                        onNavigateToFocus = {
-                            nav.navigate(Routes.FocusMode)
-                        }
+                        onNavigateToFocus = { nav.navigate(Routes.FocusMode) }
                     )
                 }
 
-                // --- MÀN HÌNH FOCUS MODE ---
+                // --- FOCUS MODE ---
                 composable(Routes.FocusMode) {
-                    FocusModeScreen(
-                        viewModel = promodoroViewModel,
-                        onExit = {
-                            nav.popBackStack()
-                        }
-                    )
+                    FocusModeScreen(viewModel = promodoroViewModel, onExit = { nav.popBackStack() })
+                }
+
+                // --- USER PROFILE (MỚI) ---
+                composable(Routes.UserProfile) {
+                    UserProfileScreen(onBack = { nav.popBackStack() })
                 }
             }
         }

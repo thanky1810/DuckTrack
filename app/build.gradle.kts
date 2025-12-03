@@ -46,14 +46,15 @@ android {
 
 dependencies {
 
-    // Image loading
+    // --- Image loading (Coil) ---
+    // Giữ bản 2.6.0, xóa bản 2.5.0 bị trùng
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // Lifecycle & ViewModel
+    // --- Lifecycle & ViewModel ---
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // Compose BOM & UI
+    // --- Compose BOM & UI ---
     implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.foundation:foundation:1.7.0")
@@ -67,41 +68,48 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.ui.unit)
     implementation(libs.androidx.compose.foundation)
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
-    // Nếu bạn dùng thêm Material3 View (non-compose) thì giữ lại dòng này
-    implementation(libs.androidx.material3)
 
-    // Room
+    // Splash screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Material Design (Classic XML view support - nếu cần)
+    implementation("com.google.android.material:material:1.12.0")
+
+    // --- Room ---
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
 
-    // DataStore
+    // --- DataStore ---
+    // Giữ bản 1.1.1, xóa bản 1.0.0 bị trùng
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // WorkManager
+    // --- WorkManager ---
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
-    // Firebase & Sign-in
-    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
-    implementation(libs.firebase.auth)
+    // --- Firebase & Auth ---
+    // QUAN TRỌNG: Chỉ giữ lại 1 bản BOM mới nhất (34.6.0)
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+
+    // Khi dùng BOM, KHÔNG CẦN điền version cho các thư viện con dưới đây:
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-analytics")
+
+    // SỬA LỖI Ở ĐÂY: Dùng string trực tiếp, không dùng libs đang lỗi version
+    implementation("com.google.firebase:firebase-storage")
+
+    // Google Sign In & Credentials
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.play.services.auth)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
-    implementation("com.google.firebase:firebase-firestore")
 
-
-    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
-    implementation("com.google.firebase:firebase-auth")
-
-
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    // --- Lottie Animation ---
     implementation(libs.lottie.compose)
-    // Test
+
+    // --- Testing ---
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

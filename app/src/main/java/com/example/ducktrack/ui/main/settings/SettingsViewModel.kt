@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.data.LimitsStore
+import com.example.ducktrack.data.UserPreferences
 import com.example.ducktrack.service.UsageMonitorService
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -14,25 +15,31 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val limitsStore = LimitsStore(app)
+    private val userPrefs = UserPreferences(app)
 
-    // 1. Lấy trạng thái giám sát từ DataStore và chuyển thành State
-    //    để Composable có thể lắng nghe
+    // --- Các luồng dữ liệu (State) ---
     val isMonitoringEnabled = limitsStore.isMonitoringEnabled
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false // Giá trị ban đầu khi app mới mở
+            initialValue = false
         )
 
-    /**
-     * Hàm này được gọi khi người dùng gạt nút Switch
-     */
+    val isDarkMode = userPrefs.isDarkMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isVibration = userPrefs.isVibrationEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val isKeepScreenOn = userPrefs.isKeepScreenOn
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // --- Các hàm xử lý sự kiện (ĐÃ BỔ SUNG ĐẦY ĐỦ) ---
+
     fun setMonitoringEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            // 2. Lưu trạng thái mới vào DataStore
             limitsStore.setMonitoringEnabled(enabled)
-
-            // 3. Đồng thời, khởi động hoặc dừng Service
+            // Khởi động hoặc dừng Service
             if (enabled) {
                 startMonitoringService()
             } else {
@@ -41,7 +48,19 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // (Đây là 2 hàm logic bạn đã viết, di chuyển từ SettingsScreen vào đây)
+    fun setDarkMode(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setDarkMode(enabled) }
+    }
+
+    fun setVibration(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setVibration(enabled) }
+    }
+
+    fun setKeepScreenOn(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setKeepScreenOn(enabled) }
+    }
+
+    // --- Helper Functions ---
     private fun startMonitoringService() {
         val context = getApplication<Application>()
         val intent = Intent(context, UsageMonitorService::class.java).apply {
