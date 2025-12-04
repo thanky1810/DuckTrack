@@ -1,3 +1,4 @@
+// FILE: MainActivity.kt
 package com.example.ducktrack
 
 import android.os.Build
@@ -47,13 +48,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             DuckTrackTheme {
+                // Toàn bộ logic điều hướng nằm trong này
                 AppRoot(googleSignInClient = googleSignInClient)
             }
         }
     }
 
     private fun setupLimitCheckWorker() {
-        // Worker chỉ đọc usage + DataStore + gửi notification -> không cần mạng
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
             .build()
@@ -70,5 +71,4 @@ class MainActivity : ComponentActivity() {
             checkWork
         )
     }
-
 }

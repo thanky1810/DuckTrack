@@ -1,61 +1,110 @@
 // FILE: utils/CsvExporter.kt
 package com.example.ducktrack.utils
 
+import android.content.ContentValues
 import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.example.ducktrack.ui.UserInfo
 import java.io.File
-import java.io.FileWriter
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
+
+// Model giữ nguyên
+data class TreeHistoryCsvItem(
+    val treeType: String,
+    val timestamp: Long,
+    val configParam: String,
+    val status: String
+)
+data class AppUsageCsvItem(val appName: String, val totalTimeInMonthMs: Long)
 
 object CsvExporter {
 
-    fun exportUserData(context: Context, userInfo: UserInfo): File? {
+    // Hàm tạo tên file
+    fun generateFileName(): String {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        return "ducktrack_report_$timeStamp.csv"
+    }
+
+    // CHỈ CÒN 1 HÀM DUY NHẤT: LƯU VÀO DOWNLOAD/DUCKTRACK
+    fun saveToDownloads(
+        context: Context,
+        userInfo: UserInfo,
+        weeklyTrees: List<TreeHistoryCsvItem>,
+        monthlyApps: List<AppUsageCsvItem>
+    ): String? {
+        val fileName = generateFileName()
+        val csvContent = buildCsvContent(userInfo, weeklyTrees, monthlyApps)
+
         return try {
-            // Tạo tên file dựa trên thời gian: ducktrack_export_20251204.csv
-            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "ducktrack_export_$timeStamp.csv"
-
-            // Lưu vào thư mục cache của app để dễ dàng chia sẻ mà không cần quyền Storage phức tạp
-            val file = File(context.cacheDir, fileName)
-            val writer = FileWriter(file)
-
-            // --- Ghi nội dung CSV ---
-            // 1. Header (Thêm BOM \uFEFF để Excel mở không bị lỗi font tiếng Việt)
-            writer.append("\uFEFF")
-            writer.append("Category,Key,Value\n")
-
-            // 2. Thông tin User
-            writer.append("Profile,Name,${userInfo.name}\n")
-            writer.append("Profile,Email,${userInfo.email}\n")
-            writer.append("Profile,Duck Name,${userInfo.duckName}\n")
-            writer.append("Profile,Provider,${userInfo.provider}\n")
-
-            val createdDate = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(userInfo.createdAt))
-            writer.append("Profile,Created At,$createdDate\n")
-
-            // 3. Thông tin Khu vườn (Thống kê cây)
-            if (userInfo.treeCounts.isEmpty()) {
-                writer.append("Garden,Status,Chưa trồng cây nào\n")
-            } else {
-                userInfo.treeCounts.forEach { (seedId, count) ->
-                    // Bạn có thể map seedId sang tên cây đẹp hơn nếu muốn
-                    writer.append("Garden,$seedId,$count\n")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+: Dùng MediaStore
+                val resolver = context.contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                    // Tự động tạo folder DuckTrack trong Download
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/DuckTrack")
                 }
+
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw Exception("Không thể tạo file MediaStore")
+
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(0xEF); outputStream.write(0xBB); outputStream.write(0xBF) // BOM
+                    outputStream.write(csvContent.toByteArray(Charsets.UTF_8))
+                }
+                "Đã lưu tại: Download/DuckTrack/$fileName"
+
+            } else {
+                // Android 9 trở xuống
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val appDir = File(downloadsDir, "DuckTrack")
+                if (!appDir.exists()) appDir.mkdirs()
+
+                val file = File(appDir, fileName)
+                FileOutputStream(file).use { outputStream ->
+                    outputStream.write(0xEF); outputStream.write(0xBB); outputStream.write(0xBF)
+                    outputStream.write(csvContent.toByteArray(Charsets.UTF_8))
+                }
+                "Đã lưu tại: ${file.absolutePath}"
             }
-
-            // 4. Tổng kết
-            val totalTrees = userInfo.treeCounts.values.sum()
-            writer.append("Garden,Total Trees,$totalTrees\n")
-
-            writer.flush()
-            writer.close()
-
-            file
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun buildCsvContent(userInfo: UserInfo, weeklyTrees: List<TreeHistoryCsvItem>, monthlyApps: List<AppUsageCsvItem>): String {
+        val sb = StringBuilder()
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+
+        sb.append("=== THÔNG TIN NGƯỜI DÙNG ===\n")
+        sb.append("Tên,Email,Vịt cưng,Ngày tạo\n")
+        val createdDate = dateFormat.format(Date(userInfo.createdAt))
+        sb.append("${userInfo.name},${userInfo.email},${userInfo.duckName},$createdDate\n\n")
+
+        sb.append("=== LỊCH SỬ TRỒNG CÂY (TUẦN NÀY) ===\n")
+        sb.append("Loại cây,Thời gian,Thông số (Config),Kết quả\n")
+        if (weeklyTrees.isEmpty()) sb.append("Chưa có dữ liệu trồng cây tuần này,,,\n")
+        else weeklyTrees.forEach { tree ->
+            val timeStr = dateFormat.format(Date(tree.timestamp))
+            sb.append("${tree.treeType},$timeStr,${tree.configParam},${tree.status}\n")
+        }
+        sb.append("\n")
+
+        sb.append("=== THỐNG KÊ SỬ DỤNG ĐIỆN THOẠI (30 NGÀY) ===\n")
+        sb.append("Tên Ứng Dụng,Thời Gian Sử Dụng\n")
+        if (monthlyApps.isEmpty()) sb.append("Không có dữ liệu usage stats,0\n")
+        else monthlyApps.forEach { app ->
+            val timeStr = String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(app.totalTimeInMonthMs), TimeUnit.MILLISECONDS.toMinutes(app.totalTimeInMonthMs) % 60, TimeUnit.MILLISECONDS.toSeconds(app.totalTimeInMonthMs) % 60)
+            sb.append("${app.appName},$timeStr\n")
+        }
+        return sb.toString()
     }
 }

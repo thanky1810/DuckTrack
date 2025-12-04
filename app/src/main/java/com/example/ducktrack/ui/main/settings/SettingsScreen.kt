@@ -1,14 +1,11 @@
-// FILE: SettingsScreen.kt
+// FILE: ui/main/settings/SettingsScreen.kt
 package com.example.ducktrack.ui.main.settings
 
-// ... (Giữ nguyên imports)
 import android.app.Activity
+import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,31 +37,29 @@ import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
-import android.content.Intent
-import androidx.core.content.FileProvider
 import java.io.File
-import android.content.Context
+
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToExportHistory: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
+    onNavigateToAbout: () -> Unit,
     authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext)
     )
 ) {
     val context = LocalContext.current
-    // Dùng màu cứng hoặc từ theme đều được vì Theme giờ luôn là Light
     val primaryColor = AppColors.TextGreen
 
     var userInfo by remember { mutableStateOf<UserInfo?>(null) }
     var linkedProviders by remember { mutableStateOf(authViewModel.getLinkedProviders()) }
 
-    // Đã xóa isDarkMode state
     val isVibration by settingsViewModel.isVibration.collectAsState()
     val isKeepScreenOn by settingsViewModel.isKeepScreenOn.collectAsState()
 
-    var showAboutUsDialog by remember { mutableStateOf(false) }
+
 
     LaunchedEffect(Unit) {
         authViewModel.loadUserInfo { info -> userInfo = info }
@@ -108,8 +103,6 @@ fun SettingsScreen(
         Text("Trải nghiệm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                // Đã xóa SettingSwitchRow "Chế độ Tối"
-
                 SettingSwitchRow("Rung khi hết giờ", "Rung điện thoại khi hoàn thành phiên", isVibration) { settingsViewModel.setVibration(it) }
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
                 SettingSwitchRow("Giữ màn hình sáng", "Không tắt màn hình khi đang tập trung", isKeepScreenOn) { settingsViewModel.setKeepScreenOn(it) }
@@ -121,21 +114,25 @@ fun SettingsScreen(
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
 
-                // --- SỬA ĐOẠN NÀY ---
-                SettingActionRow(Icons.Default.Download, "Xuất dữ liệu (Export)", "Tải về lịch sử cây trồng & task") {
-                    authViewModel.exportData(context,
-                        onSuccess = { file ->
-                            shareCsvFile(context, file)
-                        },
-                        onError = { errorMsg ->
-                            Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                // >>> ĐÃ SỬA: CHUYỂN HƯỚNG SANG TRANG LỊCH SỬ <<<
+                SettingActionRow(
+                    icon = Icons.Default.Download,
+                    title = "Xuất dữ liệu & Lịch sử",
+                    subtitle = "Tải về và quản lý các file báo cáo CSV"
+                ) {
+                    onNavigateToExportHistory()
                 }
-                // ---------------------
+                // >>> KẾT THÚC SỬA <<<
 
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                SettingActionRow(Icons.Default.Info, "Về chúng tôi", "Thông tin nhóm phát triển") { showAboutUsDialog = true }
+                SettingActionRow(
+                    icon = Icons.Default.Info,
+                    title = "Về chúng tôi",
+                    subtitle = "Thông tin nhóm phát triển"
+                ) {
+                    // Gọi hàm điều hướng thay vì show dialog
+                    onNavigateToAbout()
+                }
             }
         }
 
@@ -164,53 +161,7 @@ fun SettingsScreen(
         }
     }
 
-    // Dialog About Us
-    if (showAboutUsDialog) {
-        AlertDialog(
-            onDismissRequest = { showAboutUsDialog = false },
-            title = { Text("Về DuckTrack Team 🦆", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text("Phiên bản: 1.0.0 (Beta)")
-                    Spacer(Modifier.height(8.dp))
-                    Text("Nhóm phát triển:", fontWeight = FontWeight.Bold)
-                    Text("- Thân Văn Ký (Leader/Dev)")
-                    Text("- Vũ Trí Dũng (Dev)")
-                    Text("- Nguyễn Thị Hương Giang (Dev)")
-                    Spacer(Modifier.height(8.dp))
-                    Text("Sản phẩm được xây dựng nên để phục vụ báo cáo cuối học phần môn lập trình thiết bị di động...")
-                    Spacer(Modifier.height(8.dp))
-                    Text("Cảm ơn bạn đã sử dụng DuckTrack!")
-                }
-            },
-            confirmButton = { TextButton(onClick = { showAboutUsDialog = false }) { Text("Đóng") } },
-            containerColor = Color.White, shape = RoundedCornerShape(16.dp)
-        )
-    }
-}
 
-fun shareCsvFile(context: Context, file: File) {
-    try {
-        // Lưu ý: Cần cấu hình FileProvider trong AndroidManifest.xml (xem hướng dẫn Bước 4 bên dưới)
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.provider", // Authority phải khớp với Manifest
-            file
-        )
-
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/csv"
-            putExtra(Intent.EXTRA_SUBJECT, "DuckTrack Data Export")
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-
-        val chooser = Intent.createChooser(intent, "Lưu hoặc chia sẻ file CSV")
-        context.startActivity(chooser)
-    } catch (e: Exception) {
-        Toast.makeText(context, "Không thể chia sẻ file: ${e.message}", Toast.LENGTH_LONG).show()
-        e.printStackTrace()
-    }
 }
 
 // ... (Giữ nguyên các Composable phụ trợ: SettingSwitchRow, SettingActionRow, AccountLinkRow, MonitoringControlSection) ...

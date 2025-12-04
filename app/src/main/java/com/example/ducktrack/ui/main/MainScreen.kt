@@ -1,3 +1,4 @@
+// FILE: ui/main/MainScreen.kt
 package com.example.ducktrack.ui.main
 
 import android.annotation.SuppressLint
@@ -55,9 +56,12 @@ fun MainScreen(
     hasPermission: Boolean,
     onLogout: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
-    // NHẬN SHARED VIEWMODEL và CALLBACK MỚI
     promodoroViewModel: PromodoroViewModel,
-    onNavigateToFocus: () -> Unit
+    onNavigateToFocus: () -> Unit,
+
+    // >>> THÊM 2 CALLBACK ĐIỀU HƯỚNG MỚI <<<
+    onNavigateToExportHistory: () -> Unit,
+    onNavigateToAbout: () -> Unit
 ) {
     val bottomNavController = rememberNavController()
     var currentPageTitle by remember { mutableStateOf("Trang chủ") }
@@ -121,7 +125,6 @@ fun MainScreen(
                     TasksScreen()
                 }
 
-                // TAB POMODORO: Dùng Shared ViewModel và truyền callback
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Pomodoro + currentRoute) {
@@ -138,7 +141,7 @@ fun MainScreen(
                         GardenScreen(
                             onNavigateToPomodoro = {
                                 bottomNavController.navigate(Routes.Pomodoro) {
-                                    popUpTo(Routes.Dashboard) { saveState = false }
+                                    popUpTo(Routes.Dashboard)
                                     launchSingleTop = true
                                     restoreState = false
                                 }
@@ -152,11 +155,12 @@ fun MainScreen(
                     LaunchedEffect(Unit) { headerNote = null }
                     SettingsScreen(
                         onLogout = onLogout,
-                        // --- ĐÃ SỬA LỖI TẠI ĐÂY ---
-                        // Truyền callback để SettingsScreen có thể gọi mainNavController điều hướng ra UserProfile
                         onNavigateToProfile = {
                             mainNavController.navigate(Routes.UserProfile)
-                        }
+                        },
+                        // >>> TRUYỀN CALLBACK XUỐNG SETTINGS SCREEN <<<
+                        onNavigateToExportHistory = onNavigateToExportHistory,
+                        onNavigateToAbout = onNavigateToAbout
                     )
                 }
             }
@@ -164,6 +168,7 @@ fun MainScreen(
     }
 }
 
+// ... (Phần DashboardScreen và các Composable con giữ nguyên như cũ, không thay đổi) ...
 /**
  * Màn hình Dashboard: Hiển thị Biểu đồ, Tổng thời gian, Danh sách App
  */
@@ -188,7 +193,6 @@ private fun DashboardScreen(
         mutableStateOf(PermissionHelper.hasOverlayPermission(context))
     }
 
-    // Nếu chưa có quyền Usage Stats -> Hiển thị màn hình xin quyền
     if (!hasPermission) {
         LaunchedEffect(Unit) { onHeaderNoteChange(null) }
         Column(
@@ -207,7 +211,6 @@ private fun DashboardScreen(
         return
     }
 
-    // Đã có quyền -> Load dữ liệu mỗi khi ngày thay đổi
     LaunchedEffect(vm.selectedDateMs) {
         vm.load()
     }
@@ -218,7 +221,6 @@ private fun DashboardScreen(
     val total = vm.totalMs.toFloat().coerceAtLeast(1f)
     val slices = vm.usages.take(6).map { it.label to (it.totalForegroundMs / total) }
 
-    // Dialog xin quyền Overlay
     if (showOverlayPermissionDialog) {
         OverlayPermissionDialog(
             onDismiss = { showOverlayPermissionDialog = false },
@@ -229,9 +231,7 @@ private fun DashboardScreen(
         )
     }
 
-    // Giao diện chính
     Column(modifier = Modifier.fillMaxSize()) {
-        // Phần Header cố định (Nút chuyển ngày + Biểu đồ)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -240,7 +240,6 @@ private fun DashboardScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // --- NÚT CHUYỂN NGÀY ---
             DayPagerRow(
                 currentDateText = vm.getDateText(),
                 onPrev = { vm.previousDay() },
@@ -284,7 +283,6 @@ private fun DashboardScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // Danh sách App (Cuộn được)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -316,7 +314,6 @@ private fun DashboardScreen(
         }
     }
 
-    // Dialog đặt giới hạn
     if (showLimitDialog && editingApp != null && editingKey != null) {
         TimeLimitDialog(
             initialMinutes = editingCurrentLimitMinutes,
@@ -358,7 +355,6 @@ private fun Pill(
     }
 }
 
-// Hàng chứa nút chuyển ngày
 @Composable
 private fun DayPagerRow(
     currentDateText: String,
@@ -371,18 +367,16 @@ private fun DayPagerRow(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. Nút Trái (Đặt trong Box để chiếm không gian cố định bên trái)
         Box(
-            modifier = Modifier.weight(1f), // Chiếm 1 phần
-            contentAlignment = Alignment.CenterStart // Căn trái
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
         ) {
             RoundIconButton(icon = Icons.Filled.ChevronLeft, onClick = onPrev)
         }
 
-        // 2. Chữ Ngày Tháng (Đặt trong Box ở giữa, chiếm phần lớn không gian)
         Box(
-            modifier = Modifier.weight(2f), // Chiếm 2 phần (rộng gấp đôi 2 bên để chữ không bị chật)
-            contentAlignment = Alignment.Center // Căn giữa tuyệt đối
+            modifier = Modifier.weight(2f),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = currentDateText,
@@ -392,16 +386,13 @@ private fun DayPagerRow(
             )
         }
 
-        // 3. Nút Phải (Đặt trong Box bên phải)
         Box(
-            modifier = Modifier.weight(1f), // Chiếm 1 phần (bằng nút trái)
-            contentAlignment = Alignment.CenterEnd // Căn phải
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterEnd
         ) {
             if (isNextEnabled) {
                 RoundIconButton(icon = Icons.Filled.ChevronRight, onClick = onNext)
             } else {
-                // Quan trọng: Kể cả khi ẩn nút, vẫn phải render một cái hộp rỗng cùng kích thước
-                // để giữ cho chữ ở giữa không bị lệch.
                 Spacer(Modifier.size(40.dp))
             }
         }
