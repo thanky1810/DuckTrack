@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.example.ducktrack.ui.main.tasks.TaskStats
 
 // Model giữ nguyên
 data class TreeHistoryCsvItem(
@@ -36,43 +37,40 @@ object CsvExporter {
         context: Context,
         userInfo: UserInfo,
         weeklyTrees: List<TreeHistoryCsvItem>,
-        monthlyApps: List<AppUsageCsvItem>
+        monthlyApps: List<AppUsageCsvItem>,
+        taskStats: TaskStats // <--- THÊM MỚI
     ): String? {
         val fileName = generateFileName()
-        val csvContent = buildCsvContent(userInfo, weeklyTrees, monthlyApps)
+        // Truyền taskStats xuống hàm build
+        val csvContent = buildCsvContent(userInfo, weeklyTrees, monthlyApps, taskStats)
 
         return try {
+            // ... (Giữ nguyên logic lưu file MediaStore/File cũ)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+: Dùng MediaStore
                 val resolver = context.contentResolver
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                    // Tự động tạo folder DuckTrack trong Download
                     put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/DuckTrack")
                 }
-
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
                     ?: throw Exception("Không thể tạo file MediaStore")
-
                 resolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(0xEF); outputStream.write(0xBB); outputStream.write(0xBF) // BOM
+                    outputStream.write(0xEF); outputStream.write(0xBB); outputStream.write(0xBF)
                     outputStream.write(csvContent.toByteArray(Charsets.UTF_8))
                 }
-                "Đã lưu tại: Download/DuckTrack/$fileName"
-
+                // Trả về đường dẫn tương đối để hiển thị (vì Android 10+ không có path thật dễ dàng)
+                "Download/DuckTrack/$fileName"
             } else {
-                // Android 9 trở xuống
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 val appDir = File(downloadsDir, "DuckTrack")
                 if (!appDir.exists()) appDir.mkdirs()
-
                 val file = File(appDir, fileName)
                 FileOutputStream(file).use { outputStream ->
                     outputStream.write(0xEF); outputStream.write(0xBB); outputStream.write(0xBF)
                     outputStream.write(csvContent.toByteArray(Charsets.UTF_8))
                 }
-                "Đã lưu tại: ${file.absolutePath}"
+                file.absolutePath
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -80,7 +78,13 @@ object CsvExporter {
         }
     }
 
-    private fun buildCsvContent(userInfo: UserInfo, weeklyTrees: List<TreeHistoryCsvItem>, monthlyApps: List<AppUsageCsvItem>): String {
+    // SỬA HÀM NÀY: Thêm logic ghi thống kê Task
+    private fun buildCsvContent(
+        userInfo: UserInfo,
+        weeklyTrees: List<TreeHistoryCsvItem>,
+        monthlyApps: List<AppUsageCsvItem>,
+        taskStats: TaskStats // <--- THÊM MỚI
+    ): String {
         val sb = StringBuilder()
         val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
 
@@ -89,7 +93,14 @@ object CsvExporter {
         val createdDate = dateFormat.format(Date(userInfo.createdAt))
         sb.append("${userInfo.name},${userInfo.email},${userInfo.duckName},$createdDate\n\n")
 
+        // --- THÊM ĐOẠN NÀY ---
+        sb.append("=== THỐNG KÊ NHIỆM VỤ ===\n")
+        sb.append("Tổng số nhiệm vụ,Đã hoàn thành,Chưa hoàn thành\n")
+        sb.append("${taskStats.total},${taskStats.completed},${taskStats.pending}\n\n")
+        // ---------------------
+
         sb.append("=== LỊCH SỬ TRỒNG CÂY (TUẦN NÀY) ===\n")
+        // ... (Giữ nguyên phần còn lại)
         sb.append("Loại cây,Thời gian,Thông số (Config),Kết quả\n")
         if (weeklyTrees.isEmpty()) sb.append("Chưa có dữ liệu trồng cây tuần này,,,\n")
         else weeklyTrees.forEach { tree ->

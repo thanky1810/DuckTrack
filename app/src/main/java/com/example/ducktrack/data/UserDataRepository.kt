@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import com.example.ducktrack.ui.main.tasks.TaskStats
 
 class UserDataRepository(private val userDao: UserDao) {
 
@@ -210,5 +211,25 @@ class UserDataRepository(private val userDao: UserDao) {
         val cal = java.util.Calendar.getInstance().apply { timeInMillis = time }
         cal.set(java.util.Calendar.HOUR_OF_DAY, 23); cal.set(java.util.Calendar.MINUTE, 59); cal.set(java.util.Calendar.SECOND, 59); cal.set(java.util.Calendar.MILLISECOND, 999)
         return cal.timeInMillis
+    }
+
+    suspend fun getTaskStats(): TaskStats {
+        val uid = auth.currentUser?.uid ?: return TaskStats()
+        try {
+            val snapshot = firestore.collection("users").document(uid)
+                .collection("tasks")
+                .get()
+                .await()
+
+            val total = snapshot.size()
+            // Đếm số document có trường 'completed' là true
+            val completed = snapshot.documents.count { it.getBoolean("completed") == true }
+            val pending = total - completed
+
+            return TaskStats(total, completed, pending)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return TaskStats()
+        }
     }
 }
