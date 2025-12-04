@@ -1,4 +1,3 @@
-// FILE: TasksViewModel.kt
 package com.example.ducktrack.ui.main.tasks
 
 import android.app.Application
@@ -18,15 +17,16 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedDateMs = MutableStateFlow(System.currentTimeMillis())
     val selectedDateMs: StateFlow<Long> = _selectedDateMs.asStateFlow()
 
-    // Sử dụng TodoTask thay vì Task
+    // --- 1. LẤY DỮ LIỆU TỪ CLOUD ---
     val tasks: StateFlow<List<TodoTask>> = _selectedDateMs.flatMapLatest { date ->
-        repository.getTasksStream(date)
+        repository.getTasksStream(date) // Hàm này giờ đã trỏ về Firestore
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
+    // ... (Giữ nguyên dateText, isToday...)
     val dateText: StateFlow<String> = _selectedDateMs.map { ms ->
         val date = Date(ms)
         val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", Locale("vi", "VN"))
@@ -54,7 +54,6 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
         _selectedDateMs.value = cal.timeInMillis
         _selectedTaskIds.value = emptySet()
     }
-
     fun nextDay() {
         val cal = Calendar.getInstance().apply { timeInMillis = _selectedDateMs.value }
         cal.add(Calendar.DAY_OF_YEAR, 1)
@@ -64,6 +63,7 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onNewTaskTextChange(text: String) { _newTaskText.value = text }
 
+    // --- 2. THÊM TASK LÊN CLOUD ---
     fun onAddTask() {
         val text = _newTaskText.value
         if (text.isNotBlank()) {
@@ -78,30 +78,37 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
         if (_selectedTaskIds.value.isNotEmpty()) onToggleSelection(task.id)
         else onToggleComplete(task)
     }
-
     fun onTaskLongPress(task: TodoTask) { onToggleSelection(task.id) }
     fun onCloseSelectionMode() { _selectedTaskIds.value = emptySet() }
 
+    // --- 3. XÓA TASK TRÊN CLOUD ---
     fun onDeleteSelected() {
         viewModelScope.launch {
-            repository.deleteMultipleTasks(_selectedTaskIds.value)
+            repository.deleteMultipleTasksCloud(_selectedTaskIds.value)
             _selectedTaskIds.value = emptySet()
         }
     }
 
+    // --- 4. GHIM TASK TRÊN CLOUD ---
     fun onPinSelected() {
         viewModelScope.launch {
-            repository.pinMultipleTasks(_selectedTaskIds.value)
+            repository.pinMultipleTasksCloud(_selectedTaskIds.value)
             _selectedTaskIds.value = emptySet()
         }
     }
 
+    // --- 5. BỎ GHIM TRÊN CLOUD ---
     fun onUnpinClick(task: TodoTask) {
-        viewModelScope.launch { repository.updateTaskInCloud(task.copy(isPinned = false)) }
+        viewModelScope.launch {
+            repository.updateTaskInCloud(task.copy(isPinned = false))
+        }
     }
 
+    // --- 6. TICK HOÀN THÀNH TRÊN CLOUD ---
     private fun onToggleComplete(task: TodoTask) {
-        viewModelScope.launch { repository.updateTaskInCloud(task.copy(isCompleted = !task.isCompleted)) }
+        viewModelScope.launch {
+            repository.updateTaskInCloud(task.copy(isCompleted = !task.isCompleted))
+        }
     }
 
     private fun onToggleSelection(taskId: String) {
@@ -114,6 +121,8 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onEditClick(task: TodoTask) { _taskToEdit.value = task }
     fun onCancelEdit() { _taskToEdit.value = null }
+
+    // --- 7. SỬA NỘI DUNG TRÊN CLOUD ---
     fun onConfirmEdit(newDescription: String) {
         _taskToEdit.value?.let { task ->
             if (newDescription.isNotBlank() && newDescription != task.description) {

@@ -1,206 +1,176 @@
-// FILE: TasksScreen.kt
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-
 package com.example.ducktrack.ui.main.tasks
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
-import java.util.Date
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TasksScreen(
     viewModel: TasksViewModel = viewModel()
 ) {
-    val screenBgColor = Color(0xFFFFFFFF)
-    val titleColor = Color(0xFF62B26A)
-    val selectionColor = Color(0xFFD0E3FF)
-    val taskTextColor = Color(0xFF424242)
-    val pinColor = Color(0xFF62B26A)
-
+    // --- STATE ---
     val tasks by viewModel.tasks.collectAsState()
+    val dateText by viewModel.dateText.collectAsState()
+    val isToday by viewModel.isToday.collectAsState()
     val selectedTaskIds by viewModel.selectedTaskIds.collectAsState()
     val newTaskText by viewModel.newTaskText.collectAsState()
     val taskToEdit by viewModel.taskToEdit.collectAsState()
-    val dateText by viewModel.dateText.collectAsState()
-    val isToday by viewModel.isToday.collectAsState()
 
-    val isInSelectionMode = selectedTaskIds.isNotEmpty()
+    val selectionMode = selectedTaskIds.isNotEmpty()
+    val focusManager = LocalFocusManager.current
+    val interactionSource = remember { MutableInteractionSource() }
 
-    Scaffold(
-        containerColor = screenBgColor,
-    ) { innerPadding ->
+    // --- DIALOG ---
+    if (taskToEdit != null) {
+        EditTaskDialog(
+            task = taskToEdit!!,
+            onDismiss = { viewModel.onCancelEdit() },
+            onConfirm = { viewModel.onConfirmEdit(it) }
+        )
+    }
 
-        taskToEdit?.let { task ->
-            EditTaskDialog(
-                task = task,
-                onDismiss = viewModel::onCancelEdit,
-                onConfirm = { newText -> viewModel.onConfirmEdit(newText) }
+    // --- UI CHÍNH ---
+    // Sử dụng Column thay vì Scaffold để bỏ qua TopBar mặc định,
+    // vì MainScreen đã có Header xanh rồi.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .clickable(interactionSource = interactionSource, indication = null) {
+                focusManager.clearFocus()
+            }
+            .padding(horizontal = 16.dp) // Padding chung cho toàn màn hình
+    ) {
+
+        // 1. TIÊU ĐỀ "Danh Sách Nhiệm Vụ" (Màu xanh)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Danh Sách Nhiệm Vụ",
+            color = Color(0xFF62B26A), // Màu xanh theo ảnh
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. THANH ĐIỀU HƯỚNG NGÀY (Nền xanh nhạt)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF1F8E9), RoundedCornerShape(12.dp)) // Nền xanh nhạt giống ảnh
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(onClick = { viewModel.previousDay() }, modifier = Modifier.size(24.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Trước", tint = Color(0xFF33691E))
+            }
+            Text(
+                text = dateText,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF33691E) // Chữ xanh đậm
             )
+            IconButton(onClick = { viewModel.nextDay() }, modifier = Modifier.size(24.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Sau", tint = Color(0xFF33691E))
+            }
         }
 
-        // --- THAY ĐỔI CHÍNH Ở ĐÂY ---
-        // Sử dụng Column để xếp chồng theo chiều dọc, không đè lên nhau
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // PHẦN 1: Nội dung chính (Tiêu đề, Điều hướng, Danh sách)
-            // Sử dụng weight(1f) để chiếm không gian phía trên
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Danh Sách Nhiệm Vụ",
-                    color = titleColor,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+        // 3. Ô NHẬP LIỆU (Nằm ngay dưới ngày, giống ảnh ban đầu)
+        if (!selectionMode) {
+            TaskInput(
+                text = newTaskText,
+                onTextChange = { viewModel.onNewTaskTextChange(it) },
+                onAddClick = { viewModel.onAddTask() },
+                focusManager = focusManager
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
-                Spacer(modifier = Modifier.height(12.dp))
+        // 4. DANH SÁCH & VỊT (Chiếm phần còn lại)
+        Box(modifier = Modifier.weight(1f)) {
+            if (tasks.isEmpty()) {
+                // LOGIC: Nếu KHÔNG có task -> Hiện Vịt và Text
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom // Đẩy xuống đáy như ảnh
+                ) {
+                    Text(
+                        text = if(isToday) "Hôm nay chưa có nhiệm vụ nào" else "Chưa có nhiệm vụ nào",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.duck_celebrate),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(150.dp)
+                            .padding(bottom = 32.dp)
+                    )
+                }
+            } else {
+                // LOGIC: Nếu CÓ task -> Hiện List, ẨN Vịt
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp) // Padding để không bị che bởi nút menu nếu có
+                ) {
+                    items(tasks, key = { it.id }) { task ->
+                        TaskItem(
+                            task = task,
+                            selectionColor = Color(0xFFE6F8E8),
+                            textColor = if (task.isCompleted) Color.Gray else Color.Black,
+                            pinColor = Color(0xFF62B26A),
+                            isSelected = selectedTaskIds.contains(task.id),
+                            onClick = { viewModel.onTaskClick(task) },
+                            onLongPress = { viewModel.onTaskLongPress(task) },
+                            onPinClick = { viewModel.onUnpinClick(task) },
+                            onEditClick = { viewModel.onEditClick(task) }
+                        )
+                    }
+                }
+            }
 
-                TaskDateNavigator(
-                    dateText = dateText,
-                    onPrev = { viewModel.previousDay() },
-                    onNext = { viewModel.nextDay() }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
+            // 5. MENU KHI CHỌN TASK (Hiện đè ở dưới cùng)
+            if (selectionMode) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min)
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
                 ) {
-                    if (isInSelectionMode) {
-                        SelectionActionRow(
-                            selectedCount = selectedTaskIds.size,
-                            onClose = viewModel::onCloseSelectionMode,
-                            onDelete = viewModel::onDeleteSelected,
-                            onPin = viewModel::onPinSelected
-                        )
-                    } else {
-                        AddTaskRow(
-                            newTaskText = newTaskText,
-                            onNewTaskTextChange = viewModel::onNewTaskTextChange,
-                            onAddTask = viewModel::onAddTask
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                if (tasks.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = if(isToday) "Hôm nay chưa có nhiệm vụ nào" else "Ngày này không có nhiệm vụ",
-                            color = Color.Gray,
-                            fontFamily = FontFamily.SansSerif
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        // Giảm padding bottom vì không còn bị ảnh che nữa
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(
-                            items = tasks,
-                            key = { it.id }
-                        ) { task ->
-                            val isSelected = task.id in selectedTaskIds
-                            TaskItem(
-                                modifier = Modifier.animateItem(),
-                                task = task,
-                                isSelected = isSelected,
-                                onClick = { viewModel.onTaskClick(task) },
-                                onLongPress = { viewModel.onTaskLongPress(task) },
-                                onPinClick = { viewModel.onUnpinClick(task) },
-                                onEditClick = { viewModel.onEditClick(task) },
-                                selectionColor = selectionColor,
-                                textColor = taskTextColor,
-                                pinColor = pinColor
-                            )
-                        }
-                    }
+                    TaskActionRows(
+                        onDelete = { viewModel.onDeleteSelected() },
+                        onPin = { viewModel.onPinSelected() }
+                    )
                 }
             }
-
-            // PHẦN 2: Hình con vịt nằm cố định ở dưới cùng
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp), // Thêm chút khoảng cách
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.duck_celebrate),
-                    contentDescription = "Con Vịt Nền",
-                    // Có thể điều chỉnh kích thước ở đây nếu muốn
-                    modifier = Modifier.size(160.dp)
-                )
-            }
-        }
-    }
-}
-
-// (Giữ nguyên Composable TaskDateNavigator bên dưới)
-@Composable
-fun TaskDateNavigator(
-    dateText: String,
-    onPrev: () -> Unit,
-    onNext: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFF1F8E9), RoundedCornerShape(12.dp))
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        IconButton(onClick = onPrev) {
-            Icon(Icons.Filled.ChevronLeft, null, tint = Color(0xFF33691E))
-        }
-        Text(
-            text = dateText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF33691E)
-        )
-        IconButton(onClick = onNext) {
-            Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFF33691E))
         }
     }
 }
