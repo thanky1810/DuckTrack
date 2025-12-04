@@ -32,6 +32,7 @@ import com.example.ducktrack.ui.main.ViewModelFactory
 import com.example.ducktrack.ui.main.promodoro.FocusModeScreen
 import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
 import com.example.ducktrack.ui.main.settings.AboutUsScreen // <--- IMPORT MỚI
+import com.example.ducktrack.ui.main.settings.AchievementsScreen
 import com.example.ducktrack.ui.main.settings.ExportHistoryScreen
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.settings.UserProfileScreen
@@ -143,7 +144,9 @@ fun AppRoot(
                         // Callback mở màn hình Lịch sử Xuất file
                         onNavigateToExportHistory = { nav.navigate(Routes.ExportHistory) },
                         // Callback mở màn hình Về chúng tôi (About Us)
-                        onNavigateToAbout = { nav.navigate(Routes.AboutUs) }
+                        onNavigateToAbout = { nav.navigate(Routes.AboutUs) },
+                        onNavigateToAchievements = { nav.navigate(Routes.Achievements) }
+
                     )
                 }
 
@@ -155,6 +158,14 @@ fun AppRoot(
                 // --- MÀN HÌNH LỊCH SỬ XUẤT FILE ---
                 composable(Routes.ExportHistory) {
                     ExportHistoryScreen(
+                        onBack = { nav.popBackStack() }
+                    )
+                }
+
+
+                // --- MÀN HÌNH THÀNH TỰU (MỚI) ---
+                composable(Routes.Achievements) {
+                    AchievementsScreen(
                         onBack = { nav.popBackStack() }
                     )
                 }

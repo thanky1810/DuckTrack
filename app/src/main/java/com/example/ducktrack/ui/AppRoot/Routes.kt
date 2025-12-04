@@ -22,4 +22,6 @@ object Routes {
     const val Garden = "garden"
     const val Settings = "settings"
     const val AboutUs = "about_us"
+
+    const val Achievements = "achievements"
 }

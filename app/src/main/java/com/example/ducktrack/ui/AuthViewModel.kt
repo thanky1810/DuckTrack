@@ -40,7 +40,8 @@ data class UserInfo(
     val photoBase64: String?,
     val duckName: String = "Vịt con",
     val createdAt: Long = 0L,
-    val treeCounts: Map<String, Int> = emptyMap()
+    val treeCounts: Map<String, Int> = emptyMap(),
+    val selectedAchievementId: String? = null
 )
 
 class AuthViewModel(context: Context) : ViewModel() {
@@ -92,6 +93,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val name = user.displayName ?: user.email ?: "Người dùng"
                 val email = user.email ?: "Không có email"
                 val createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+                var selectedAchieveId: String? = null
 
                 var avatarStr = _cachedBase64Avatar
                 var duckName = "Vịt con"
@@ -104,6 +106,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                         avatarStr = doc.getString("avatarBase64")
                         _cachedBase64Avatar = avatarStr
                         doc.getString("duckName")?.let { duckName = it }
+                        selectedAchieveId = doc.getString("selectedAchievementId")
                     }
 
                     val gardenSnapshot = firestore.collection("users").document(user.uid)
@@ -124,7 +127,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val stats = repository.getTaskStats()
                 _taskStats.value = stats
 
-                onLoaded(UserInfo(name, email, savedProvider, avatarStr, duckName, createdAt, treeCounts))
+                onLoaded(UserInfo(name, email, savedProvider, avatarStr, duckName, createdAt, treeCounts, selectedAchieveId))
             }
         }
     }
