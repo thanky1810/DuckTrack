@@ -1,4 +1,4 @@
-// FILE: AppRoot.kt
+// FILE: ui/AppRoot/AppRoot.kt
 package com.example.ducktrack.ui.AppRoot
 
 import android.content.Context
@@ -23,7 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.data.LimitsStore
-import com.example.ducktrack.data.UserPreferences // Import mới
+import com.example.ducktrack.data.UserPreferences
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
@@ -31,6 +31,8 @@ import com.example.ducktrack.ui.main.MainScreen
 import com.example.ducktrack.ui.main.ViewModelFactory
 import com.example.ducktrack.ui.main.promodoro.FocusModeScreen
 import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
+import com.example.ducktrack.ui.main.settings.AboutUsScreen // <--- IMPORT MỚI
+import com.example.ducktrack.ui.main.settings.ExportHistoryScreen
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.settings.UserProfileScreen
 import com.example.ducktrack.ui.onboarding.OnboardingScreen
@@ -43,7 +45,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-// ... (Giữ nguyên AuthViewModelFactory và checkUsageAccessPermission) ...
 class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
@@ -69,11 +70,9 @@ fun AppRoot(
 
     // --- SETUP DATA ---
     val limitsStore = remember { LimitsStore(appContext) }
-    val userPrefs = remember { UserPreferences(appContext) } // Khởi tạo UserPreferences
+    val userPrefs = remember { UserPreferences(appContext) }
 
     val isOnboardingCompleted by limitsStore.onboardingCompleted.collectAsState(initial = null)
-
-    // --- LẤY TRẠNG THÁI DARK MODE ---
 
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(appContext))
     val promodoroViewModel: PromodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
@@ -81,7 +80,6 @@ fun AppRoot(
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
     val hasPermission = checkUsageAccessPermission(appContext)
 
-    // --- TRUYỀN DARK MODE VÀO THEME ---
     DuckTrackTheme {
         Scaffold { innerPadding ->
             NavHost(
@@ -89,8 +87,7 @@ fun AppRoot(
                 startDestination = Routes.Splash,
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
-                // ... (Các route Splash, Onboarding, Home, Login, Permission giữ nguyên như cũ) ...
-
+                // --- SPLASH ---
                 composable(Routes.Splash) {
                     SplashScreen(
                         isDataReady = (isOnboardingCompleted != null),
@@ -102,19 +99,27 @@ fun AppRoot(
                         }
                     )
                 }
+
+                // --- ONBOARDING ---
                 composable(Routes.Onboarding) {
                     OnboardingScreen(onFinish = {
                         CoroutineScope(Dispatchers.IO).launch { limitsStore.saveOnboardingCompleted() }
                         nav.navigate(Routes.Home) { popUpTo(Routes.Onboarding) { inclusive = true } }
                     })
                 }
+
+                // --- HOME (INTRO) ---
                 composable(Routes.Home) { introduceScreen(onGoLogin = { nav.navigate(Routes.Login) }) }
+
+                // --- LOGIN ---
                 composable(Routes.Login) {
                     LoginScreen(googleSignInClient = googleSignInClient, onLogin = {
                         if (checkUsageAccessPermission(appContext)) nav.navigate(Routes.Main) { popUpTo(Routes.Home) { inclusive = true } }
                         else nav.navigate(Routes.Permission) { popUpTo(Routes.Home) { inclusive = true } }
                     })
                 }
+
+                // --- PERMISSION ---
                 composable(Routes.Permission) {
                     PermissionScreen(
                         onGoToSettings = { try { activityContext.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {} },
@@ -134,13 +139,32 @@ fun AppRoot(
                             nav.navigate(Routes.Home) { popUpTo(Routes.Main) { inclusive = true } }
                         },
                         promodoroViewModel = promodoroViewModel,
-                        onNavigateToFocus = { nav.navigate(Routes.FocusMode) }
+                        onNavigateToFocus = { nav.navigate(Routes.FocusMode) },
+                        // Callback mở màn hình Lịch sử Xuất file
+                        onNavigateToExportHistory = { nav.navigate(Routes.ExportHistory) },
+                        // Callback mở màn hình Về chúng tôi (About Us)
+                        onNavigateToAbout = { nav.navigate(Routes.AboutUs) }
                     )
                 }
 
+                // --- CÁC MÀN HÌNH CON ---
                 composable(Routes.FocusMode) { FocusModeScreen(viewModel = promodoroViewModel, onExit = { nav.popBackStack() }) }
 
                 composable(Routes.UserProfile) { UserProfileScreen(onBack = { nav.popBackStack() }) }
+
+                // --- MÀN HÌNH LỊCH SỬ XUẤT FILE ---
+                composable(Routes.ExportHistory) {
+                    ExportHistoryScreen(
+                        onBack = { nav.popBackStack() }
+                    )
+                }
+
+                // --- MÀN HÌNH VỀ CHÚNG TÔI (ABOUT US) ---
+                composable(Routes.AboutUs) {
+                    AboutUsScreen(
+                        onBack = { nav.popBackStack() }
+                    )
+                }
             }
         }
     }
