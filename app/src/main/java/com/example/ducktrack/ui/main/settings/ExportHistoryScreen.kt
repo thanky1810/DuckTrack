@@ -1,4 +1,3 @@
-// FILE: ui/main/settings/ExportHistoryScreen.kt
 package com.example.ducktrack.ui.main.settings
 
 import android.widget.Toast
@@ -6,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -48,7 +46,8 @@ fun ExportHistoryScreen(
     val performExport = {
         authViewModel.exportData(context,
             onSuccess = { path ->
-                Toast.makeText(context, "Xuất thành công!", Toast.LENGTH_SHORT).show()
+                // Chỉ hiện thông báo thành công và cập nhật list, KHÔNG hiện popup chia sẻ nữa
+                Toast.makeText(context, "Xuất thành công! File đã lưu vào máy.", Toast.LENGTH_SHORT).show()
                 exportViewModel.onExportSuccess(context, path)
             },
             onError = { err -> Toast.makeText(context, err, Toast.LENGTH_SHORT).show() }
@@ -88,7 +87,6 @@ fun ExportHistoryScreen(
             if (latestItem != null) {
                 LatestExportCard(
                     item = latestItem!!,
-                    onShare = { exportViewModel.shareFile(context, latestItem!!) },
                     onReExport = { performExport() }
                 )
             }
@@ -110,10 +108,7 @@ fun ExportHistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(historyList) { item ->
-                        HistoryItemRow(
-                            item = item,
-                            onShare = { exportViewModel.shareFile(context, item) }
-                        )
+                        HistoryItemRow(item = item)
                     }
                 }
             }
@@ -121,9 +116,9 @@ fun ExportHistoryScreen(
     }
 }
 
-// UI: Card hiển thị file mới nhất
+// UI: Card hiển thị file mới nhất (Đã xóa nút Share)
 @Composable
-fun LatestExportCard(item: HistoryItem, onShare: () -> Unit, onReExport: () -> Unit) {
+fun LatestExportCard(item: HistoryItem, onReExport: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,40 +135,27 @@ fun LatestExportCard(item: HistoryItem, onShare: () -> Unit, onReExport: () -> U
             Spacer(Modifier.height(12.dp))
 
             Text(item.fileName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("Đường dẫn: ...${item.filePath.takeLast(30)}", fontSize = 12.sp, color = Color.Gray)
+            Text("Đường dẫn: ...${item.filePath.takeLast(35)}", fontSize = 12.sp, color = Color.Gray)
 
             Spacer(Modifier.height(16.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Nút Chia sẻ
-                OutlinedButton(
-                    onClick = onShare,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1976D2))
-                ) {
-                    Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Chia sẻ")
-                }
-
-                // Nút Tải lại (Tạo mới)
-                Button(
-                    onClick = onReExport,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen)
-                ) {
-                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Tải lại")
-                }
+            // Chỉ còn nút Tải lại (Cho full width nhìn cho đẹp)
+            Button(
+                onClick = onReExport,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen)
+            ) {
+                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Tải lại file mới")
             }
         }
     }
 }
 
-// UI: Một dòng trong lịch sử
+// UI: Một dòng trong lịch sử (Đã xóa nút Share)
 @Composable
-fun HistoryItemRow(item: HistoryItem, onShare: () -> Unit) {
+fun HistoryItemRow(item: HistoryItem) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     val prettyPath = item.filePath.replace("/storage/emulated/0", "Bộ nhớ trong")
 
@@ -200,9 +182,7 @@ fun HistoryItemRow(item: HistoryItem, onShare: () -> Unit) {
                 Text(prettyPath, fontSize = 10.sp, color = Color.LightGray, fontStyle = FontStyle.Italic, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
 
-            IconButton(onClick = onShare) {
-                Icon(Icons.Default.Share, null, tint = AppColors.TextGreen)
-            }
+            // Đã xóa IconButton Share ở đây
         }
     }
 }

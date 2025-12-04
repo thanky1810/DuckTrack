@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
+
 class ExportViewModel : ViewModel() {
 
     private val _historyList = MutableStateFlow<List<HistoryItem>>(emptyList())
@@ -39,22 +40,37 @@ class ExportViewModel : ViewModel() {
     fun shareFile(context: Context, item: HistoryItem) {
         try {
             val file = File(item.filePath)
-            // Vì bỏ check exists nên cứ thử share, nếu lỗi thì catch
+
+            // 1. KIỂM TRA FILE CÓ TỒN TẠI KHÔNG
+            if (!file.exists()) {
+                Toast.makeText(context, "File không tồn tại! Hãy thử xuất lại.", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // 2. TẠO URI AN TOÀN VỚI FILEPROVIDER
             val uri = FileProvider.getUriForFile(
                 context,
-                "${context.packageName}.provider",
+                "${context.packageName}.provider", // Phải khớp với authorities trong Manifest
                 file
             )
 
+            // 3. TẠO INTENT CHIA SẺ
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/csv"
+                type = "text/csv" // Định dạng file là CSV
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Báo cáo DuckTrack: ${item.fileName}")
+                // Thêm cờ cấp quyền đọc cho ứng dụng nhận
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                // Tiêu đề và nội dung mặc định (tùy chọn)
+                putExtra(Intent.EXTRA_SUBJECT, "Báo cáo DuckTrack: ${item.fileName}")
+                putExtra(Intent.EXTRA_TEXT, "Gửi bạn file báo cáo thống kê từ DuckTrack.")
             }
-            context.startActivity(Intent.createChooser(shareIntent, "Chia sẻ báo cáo"))
+
+            // 4. MỞ HỘP THOẠI CHIA SẺ
+            context.startActivity(Intent.createChooser(shareIntent, "Chia sẻ báo cáo qua..."))
+
         } catch (e: Exception) {
-            Toast.makeText(context, "Không thể mở file (Có thể đã bị xóa khỏi máy)", Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
+            Toast.makeText(context, "Lỗi khi chia sẻ: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 

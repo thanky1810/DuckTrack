@@ -62,6 +62,7 @@ fun UserProfileScreen(
 
     // Loading State
     val isUploading by authViewModel.isUploading.collectAsState()
+    val taskStats by authViewModel.taskStats.collectAsState()
 
     // --- 1. LOAD DATA ---
     LaunchedEffect(Unit) {
@@ -280,7 +281,48 @@ fun UserProfileScreen(
                 TreeStatItem(SeedType.RED_LEAF.grownIcon, "Cây lá đỏ", counts[SeedType.RED_LEAF.id] ?: 0, Modifier.weight(1f))
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(24.dp))
+
+            // --- THỐNG KÊ NHIỆM VỤ ---
+            Text(
+                text = "Tiến độ công việc 📊",
+                fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.TextGreen,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Card Tổng số
+                TaskStatItem(
+                    label = "Tổng số",
+                    count = taskStats.total,
+                    color = Color(0xFF1976D2), // Xanh dương
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+
+                // Card Đã xong
+                TaskStatItem(
+                    label = "Đã xong",
+                    count = taskStats.completed,
+                    color = Color(0xFF388E3C), // Xanh lá
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+
+                // Card Chưa làm
+                TaskStatItem(
+                    label = "Chưa làm",
+                    count = taskStats.pending,
+                    color = Color(0xFFF57C00), // Cam
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 
@@ -374,4 +416,33 @@ fun ChangeNameDialog(
         containerColor = Color.White,
         shape = RoundedCornerShape(16.dp)
     )
+}
+
+@Composable
+fun TaskStatItem(label: String, count: Int, color: Color, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = count.toString(),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = Color.Gray,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
 }
