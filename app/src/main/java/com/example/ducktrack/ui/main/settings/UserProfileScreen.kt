@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,6 +45,7 @@ import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.ui.theme.AppColors
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.example.ducktrack.ui.main.settings.AchievementList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +87,13 @@ fun UserProfileScreen(
         }
     }
 
+    val selectedTitle = remember(userInfo?.selectedAchievementId) {
+        val id = userInfo?.selectedAchievementId
+        if (id != null) {
+            AchievementList.list.find { it.id == id }?.title
+        } else null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -119,6 +128,35 @@ fun UserProfileScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(Modifier.height(16.dp))
+
+                    // --- THÊM MỚI: HIỂN THỊ DANH HIỆU TRÊN ĐẦU ---
+                    if (selectedTitle != null) {
+                        Surface(
+                            color = Color(0xFFFFF9C4), // Màu vàng nhạt
+                            shape = RoundedCornerShape(50),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBC02D)),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.EmojiEvents,
+                                    contentDescription = null,
+                                    tint = Color(0xFFF57F17),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = selectedTitle,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF57F17) // Màu cam đậm
+                                )
+                            }
+                        }
+                    }
 
                     // AVATAR
                     Box(

@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import com.example.ducktrack.ui.main.tasks.TaskStats
+import com.example.ducktrack.ui.main.settings.AchievementList
+import com.example.ducktrack.ui.main.settings.AchievementType
+import com.google.firebase.firestore.FieldValue
 
 class UserDataRepository(private val userDao: UserDao) {
 
@@ -230,6 +233,106 @@ class UserDataRepository(private val userDao: UserDao) {
         } catch (e: Exception) {
             e.printStackTrace()
             return TaskStats()
+        }
+    }
+
+    // Hàm này sẽ tính toán lại toàn bộ chỉ số và cập nhật thành tựu mới lên Firestore
+    suspend fun checkAndSyncAchievements(): List<String> {
+        val uid = auth.currentUser?.uid ?: return emptyList()
+
+        try {
+            // 1. Lấy danh sách đã unlock từ Firestore
+            val userDoc = firestore.collection("users").document(uid).get().await()
+            val currentUnlocked = (userDoc.get("unlockedAchievements") as? List<String> ?: emptyList()).toMutableSet()
+
+            // 2. Lấy dữ liệu thống kê
+            // - Task
+            val taskStats = getTaskStats()
+            val pinnedTasks = firestore.collection("users").document(uid).collection("tasks")
+                .whereEqualTo("pinned", true).get().await().size()
+
+            // - Garden
+            val gardenSnapshot = firestore.collection("users").document(uid).collection("garden").get().await()
+            val allTrees = gardenSnapshot.documents
+            val totalTrees = allTrees.size
+            val pineTrees = allTrees.count { it.getString("seedId") == "pine" }
+            val redTrees = allTrees.count { it.getString("seedId") == "red_leaf" } + allTrees.count { it.getString("seedId") == "redleaf" }
+            // - Profile info (check xem có khác default không)
+            val duckName = userDoc.getString("duckName") ?: "Vịt con"
+            val hasChangedDuckName = duckName != "Vịt con"
+            val photoBase64 = userDoc.getString("avatarBase64")
+            val hasAvatar = photoBase64 != null
+            // (Tên user lấy từ Auth hoặc doc, tạm coi là luôn true nếu đã login)
+
+            val newUnlocked = mutableListOf<String>()
+
+            // 3. CHECK 30 THÀNH TỰU THƯỜNG (Loại bỏ master_complete ra để check sau)
+            val normalAchievements = AchievementList.list.filter { it.id != "master_complete" }
+
+            normalAchievements.forEach { achievement ->
+                if (!currentUnlocked.contains(achievement.id)) {
+                    val isReached = when (achievement.type) {
+                        AchievementType.TASK_COMPLETED -> taskStats.completed >= achievement.target
+                        AchievementType.TASK_PINNED -> pinnedTasks >= achievement.target
+                        AchievementType.TREE_COUNT -> totalTrees >= achievement.target
+                        AchievementType.PINE_LOVER -> pineTrees >= achievement.target
+                        AchievementType.RED_LEAF_LOVER -> redTrees >= achievement.target
+                        AchievementType.FOCUS_SESSION -> totalTrees >= achievement.target // Tạm tính 1 cây = 1 phiên
+                        AchievementType.PROFILE_UPDATE -> {
+                            when(achievement.id) {
+                                "profile_duck" -> hasChangedDuckName
+                                "profile_avatar" -> hasAvatar
+                                "profile_name" -> true // Coi như luôn đạt
+                                else -> false
+                            }
+                        }
+                        // Check số lượng thành tựu đã đạt được (Recursive logic nhỏ)
+                        AchievementType.MASTER_ALL -> currentUnlocked.size >= achievement.target
+                        else -> false
+                    }
+
+                    if (isReached) {
+                        newUnlocked.add(achievement.id)
+                        currentUnlocked.add(achievement.id) // Add vào set tạm để tính cho master
+                    }
+                }
+            }
+
+            // 4. CHECK THÀNH TỰU CUỐI CÙNG (MASTER)
+            val masterAchieve = AchievementList.list.find { it.id == "master_complete" }!!
+            if (!currentUnlocked.contains(masterAchieve.id)) {
+                // Đếm số thành tựu thường đã đạt
+                val totalNormalUnlocked = currentUnlocked.count { id -> normalAchievements.any { it.id == id } }
+                if (totalNormalUnlocked >= masterAchieve.target) {
+                    newUnlocked.add(masterAchieve.id)
+                    currentUnlocked.add(masterAchieve.id)
+                }
+            }
+
+            // 5. Update Firestore nếu có cái mới
+            if (newUnlocked.isNotEmpty()) {
+                firestore.collection("users").document(uid)
+                    .update("unlockedAchievements", FieldValue.arrayUnion(*newUnlocked.toTypedArray()))
+                    .await()
+            }
+
+            return currentUnlocked.toList()
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return emptyList()
+        }
+    }
+
+    suspend fun selectAchievement(achievementId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            // Update field 'selectedAchievementId' trong document user
+            firestore.collection("users").document(uid)
+                .update("selectedAchievementId", achievementId)
+                .await()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

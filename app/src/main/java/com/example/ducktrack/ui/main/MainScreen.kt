@@ -58,6 +58,7 @@ fun MainScreen(
     homeViewModel: HomeViewModel = viewModel(),
     promodoroViewModel: PromodoroViewModel,
     onNavigateToFocus: () -> Unit,
+    onNavigateToAchievements: () -> Unit,
 
     // >>> THÊM 2 CALLBACK ĐIỀU HƯỚNG MỚI <<<
     onNavigateToExportHistory: () -> Unit,
@@ -160,7 +161,8 @@ fun MainScreen(
                         },
                         // >>> TRUYỀN CALLBACK XUỐNG SETTINGS SCREEN <<<
                         onNavigateToExportHistory = onNavigateToExportHistory,
-                        onNavigateToAbout = onNavigateToAbout
+                        onNavigateToAbout = onNavigateToAbout,
+                        onNavigateToAchievements = onNavigateToAchievements
                     )
                 }
             }

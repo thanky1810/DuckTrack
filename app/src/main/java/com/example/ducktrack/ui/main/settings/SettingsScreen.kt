@@ -1,4 +1,3 @@
-// FILE: ui/main/settings/SettingsScreen.kt
 package com.example.ducktrack.ui.main.settings
 
 import android.app.Activity
@@ -37,7 +36,9 @@ import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
-import java.io.File
+
+// --- IMPORT DANH SÁCH THÀNH TỰU ---
+import com.example.ducktrack.ui.main.settings.AchievementList
 
 @Composable
 fun SettingsScreen(
@@ -46,6 +47,7 @@ fun SettingsScreen(
     onNavigateToExportHistory: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
     onNavigateToAbout: () -> Unit,
+    onNavigateToAchievements: () -> Unit, // Callback điều hướng thành tựu
     authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext)
     )
@@ -59,7 +61,14 @@ fun SettingsScreen(
     val isVibration by settingsViewModel.isVibration.collectAsState()
     val isKeepScreenOn by settingsViewModel.isKeepScreenOn.collectAsState()
 
-
+    // --- LOGIC MỚI: TÌM TÊN THÀNH TỰU ĐANG CHỌN ---
+    val selectedTitle = remember(userInfo?.selectedAchievementId) {
+        val id = userInfo?.selectedAchievementId
+        if (id != null) {
+            AchievementList.list.find { it.id == id }?.title
+        } else null
+    }
+    // ----------------------------------------------
 
     LaunchedEffect(Unit) {
         authViewModel.loadUserInfo { info -> userInfo = info }
@@ -76,7 +85,7 @@ fun SettingsScreen(
     ) {
         Text("Cài đặt", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
 
-        // --- 1. THẺ USER ---
+        // --- 1. THẺ USER (ĐÃ SỬA UI) ---
         Card(
             modifier = Modifier.fillMaxWidth().clickable { onNavigateToProfile() },
             colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.1f)),
@@ -84,17 +93,53 @@ fun SettingsScreen(
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Avatar
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(70.dp)) {
                     val base64Str = userInfo?.photoBase64
                     val bitmap = remember(base64Str) { try { val b = Base64.decode(base64Str, Base64.DEFAULT); BitmapFactory.decodeByteArray(b, 0, b.size).asImageBitmap() } catch (e: Exception) { null } }
                     if (bitmap != null) Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape), contentScale = ContentScale.Crop)
                     else Image(painter = painterResource(R.drawable.duck_waiting), contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape), contentScale = ContentScale.Crop)
                 }
+
                 Spacer(modifier = Modifier.width(16.dp))
+
+                // Cột thông tin (Badge + Tên + Subtitle)
                 Column(modifier = Modifier.weight(1f)) {
+
+                    // --- HIỂN THỊ BADGE THÀNH TỰU (NẾU CÓ) ---
+                    if (selectedTitle != null) {
+                        Surface(
+                            color = Color(0xFFFFF9C4), // Vàng nhạt
+                            shape = RoundedCornerShape(50),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBC02D)),
+                            modifier = Modifier.padding(bottom = 4.dp) // Cách tên một chút
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.EmojiEvents,
+                                    contentDescription = null,
+                                    tint = Color(0xFFF57F17),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = selectedTitle,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF57F17)
+                                )
+                            }
+                        }
+                    }
+                    // ------------------------------------------
+
                     Text(text = userInfo?.name ?: "Đang tải...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                     Text(text = "Xem hồ sơ chi tiết & thống kê", fontSize = 12.sp, color = primaryColor)
                 }
+
                 Icon(Icons.Default.ChevronRight, null, tint = primaryColor)
             }
         }
@@ -114,7 +159,6 @@ fun SettingsScreen(
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
 
-                // >>> ĐÃ SỬA: CHUYỂN HƯỚNG SANG TRANG LỊCH SỬ <<<
                 SettingActionRow(
                     icon = Icons.Default.Download,
                     title = "Xuất dữ liệu & Lịch sử",
@@ -122,15 +166,24 @@ fun SettingsScreen(
                 ) {
                     onNavigateToExportHistory()
                 }
-                // >>> KẾT THÚC SỬA <<<
 
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+
+                SettingActionRow(
+                    icon = Icons.Default.EmojiEvents,
+                    title = "Thành tựu",
+                    subtitle = "Xem danh hiệu bạn đã đạt được"
+                ) {
+                    onNavigateToAchievements()
+                }
+
+                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+
                 SettingActionRow(
                     icon = Icons.Default.Info,
                     title = "Về chúng tôi",
                     subtitle = "Thông tin nhóm phát triển"
                 ) {
-                    // Gọi hàm điều hướng thay vì show dialog
                     onNavigateToAbout()
                 }
             }
@@ -160,11 +213,10 @@ fun SettingsScreen(
             Icon(Icons.Filled.ExitToApp, null); Spacer(Modifier.width(8.dp)); Text("Đăng xuất", fontWeight = FontWeight.Bold)
         }
     }
-
-
 }
 
-// ... (Giữ nguyên các Composable phụ trợ: SettingSwitchRow, SettingActionRow, AccountLinkRow, MonitoringControlSection) ...
+// ... (Giữ nguyên các Composable phụ trợ bên dưới: SettingSwitchRow, SettingActionRow, AccountLinkRow, MonitoringControlSection)
+// ... Nếu bạn chưa có file backup của phần này thì báo mình gửi lại, nhưng thường thì nó nằm ở cuối file cũ rồi.
 @Composable
 fun SettingSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
