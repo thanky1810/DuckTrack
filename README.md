@@ -36,6 +36,16 @@
 - Clean and Intuitive UI: User-friendly design for fast and efficient interaction.
 
 <h2>
+ Technologies Used
+</h2>
+
+- Language & UI: Kotlin, Android Jetpack Compose
+- Backend & Storage: Room Database, Firebase (Firestore, Authentication)
+- Architecture: MVVM (Model–View–ViewModel)
+- Task Handling: Coroutines, Flow, WorkManager, Foreground Service
+-Libraries & APIs: UsageStatsManager API, MPAndroidChart
+
+<h2>
   Installation & Usage
 </h2>
 
