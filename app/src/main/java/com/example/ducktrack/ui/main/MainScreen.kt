@@ -59,6 +59,7 @@ fun MainScreen(
     promodoroViewModel: PromodoroViewModel,
     onNavigateToFocus: () -> Unit,
     onNavigateToAchievements: () -> Unit,
+    onNavigateToStatistics: () -> Unit,
 
     // >>> THÊM 2 CALLBACK ĐIỀU HƯỚNG MỚI <<<
     onNavigateToExportHistory: () -> Unit,
@@ -117,7 +118,8 @@ fun MainScreen(
                         hasPermission = hasPermission,
                         onGoToPermission = { mainNavController.navigate(Routes.Permission) },
                         onHeaderNoteChange = { note -> headerNote = note },
-                        vm = homeViewModel
+                        vm = homeViewModel,
+                        onNavigateToStatistics = onNavigateToStatistics // <--- Truyền xuống
                     )
                 }
 
@@ -180,6 +182,7 @@ private fun DashboardScreen(
     hasPermission: Boolean,
     onGoToPermission: () -> Unit,
     onHeaderNoteChange: (String?) -> Unit,
+    onNavigateToStatistics: () -> Unit,
     vm: HomeViewModel
 ) {
     val context = LocalContext.current
@@ -281,7 +284,18 @@ private fun DashboardScreen(
                     slices = slices,
                     modifier = Modifier.size(220.dp)
                 )
+
             }
+            // --- THÊM NÚT "XEM THỐNG KÊ CHI TIẾT" ---
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onNavigateToStatistics,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3F2FD), contentColor = Color(0xFF1976D2)),
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text("Xem thống kê chi tiết 📊")
+            }
+            // ----------------------------------------
             Spacer(Modifier.height(16.dp))
         }
 
