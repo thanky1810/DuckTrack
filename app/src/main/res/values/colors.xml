@@ -7,4 +7,11 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="block_primary">#1976D2</color>     <!-- xanh dương -->
+    <color name="block_title">#111111</color>
+    <color name="block_subtitle">#666666</color>
+    <color name="block_body">#444444</color>
+    <color name="block_hint">#888888</color>
+
 </resources>

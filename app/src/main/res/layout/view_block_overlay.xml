@@ -3,82 +3,137 @@
     android:id="@+id/blockOverlayRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#CC000000"
+    android:background="#B3000000"
     android:clickable="true"
     android:focusable="true">
 
+    <!-- Container để canh giữa -->
     <LinearLayout
-        android:id="@+id/blockCard"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_margin="32dp"
-        android:background="@android:color/white"
-        android:elevation="8dp"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="24dp">
 
-        <TextView
-            android:id="@+id/txtBlockedTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Bạn đã hết thời gian sử dụng"
-            android:textColor="@android:color/black"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/txtBlockedAppName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Tên ứng dụng"
-            android:textColor="@android:color/black"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/txtBlockedLimit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Giới hạn: 3 phút/ngày"
-            android:textColor="#666666"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/txtBlockedDescription"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Bạn đã chạm tới giới hạn hôm nay. Hãy chọn một trong hai lựa chọn bên dưới."
-            android:textColor="#444444"
-            android:textSize="14sp" />
-
+        <!-- Card chính -->
         <LinearLayout
+            android:id="@+id/blockCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:orientation="horizontal">
+            android:background="@android:color/white"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:elevation="8dp"
+            android:clipToOutline="true">
 
-            <Button
-                android:id="@+id/btnExtend"
-                android:layout_width="0dp"
+            <!-- Icon + tiêu đề -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Thêm 15 phút" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="0dp" />
+                <ImageView
+                    android:id="@+id/imgBlockedIcon"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@android:drawable/ic_lock_lock"
+           />
 
-            <Button
-                android:id="@+id/btnRemoveLimit"
-                android:layout_width="0dp"
+                <TextView
+                    android:id="@+id/txtBlockedTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Bạn đã hết thời gian sử dụng"
+                    android:textColor="#111111"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Tên app -->
+            <TextView
+                android:id="@+id/txtBlockedAppName"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Xóa giới hạn" />
+                android:layout_marginTop="12dp"
+                android:text="Tên ứng dụng"
+                android:textColor="#111111"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <!-- Giới hạn -->
+            <TextView
+                android:id="@+id/txtBlockedLimit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Giới hạn: 3 phút/ngày"
+                android:textColor="#666666"
+                android:textSize="14sp" />
+
+            <!-- Mô tả -->
+            <TextView
+                android:id="@+id/txtBlockedDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Bạn đã chạm tới giới hạn hôm nay. Hãy chọn một trong hai lựa chọn bên dưới."
+                android:textColor="#444444"
+                android:textSize="14sp" />
+
+            <!-- Divider mảnh -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:background="#1F000000" />
+
+            <!-- Nút -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnExtend"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="#1976D2"
+                    android:text="Thêm 15 phút"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp" />
+
+                <Space
+                    android:layout_width="12dp"
+                    android:layout_height="0dp" />
+
+                <Button
+                    android:id="@+id/btnRemoveLimit"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="@android:color/transparent"
+                    android:text="Xóa giới hạn"
+                    android:textAllCaps="false"
+                    android:textColor="#1976D2"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- Gợi ý nhỏ -->
+            <TextView
+                android:id="@+id/txtHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Gợi ý: Nghỉ ngơi một chút, đi lại hoặc uống nước rồi quay lại sau."
+                android:textColor="#888888"
+                android:textSize="12sp" />
+
         </LinearLayout>
-
     </LinearLayout>
 
 </FrameLayout>
