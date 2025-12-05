@@ -121,12 +121,20 @@ class UserDataRepository(private val userDao: UserDao) {
     }
 
     // 2. Thêm mới lên Cloud
-    suspend fun addTaskToCloud(description: String, dateMs: Long) {
+    suspend fun addTaskToCloud(
+        description: String,
+        dateMs: Long,
+        isImportant: Boolean = false, // Mặc định false
+        isUrgent: Boolean = false     // Mặc định false
+    ) {
         val uid = auth.currentUser?.uid ?: return
         val newTask = TodoTask(
             description = description,
             isCompleted = false,
             isPinned = false,
+            // Gán giá trị mới
+            isImportant = isImportant,
+            isUrgent = isUrgent,
             date = dateMs
         )
         try {

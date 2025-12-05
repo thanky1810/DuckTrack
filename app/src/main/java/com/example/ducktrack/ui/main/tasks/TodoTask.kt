@@ -1,8 +1,7 @@
 package com.example.ducktrack.ui.main.tasks
 
 import com.google.firebase.firestore.DocumentId
-import com.google.firebase.firestore.Exclude
-import com.google.firebase.firestore.PropertyName // <-- NHỚ IMPORT CÁI NÀY
+import com.google.firebase.firestore.PropertyName
 
 data class TodoTask(
     @DocumentId
@@ -10,15 +9,23 @@ data class TodoTask(
 
     val description: String = "",
 
-    // Ánh xạ trường 'completed' trên Firebase vào biến 'isCompleted'
     @get:PropertyName("completed")
     @set:PropertyName("completed")
     var isCompleted: Boolean = false,
 
-    // Ánh xạ trường 'pinned' trên Firebase vào biến 'isPinned'
     @get:PropertyName("pinned")
     @set:PropertyName("pinned")
     var isPinned: Boolean = false,
+
+    // --- THÊM MỚI ---
+    @get:PropertyName("important")
+    @set:PropertyName("important")
+    var isImportant: Boolean = false,
+
+    @get:PropertyName("urgent")
+    @set:PropertyName("urgent")
+    var isUrgent: Boolean = false,
+    // ----------------
 
     val date: Long = 0L
 )
