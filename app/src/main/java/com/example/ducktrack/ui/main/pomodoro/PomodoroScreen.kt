@@ -1,4 +1,4 @@
-package com.example.ducktrack.ui.main.promodoro
+package com.example.ducktrack.ui.main.pomodoro
 
 import android.app.Activity
 import android.content.Context
@@ -31,13 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
-import com.example.ducktrack.utils.*
 import kotlinx.coroutines.launch
 
 @Composable
 fun PromodoroScreen(
     context: Context = LocalContext.current.applicationContext,
-    viewModel: PromodoroViewModel,
+    viewModel: PomodoroViewModel,
     onStartFocus: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()

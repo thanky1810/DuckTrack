@@ -29,12 +29,11 @@ import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
 import com.example.ducktrack.ui.main.MainScreen
 import com.example.ducktrack.ui.main.ViewModelFactory
-import com.example.ducktrack.ui.main.promodoro.FocusModeScreen
-import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
+import com.example.ducktrack.ui.main.pomodoro.FocusModeScreen
+import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.AboutUsScreen // <--- IMPORT MỚI
 import com.example.ducktrack.ui.main.settings.AchievementsScreen
 import com.example.ducktrack.ui.main.settings.ExportHistoryScreen
-import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.settings.UserProfileScreen
 import com.example.ducktrack.ui.onboarding.OnboardingScreen
 import com.example.ducktrack.ui.permission.PermissionScreen
@@ -77,7 +76,7 @@ fun AppRoot(
     val isOnboardingCompleted by limitsStore.onboardingCompleted.collectAsState(initial = null)
 
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(appContext))
-    val promodoroViewModel: PromodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
+    val pomodoroViewModel: PomodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
 
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
     val hasPermission = checkUsageAccessPermission(appContext)
@@ -140,7 +139,7 @@ fun AppRoot(
                             authViewModel.logout()
                             nav.navigate(Routes.Home) { popUpTo(Routes.Main) { inclusive = true } }
                         },
-                        promodoroViewModel = promodoroViewModel,
+                        pomodoroViewModel = pomodoroViewModel,
                         onNavigateToFocus = { nav.navigate(Routes.FocusMode) },
                         // Callback mở màn hình Lịch sử Xuất file
                         onNavigateToExportHistory = { nav.navigate(Routes.ExportHistory) },
@@ -152,7 +151,7 @@ fun AppRoot(
                 }
 
                 // --- CÁC MÀN HÌNH CON ---
-                composable(Routes.FocusMode) { FocusModeScreen(viewModel = promodoroViewModel, onExit = { nav.popBackStack() }) }
+                composable(Routes.FocusMode) { FocusModeScreen(viewModel = pomodoroViewModel, onExit = { nav.popBackStack() }) }
 
                 composable(Routes.UserProfile) { UserProfileScreen(onBack = { nav.popBackStack() }) }
 

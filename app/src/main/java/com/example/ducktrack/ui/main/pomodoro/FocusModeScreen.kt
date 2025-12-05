@@ -1,4 +1,4 @@
-package com.example.ducktrack.ui.main.promodoro
+package com.example.ducktrack.ui.main.pomodoro
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -28,7 +28,7 @@ import com.example.ducktrack.utils.formatTime
 
 @Composable
 fun FocusModeScreen(
-    viewModel: PromodoroViewModel,
+    viewModel: PomodoroViewModel,
     onExit: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()

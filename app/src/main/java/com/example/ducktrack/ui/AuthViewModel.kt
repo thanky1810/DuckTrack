@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.main.garden.SeedType
-import com.example.ducktrack.ui.main.tasks.TaskStats // Import Model TaskStats
+import com.example.ducktrack.ui.main.tasks.TaskStats
 import com.example.ducktrack.utils.AppUsageCsvItem
 import com.example.ducktrack.utils.CsvExporter
 import com.example.ducktrack.utils.ImageUtils
@@ -50,7 +50,7 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
-    // --- THÊM: Repository để lấy dữ liệu Task ---
+    // Repository để lấy dữ liệu thống kê Task/Thành tựu
     private val repository = (context.applicationContext as MyApplication).repository
 
     // Key lưu trong SharedPreferences
@@ -68,7 +68,7 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
-    // --- THÊM: StateFlow chứa thống kê Task ---
+    // StateFlow chứa thống kê Task (cho UI Profile)
     private val _taskStats = MutableStateFlow(TaskStats())
     val taskStats: StateFlow<TaskStats> = _taskStats.asStateFlow()
 
@@ -93,14 +93,14 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val name = user.displayName ?: user.email ?: "Người dùng"
                 val email = user.email ?: "Không có email"
                 val createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
-                var selectedAchieveId: String? = null
 
                 var avatarStr = _cachedBase64Avatar
                 var duckName = "Vịt con"
+                var selectedAchieveId: String? = null
                 val treeCounts = mutableMapOf<String, Int>()
 
-                // 1. Lấy thông tin User & Vườn cây từ Firestore
                 try {
+                    // 1. Lấy thông tin từ Firestore (Avatar, Tên vịt, Thành tựu đang chọn)
                     val doc = firestore.collection("users").document(user.uid).get().await()
                     if (doc.exists()) {
                         avatarStr = doc.getString("avatarBase64")
@@ -109,6 +109,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                         selectedAchieveId = doc.getString("selectedAchievementId")
                     }
 
+                    // 2. Lấy thống kê Vườn cây (để hiện số lượng trên UI Profile)
                     val gardenSnapshot = firestore.collection("users").document(user.uid)
                         .collection("garden").get().await()
 
@@ -122,8 +123,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                     e.printStackTrace()
                 }
 
-                // 2. --- THÊM MỚI: Lấy thống kê Nhiệm vụ từ Repository ---
-                // (Repository đã được cập nhật để gọi Firestore đếm task)
+                // 3. Lấy thống kê Nhiệm vụ từ Repository
                 val stats = repository.getTaskStats()
                 _taskStats.value = stats
 
@@ -132,7 +132,6 @@ class AuthViewModel(context: Context) : ViewModel() {
         }
     }
 
-    // ... (Giữ nguyên getCurrentUserInfo, updateAvatar, updateUserName, updateDuckName...)
     fun getCurrentUserInfo(): UserInfo? {
         val user = firebaseAuth.currentUser
         val savedProvider = prefs.getString(providerKey, "Không rõ") ?: "Không rõ"
@@ -145,6 +144,8 @@ class AuthViewModel(context: Context) : ViewModel() {
             )
         } else null
     }
+
+    // --- CÁC HÀM CẬP NHẬT THÔNG TIN ---
 
     fun updateAvatar(uri: Uri, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = firebaseAuth.currentUser ?: return
@@ -169,6 +170,8 @@ class AuthViewModel(context: Context) : ViewModel() {
         viewModelScope.launch { try { firestore.collection("users").document(user.uid).set(mapOf("duckName" to newName), SetOptions.merge()).await(); onSuccess() } catch (ex: Exception) { onError(ex.message ?: "Lỗi") } }
     }
 
+    // --- CÁC HÀM ĐĂNG NHẬP / ĐĂNG XUẤT ---
+
     suspend fun signInWithGoogleToken(idToken: String) {
         try { firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await(); _isAuthenticated.update { true }; prefs.edit { putBoolean(authKey, true); putString(providerKey, "Google") } } catch (e: Exception) { logout() }
     }
@@ -186,7 +189,7 @@ class AuthViewModel(context: Context) : ViewModel() {
     fun unlinkProvider(id: String, onSuccess: () -> Unit, onError: (String) -> Unit) { if((firebaseAuth.currentUser?.providerData?.size ?: 0) <= 1) onError("Giữ lại ít nhất 1 phương thức!") else firebaseAuth.currentUser?.unlink(id)?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
 
     // =========================================================================
-    //               LOGIC XUẤT DỮ LIỆU (EXPORT CSV) - ĐÃ CẬP NHẬT
+    //               LOGIC XUẤT DỮ LIỆU (EXPORT CSV) - ĐẦY ĐỦ
     // =========================================================================
 
     fun exportData(context: Context, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
@@ -200,7 +203,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                     return@launch
                 }
 
-                // 1. Lấy dữ liệu User
+                // 1. Lấy User Info
                 val userInfoDeferred = withContext(Dispatchers.IO) {
                     val savedProvider = prefs.getString("LOGIN_PROVIDER", "Không rõ") ?: "Không rõ"
                     val name = user.displayName ?: user.email ?: "Người dùng"
@@ -214,22 +217,50 @@ class AuthViewModel(context: Context) : ViewModel() {
                     UserInfo(name, email, savedProvider, null, duckName, createdAt, emptyMap())
                 }
 
-                // 2. Lấy dữ liệu thống kê khác
+                // 2. Lấy dữ liệu Lịch sử (Tuần này) và Top App (30 ngày)
                 val weeklyTrees = getWeeklyTreeHistory(user.uid)
                 val monthlyApps = getTopAppsUsage(context)
 
-                // --- THÊM: Lấy thống kê Task mới nhất để ghi vào file ---
+                // 3. Lấy dữ liệu Thống kê Task (Tổng & Eisenhower)
                 val currentTaskStats = repository.getTaskStats()
 
-                // 3. Lưu file (Truyền thêm taskStats)
+                // 4. --- MỚI: TÍNH TOÁN SỐ LƯỢNG TỪNG LOẠI CÂY (TỔNG CỘNG) ---
+                val treeCountsMap = withContext(Dispatchers.IO) {
+                    val mapNameCount = mutableMapOf<String, Int>()
+                    try {
+                        // Lấy toàn bộ cây từ Firestore
+                        val allTreesSnapshot = firestore.collection("users").document(user.uid)
+                            .collection("garden").get().await()
+
+                        // Đếm số lượng theo ID
+                        val countsById = allTreesSnapshot.documents.groupingBy { it.getString("seedId") ?: "normal" }.eachCount()
+
+                        // Đổi ID sang Tên Tiếng Việt để ghi vào CSV
+                        countsById.forEach { (id, count) ->
+                            val nameVN = when (id) {
+                                "normal" -> "Cây thường"
+                                "pine" -> "Cây thông"
+                                "red_leaf", "redleaf" -> "Cây lá đỏ"
+                                "sakura" -> "Hoa anh đào"
+                                else -> "Cây khác"
+                            }
+                            val current = mapNameCount[nameVN] ?: 0
+                            mapNameCount[nameVN] = current + count
+                        }
+                    } catch (e: Exception) { e.printStackTrace() }
+                    mapNameCount
+                }
+                // -----------------------------------------------------------
+
+                // 5. GHI FILE (Gọi hàm saveToDownloads với đầy đủ tham số)
                 withContext(Dispatchers.IO) {
-                    // Cập nhật CsvExporter.saveToDownloads nhận thêm tham số taskStats
                     val resultMessage = CsvExporter.saveToDownloads(
                         context,
                         userInfoDeferred,
                         weeklyTrees,
                         monthlyApps,
-                        currentTaskStats // <-- Truyền vào đây
+                        currentTaskStats, // Thống kê Task
+                        treeCountsMap     // Thống kê Cây
                     )
 
                     withContext(Dispatchers.Main) {
@@ -256,10 +287,7 @@ class AuthViewModel(context: Context) : ViewModel() {
             val cal = Calendar.getInstance()
             cal.firstDayOfWeek = Calendar.MONDAY
             cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
+            cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
             val startOfWeek = cal.timeInMillis
 
             cal.add(Calendar.DAY_OF_YEAR, 7)

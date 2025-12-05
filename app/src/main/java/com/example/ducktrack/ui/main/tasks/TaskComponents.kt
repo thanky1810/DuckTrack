@@ -22,14 +22,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// --- CẬP NHẬT TÊN GỌI CHUẨN EISENHOWER ---
+// Enum loại thẻ (Giữ nguyên tên chuẩn)
 enum class EisenhowerType(val title: String, val color: Color, val isImp: Boolean, val isUrg: Boolean) {
-    DO_NOW("Quan trọng & Khẩn cấp", Color(0xFFD32F2F), true, true),          // Đỏ
-    SCHEDULE("Quan trọng & Không khẩn cấp", Color(0xFF1976D2), true, false), // Xanh dương
-    DELEGATE("Không quan trọng & Khẩn cấp", Color(0xFFF57C00), false, true), // Cam
-    DELETE("Không quan trọng & Không khẩn cấp", Color(0xFF757575), false, false) // Xám
+    DO_NOW("Quan trọng & Khẩn cấp", Color(0xFFD32F2F), true, true),
+    SCHEDULE("Quan trọng & Không khẩn cấp", Color(0xFF1976D2), true, false),
+    DELEGATE("Không quan trọng & Khẩn cấp", Color(0xFFF57C00), false, true),
+    DELETE("Không quan trọng & Không khẩn cấp", Color(0xFF757575), false, false)
 }
 
+// --- 1. Ô NHẬP LIỆU (CÓ RÀNG BUỘC CHỌN THẺ) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskInput(
@@ -38,9 +39,15 @@ fun TaskInput(
     onAddClick: (Boolean, Boolean) -> Unit,
     focusManager: FocusManager
 ) {
-    // Mặc định chọn loại cuối cùng (Xám)
-    var selectedType by remember { mutableStateOf(EisenhowerType.DELETE) }
+    // --- SỬA: Khởi tạo là null để bắt buộc người dùng phải chọn ---
+    var selectedType by remember { mutableStateOf<EisenhowerType?>(null) }
     var expanded by remember { mutableStateOf(false) }
+
+    // Nếu chưa chọn, hiển thị màu xám nhạt
+    val flagColor = selectedType?.color ?: Color.Gray
+
+    // Điều kiện để nút Add sáng lên: Có chữ VÀ Đã chọn thẻ
+    val isButtonEnabled = text.isNotBlank() && selectedType != null
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -52,12 +59,12 @@ fun TaskInput(
                 onClick = { expanded = true },
                 modifier = Modifier
                     .size(48.dp)
-                    .background(selectedType.color.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .background(flagColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             ) {
                 Icon(
                     imageVector = Icons.Default.Flag,
                     contentDescription = "Chọn mức độ",
-                    tint = selectedType.color
+                    tint = flagColor
                 )
             }
 
@@ -73,7 +80,7 @@ fun TaskInput(
                                 type.title,
                                 color = type.color,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp // Giảm font xíu vì tên dài
+                                fontSize = 13.sp
                             )
                         },
                         onClick = {
@@ -100,7 +107,8 @@ fun TaskInput(
                 .background(Color.White, RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = selectedType.color.copy(alpha = 0.5f), // Viền đổi màu theo loại đã chọn
+                // Viền đổi màu theo loại đã chọn (nếu chưa chọn thì viền xám)
+                focusedBorderColor = selectedType?.color?.copy(alpha = 0.5f) ?: Color(0xFFE0E0E0),
                 unfocusedBorderColor = Color(0xFFE0E0E0),
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White
@@ -108,39 +116,47 @@ fun TaskInput(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
-                onAddClick(selectedType.isImp, selectedType.isUrg)
-                focusManager.clearFocus()
-                selectedType = EisenhowerType.DELETE
+                // Chỉ cho Enter nếu đã chọn thẻ
+                if (isButtonEnabled) {
+                    onAddClick(selectedType!!.isImp, selectedType!!.isUrg)
+                    focusManager.clearFocus()
+                    selectedType = null // Reset về null
+                }
             })
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // --- NÚT THÊM ---
+        // --- NÚT THÊM (SẼ BỊ MỜ NẾU CHƯA CHỌN THẺ) ---
         Button(
             onClick = {
-                onAddClick(selectedType.isImp, selectedType.isUrg)
-                focusManager.clearFocus()
-                selectedType = EisenhowerType.DELETE
+                if (selectedType != null) {
+                    onAddClick(selectedType!!.isImp, selectedType!!.isUrg)
+                    focusManager.clearFocus()
+                    selectedType = null // Reset về null
+                }
             },
+            enabled = isButtonEnabled, // <--- Logic quan trọng ở đây
             modifier = Modifier.size(56.dp),
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(0.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF62B26A)
+                containerColor = Color(0xFF62B26A), // Màu xanh khi active
+                disabledContainerColor = Color(0xFFBDBDBD), // Màu xám khi disable
+                contentColor = Color.White,
+                disabledContentColor = Color.White
             )
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Thêm",
-                tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )
         }
     }
 }
 
-// ... (Các phần khác giữ nguyên)
+// --- THANH CÔNG CỤ KHI CHỌN TASK (Giữ nguyên) ---
 @Composable
 fun TaskActionRows(
     onDelete: () -> Unit,

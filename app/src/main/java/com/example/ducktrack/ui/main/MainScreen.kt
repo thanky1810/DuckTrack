@@ -38,8 +38,8 @@ import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.OverlayPermissionDialog
 import com.example.ducktrack.ui.components.PieChart
 import com.example.ducktrack.ui.main.garden.GardenScreen
-import com.example.ducktrack.ui.main.promodoro.PromodoroScreen
-import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
+import com.example.ducktrack.ui.main.pomodoro.PromodoroScreen
+import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
@@ -56,7 +56,7 @@ fun MainScreen(
     hasPermission: Boolean,
     onLogout: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
-    promodoroViewModel: PromodoroViewModel,
+    pomodoroViewModel: PomodoroViewModel,
     onNavigateToFocus: () -> Unit,
     onNavigateToAchievements: () -> Unit,
     onNavigateToStatistics: () -> Unit,
@@ -132,7 +132,7 @@ fun MainScreen(
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Pomodoro + currentRoute) {
                         PromodoroScreen(
-                            viewModel = promodoroViewModel,
+                            viewModel = pomodoroViewModel,
                             onStartFocus = onNavigateToFocus
                         )
                     }
