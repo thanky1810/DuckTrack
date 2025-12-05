@@ -1,4 +1,3 @@
-
 package com.example.ducktrack.ui.main.tasks
 
 import androidx.compose.foundation.background
@@ -31,6 +30,7 @@ fun AddTaskRow(
             .padding(horizontal = 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Ô nhập liệu
         OutlinedTextField(
             value = newTaskText,
             onValueChange = onNewTaskTextChange,
@@ -48,17 +48,21 @@ fun AddTaskRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        IconButton(
+        // --- ĐÃ SỬA: Dùng Button thay vì IconButton để chắc chắn hiện nền xanh ---
+        Button(
             onClick = onAddTask,
-            modifier = Modifier
-                .size(56.dp)
-                .background(Color(0xFF62B26A), RoundedCornerShape(16.dp))
+            modifier = Modifier.size(56.dp), // Kích thước bằng chiều cao mặc định của TextField
+            shape = RoundedCornerShape(16.dp), // Bo góc giống TextField
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF62B26A), // Màu xanh
+                contentColor = Color.White
+            ),
+            contentPadding = PaddingValues(0.dp) // Bỏ padding để icon nằm giữa
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Thêm nhiệm vụ",
-                tint = Color.White,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(32.dp) // Icon to rõ
             )
         }
     }

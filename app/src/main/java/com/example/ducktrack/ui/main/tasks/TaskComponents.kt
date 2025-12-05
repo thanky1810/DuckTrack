@@ -9,9 +9,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
@@ -21,30 +22,85 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// --- 1. Ô NHẬP LIỆU (TaskInput) ---
+// --- CẬP NHẬT TÊN GỌI CHUẨN EISENHOWER ---
+enum class EisenhowerType(val title: String, val color: Color, val isImp: Boolean, val isUrg: Boolean) {
+    DO_NOW("Quan trọng & Khẩn cấp", Color(0xFFD32F2F), true, true),          // Đỏ
+    SCHEDULE("Quan trọng & Không khẩn cấp", Color(0xFF1976D2), true, false), // Xanh dương
+    DELEGATE("Không quan trọng & Khẩn cấp", Color(0xFFF57C00), false, true), // Cam
+    DELETE("Không quan trọng & Không khẩn cấp", Color(0xFF757575), false, false) // Xám
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskInput(
     text: String,
     onTextChange: (String) -> Unit,
-    onAddClick: () -> Unit,
+    onAddClick: (Boolean, Boolean) -> Unit,
     focusManager: FocusManager
 ) {
+    // Mặc định chọn loại cuối cùng (Xám)
+    var selectedType by remember { mutableStateOf(EisenhowerType.DELETE) }
+    var expanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Ô nhập text
+        // --- NÚT CHỌN MỨC ĐỘ (CỜ) ---
+        Box {
+            IconButton(
+                onClick = { expanded = true },
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(selectedType.color.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = "Chọn mức độ",
+                    tint = selectedType.color
+                )
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(Color.White)
+            ) {
+                EisenhowerType.values().forEach { type ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                type.title,
+                                color = type.color,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp // Giảm font xíu vì tên dài
+                            )
+                        },
+                        onClick = {
+                            selectedType = type
+                            expanded = false
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Flag, null, tint = type.color)
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // --- Ô NHẬP LIỆU ---
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
-            placeholder = { Text("Thêm nhiệm vụ mới...", fontSize = 14.sp) },
+            placeholder = { Text("Thêm nhiệm vụ...", fontSize = 14.sp, color = Color.Gray) },
             modifier = Modifier
                 .weight(1f)
-                .background(Color.White, RoundedCornerShape(24.dp)), // Nền trắng để nổi trên ảnh
+                .background(Color.White, RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF62B26A),
+                focusedBorderColor = selectedType.color.copy(alpha = 0.5f), // Viền đổi màu theo loại đã chọn
                 unfocusedBorderColor = Color(0xFFE0E0E0),
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White
@@ -52,34 +108,39 @@ fun TaskInput(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
-                onAddClick()
+                onAddClick(selectedType.isImp, selectedType.isUrg)
                 focusManager.clearFocus()
+                selectedType = EisenhowerType.DELETE
             })
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Nút Add
-        IconButton(
+        // --- NÚT THÊM ---
+        Button(
             onClick = {
-                onAddClick()
+                onAddClick(selectedType.isImp, selectedType.isUrg)
                 focusManager.clearFocus()
+                selectedType = EisenhowerType.DELETE
             },
-            modifier = Modifier
-                .size(50.dp)
-                .background(Color(0xFF62B26A), RoundedCornerShape(16.dp))
+            modifier = Modifier.size(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF62B26A)
+            )
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Thêm",
-                tint = Color.White
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
             )
         }
     }
 }
 
-// --- 2. HÀNG NÚT KHI CHỌN TASK (TaskActionRows) ---
-// (Đây thực chất là wrapper cho SelectionActionRow bạn đã có, nhưng đặt tên cho khớp với code TasksScreen)
+// ... (Các phần khác giữ nguyên)
 @Composable
 fun TaskActionRows(
     onDelete: () -> Unit,
@@ -91,7 +152,7 @@ fun TaskActionRows(
             .padding(horizontal = 16.dp)
             .height(60.dp),
         shape = RoundedCornerShape(30.dp),
-        color = Color(0xFF212121), // Màu đen hoặc xám đậm cho nổi
+        color = Color(0xFF212121),
         shadowElevation = 6.dp
     ) {
         Row(
@@ -99,15 +160,10 @@ fun TaskActionRows(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Nút xóa
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Xóa", tint = Color(0xFFFF5252))
             }
-
-            // Đường kẻ dọc
             Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.Gray))
-
-            // Nút ghim
             IconButton(onClick = onPin) {
                 Icon(Icons.Default.PushPin, contentDescription = "Ghim", tint = Color(0xFF62B26A))
             }
