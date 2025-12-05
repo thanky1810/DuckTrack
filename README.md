@@ -43,7 +43,7 @@
 - Backend & Storage: Room Database, Firebase (Firestore, Authentication)
 - Architecture: MVVM (Model–View–ViewModel)
 - Task Handling: Coroutines, Flow, WorkManager, Foreground Service
--Libraries & APIs: UsageStatsManager API, MPAndroidChart
+- Libraries & APIs: UsageStatsManager API, MPAndroidChart
 
 <h2>
   Installation & Usage
