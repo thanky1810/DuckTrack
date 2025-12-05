@@ -1,4 +1,4 @@
-package com.example.ducktrack.ui.main.promodoro
+package com.example.ducktrack.ui.main.pomodoro
 
 import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.R

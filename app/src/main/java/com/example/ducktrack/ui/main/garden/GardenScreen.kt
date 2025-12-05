@@ -28,7 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.main.ViewModelFactory
-import com.example.ducktrack.ui.main.promodoro.NotEnoughPointsDialog
+import com.example.ducktrack.ui.main.pomodoro.NotEnoughPointsDialog
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -134,7 +134,10 @@ fun TreeDetailDialog(
     tree: GrownTreeUI,
     onDismiss: () -> Unit
 ) {
-    val timeFormat = SimpleDateFormat("HH 'giờ' mm 'phút' ss 'giây'", Locale("vi", "VN"))
+    // --- SỬA ĐỊNH DẠNG NGÀY GIỜ Ở ĐÂY ---
+    // Mẫu: "10:30:05 SA - 05/12/2025"
+    // hh: giờ 12h, mm: phút, ss: giây, aa: SA/CH (hoặc AM/PM), dd/MM/yyyy: ngày tháng
+    val timeFormat = SimpleDateFormat("hh:mm:ss aa - dd/MM/yyyy", Locale("vi", "VN"))
     val dateString = timeFormat.format(tree.plantedAt)
 
     Dialog(onDismissRequest = onDismiss) {
@@ -176,7 +179,8 @@ fun TreeDetailDialog(
                 DetailRow(label = "Loại cây:", value = tree.seedType.displayName)
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
 
-                DetailRow(label = "Thời gian hoàn thành:", value = dateString)
+                // Hiển thị thời gian đã format rõ ràng
+                DetailRow(label = "Thời gian trồng:", value = dateString)
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
 
                 DetailRow(label = "Thông số (F/S/N/L):", value = tree.config)

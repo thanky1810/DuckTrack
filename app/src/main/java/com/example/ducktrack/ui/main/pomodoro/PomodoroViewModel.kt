@@ -1,5 +1,5 @@
 // FILE: PromodoroViewModel.kt
-package com.example.ducktrack.ui.main.promodoro
+package com.example.ducktrack.ui.main.pomodoro
 
 import android.app.Application
 import android.content.Context
@@ -19,13 +19,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class PromodoroViewModel(application: Application) : AndroidViewModel(application) {
+class PomodoroViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as MyApplication).repository
     private val userPrefs = UserPreferences(application) // Khởi tạo UserPrefs để đọc cài đặt

@@ -39,18 +39,20 @@ fun ExportHistoryScreen(
     val historyList by exportViewModel.historyList.collectAsState()
     val latestItem by exportViewModel.latestItem.collectAsState()
 
-    val isLoading by exportViewModel.isLoading.collectAsState()
+    // Trạng thái đang tải
     val isExporting by authViewModel.isUploading.collectAsState()
 
-    // Hàm thực hiện xuất file mới
+    // --- HÀM XUẤT FILE ĐƠN GIẢN (CHỈ LƯU) ---
     val performExport = {
         authViewModel.exportData(context,
             onSuccess = { path ->
-                // Chỉ hiện thông báo thành công và cập nhật list, KHÔNG hiện popup chia sẻ nữa
+                // Chỉ hiện thông báo và cập nhật danh sách
                 Toast.makeText(context, "Xuất thành công! File đã lưu vào máy.", Toast.LENGTH_SHORT).show()
                 exportViewModel.onExportSuccess(context, path)
             },
-            onError = { err -> Toast.makeText(context, err, Toast.LENGTH_SHORT).show() }
+            onError = { err ->
+                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+            }
         )
     }
 
@@ -67,13 +69,21 @@ fun ExportHistoryScreen(
             )
         },
         floatingActionButton = {
+            // Nút dấu cộng chỉ để Tải file
             FloatingActionButton(
-                onClick = { performExport() },
+                onClick = {
+                    if (!isExporting) {
+                        performExport()
+                    }
+                },
                 containerColor = AppColors.ButtonGreen,
                 contentColor = Color.White
             ) {
-                if (isExporting) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                else Icon(Icons.Default.Add, "New")
+                if (isExporting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Icon(Icons.Default.Add, "Xuất mới")
+                }
             }
         }
     ) { padding ->
@@ -116,7 +126,7 @@ fun ExportHistoryScreen(
     }
 }
 
-// UI: Card hiển thị file mới nhất (Đã xóa nút Share)
+// UI: Card hiển thị file mới nhất (Bỏ nút share)
 @Composable
 fun LatestExportCard(item: HistoryItem, onReExport: () -> Unit) {
     Card(
@@ -135,11 +145,12 @@ fun LatestExportCard(item: HistoryItem, onReExport: () -> Unit) {
             Spacer(Modifier.height(12.dp))
 
             Text(item.fileName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            // Hiển thị một phần đường dẫn
             Text("Đường dẫn: ...${item.filePath.takeLast(35)}", fontSize = 12.sp, color = Color.Gray)
 
             Spacer(Modifier.height(16.dp))
 
-            // Chỉ còn nút Tải lại (Cho full width nhìn cho đẹp)
+            // Nút Tải lại
             Button(
                 onClick = onReExport,
                 modifier = Modifier.fillMaxWidth(),
@@ -153,11 +164,16 @@ fun LatestExportCard(item: HistoryItem, onReExport: () -> Unit) {
     }
 }
 
-// UI: Một dòng trong lịch sử (Đã xóa nút Share)
+// UI: Một dòng trong lịch sử (Bỏ nút share)
 @Composable
 fun HistoryItemRow(item: HistoryItem) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-    val prettyPath = item.filePath.replace("/storage/emulated/0", "Bộ nhớ trong")
+
+    val prettyPath = if (item.filePath.contains("DuckTrack")) {
+        ".../Download/DuckTrack/${item.fileName}"
+    } else {
+        item.filePath
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -181,8 +197,6 @@ fun HistoryItemRow(item: HistoryItem) {
                 Spacer(Modifier.height(2.dp))
                 Text(prettyPath, fontSize = 10.sp, color = Color.LightGray, fontStyle = FontStyle.Italic, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-
-            // Đã xóa IconButton Share ở đây
         }
     }
 }

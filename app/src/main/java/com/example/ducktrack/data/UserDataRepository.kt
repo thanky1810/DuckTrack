@@ -20,6 +20,7 @@ import com.example.ducktrack.ui.main.tasks.TaskStats
 import com.example.ducktrack.ui.main.settings.AchievementList
 import com.example.ducktrack.ui.main.settings.AchievementType
 import com.google.firebase.firestore.FieldValue
+import com.example.ducktrack.ui.main.tasks.QuadrantStat // Import mới
 
 class UserDataRepository(private val userDao: UserDao) {
 
@@ -227,17 +228,61 @@ class UserDataRepository(private val userDao: UserDao) {
     suspend fun getTaskStats(): TaskStats {
         val uid = auth.currentUser?.uid ?: return TaskStats()
         try {
+            // Lấy toàn bộ task về để xử lý
             val snapshot = firestore.collection("users").document(uid)
                 .collection("tasks")
                 .get()
                 .await()
 
-            val total = snapshot.size()
-            // Đếm số document có trường 'completed' là true
-            val completed = snapshot.documents.count { it.getBoolean("completed") == true }
+            val allDocs = snapshot.documents
+
+            // 1. Thống kê tổng (Cũ)
+            val total = allDocs.size
+            val completed = allDocs.count { it.getBoolean("completed") == true }
             val pending = total - completed
 
-            return TaskStats(total, completed, pending)
+            // 2. Thống kê chi tiết 4 thẻ (Mới)
+            // Định nghĩa 4 nhóm
+            val q1Name = "Quan trọng & Khẩn cấp"
+            val q2Name = "Quan trọng & Không khẩn cấp"
+            val q3Name = "Không quan trọng & Khẩn cấp"
+            val q4Name = "Không quan trọng & Không khẩn cấp"
+
+            // Biến đếm tạm thời
+            var q1T = 0; var q1C = 0
+            var q2T = 0; var q2C = 0
+            var q3T = 0; var q3C = 0
+            var q4T = 0; var q4C = 0
+
+            for (doc in allDocs) {
+                val isComp = doc.getBoolean("completed") == true
+                val isImp = doc.getBoolean("important") == true
+                val isUrg = doc.getBoolean("urgent") == true
+
+                if (isImp && isUrg) {           // Q1
+                    q1T++
+                    if (isComp) q1C++
+                } else if (isImp && !isUrg) {   // Q2
+                    q2T++
+                    if (isComp) q2C++
+                } else if (!isImp && isUrg) {   // Q3
+                    q3T++
+                    if (isComp) q3C++
+                } else {                        // Q4
+                    q4T++
+                    if (isComp) q4C++
+                }
+            }
+
+            val details = listOf(
+                QuadrantStat(q1Name, q1T, q1C, q1T - q1C),
+                QuadrantStat(q2Name, q2T, q2C, q2T - q2C),
+                QuadrantStat(q3Name, q3T, q3C, q3T - q3C),
+                QuadrantStat(q4Name, q4T, q4C, q4T - q4C)
+            )
+
+            return TaskStats(total, completed, pending, details)
+
         } catch (e: Exception) {
             e.printStackTrace()
             return TaskStats()

@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.ducktrack.ui.main.garden.GardenViewModel
-import com.example.ducktrack.ui.main.promodoro.PromodoroViewModel
+import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import kotlin.jvm.java
 
 /**
@@ -16,8 +16,8 @@ class ViewModelFactory(private val application: Application) : ViewModelProvider
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
-            modelClass.isAssignableFrom(PromodoroViewModel::class.java) -> {
-                PromodoroViewModel(application) as T
+            modelClass.isAssignableFrom(PomodoroViewModel::class.java) -> {
+                PomodoroViewModel(application) as T
             }
             modelClass.isAssignableFrom(GardenViewModel::class.java) -> {
                 GardenViewModel(application) as T

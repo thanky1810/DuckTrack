@@ -1,4 +1,4 @@
-package com.example.ducktrack.ui.main.promodoro
+package com.example.ducktrack.ui.main.pomodoro
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
