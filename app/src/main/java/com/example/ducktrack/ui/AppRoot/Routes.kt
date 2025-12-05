@@ -24,4 +24,6 @@ object Routes {
     const val AboutUs = "about_us"
 
     const val Achievements = "achievements"
+
+    const val Statistics = "statistics"
 }

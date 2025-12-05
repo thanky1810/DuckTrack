@@ -45,6 +45,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.ducktrack.ui.main.settings.StatisticsScreen
 
 class AuthViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -145,8 +146,8 @@ fun AppRoot(
                         onNavigateToExportHistory = { nav.navigate(Routes.ExportHistory) },
                         // Callback mở màn hình Về chúng tôi (About Us)
                         onNavigateToAbout = { nav.navigate(Routes.AboutUs) },
-                        onNavigateToAchievements = { nav.navigate(Routes.Achievements) }
-
+                        onNavigateToAchievements = { nav.navigate(Routes.Achievements) },
+                        onNavigateToStatistics = { nav.navigate(Routes.Statistics) }
                     )
                 }
 
@@ -175,6 +176,11 @@ fun AppRoot(
                     AboutUsScreen(
                         onBack = { nav.popBackStack() }
                     )
+                }
+
+                // --- MÀN HÌNH THỐNG KÊ (MỚI) ---
+                composable(Routes.Statistics) {
+                    StatisticsScreen(onBack = { nav.popBackStack() })
                 }
             }
         }

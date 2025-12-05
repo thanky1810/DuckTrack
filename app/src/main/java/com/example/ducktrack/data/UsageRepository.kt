@@ -173,4 +173,76 @@ class UsageRepository(private val ctx: Context) {
     fun queryToday(): List<AppUsage> {
         return queryUsageForDate(System.currentTimeMillis())
     }
+
+    /* =========================================================
+       5. HÀM LẤY THỐNG KÊ TỔNG HỢP CHO BIỂU ĐỒ (MỚI)
+       ========================================================= */
+
+    // Lấy tổng thời gian sử dụng theo từng ngày trong khoảng thời gian
+    fun getDailyStats(startTime: Long, endTime: Long): Map<String, Long> {
+        val usm = usageManager(ctx)
+        // Query theo ngày
+        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+
+        val resultMap = LinkedHashMap<String, Long>()
+        val calendar = Calendar.getInstance()
+
+        // Khởi tạo map rỗng cho các ngày để tránh bị thiếu ngày
+        // (Logic đơn giản: Group by ngày trong năm)
+        if (stats != null) {
+            for (usage in stats) {
+                if (usage.totalTimeInForeground > 0) {
+                    calendar.timeInMillis = usage.firstTimeStamp
+                    val day = calendar.get(Calendar.DAY_OF_MONTH)
+                    val month = calendar.get(Calendar.MONTH) + 1
+                    val key = "$day/$month"
+
+                    val current = resultMap[key] ?: 0L
+                    resultMap[key] = current + usage.totalTimeInForeground
+                }
+            }
+        }
+        return resultMap
+    }
+
+    // Lấy tổng thời gian theo từng tháng (cho biểu đồ toàn bộ)
+    fun getMonthlyStats(startTime: Long, endTime: Long): Map<String, Long> {
+        val usm = usageManager(ctx)
+        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_MONTHLY, startTime, endTime)
+
+        val resultMap = LinkedHashMap<String, Long>()
+        val calendar = Calendar.getInstance()
+
+        if (stats != null) {
+            for (usage in stats) {
+                if (usage.totalTimeInForeground > 0) {
+                    calendar.timeInMillis = usage.firstTimeStamp
+                    val month = calendar.get(Calendar.MONTH) + 1
+                    val year = calendar.get(Calendar.YEAR)
+                    val key = "T$month" // Ví dụ: T12, T1
+
+                    val current = resultMap[key] ?: 0L
+                    resultMap[key] = current + usage.totalTimeInForeground
+                }
+            }
+        }
+        return resultMap
+    }
+    // 3. (MỚI) Top App sử dụng nhiều nhất (Tổng hợp theo App)
+    fun getTopAppsStats(startTime: Long, endTime: Long): Map<String, Long> {
+        val usm = usageManager(ctx)
+        // queryAndAggregateUsageStats: Tự động cộng dồn thời gian cho từng app trong khoảng thời gian
+        val statsMap = usm.queryAndAggregateUsageStats(startTime, endTime)
+        val pm = ctx.packageManager
+        val resultMap = HashMap<String, Long>()
+
+        for ((pkg, usage) in statsMap) {
+            if (usage.totalTimeInForeground > 0 && isUserApp(pm, pkg)) {
+                val label = getAppLabel(pm, pkg)
+                val current = resultMap[label] ?: 0L
+                resultMap[label] = current + usage.totalTimeInForeground
+            }
+        }
+        return resultMap
+    }
 }
