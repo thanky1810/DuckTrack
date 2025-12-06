@@ -14,4 +14,20 @@
     <color name="block_body">#444444</color>
     <color name="block_hint">#888888</color>
 
+
+    <color name="widget_bg_red">#FFFFEBEE</color>
+    <color name="widget_text_red">#FFD32F2F</color>
+
+    <color name="widget_bg_blue">#FFE3F2FD</color>
+    <color name="widget_text_blue">#FF1976D2</color>
+
+    <color name="widget_bg_orange">#FFFFF3E0</color>
+    <color name="widget_text_orange">#FFF57C00</color>
+
+    <color name="widget_bg_green">#FFF1F8E9</color>
+    <color name="widget_text_green">#FF388E3C</color>
+
+    <color name="widget_bg_white">#FFFFFFFF</color>
+    <color name="widget_text_black">#FF000000</color>
+    <color name="widget_text_gray">#FF808080</color>
 </resources>

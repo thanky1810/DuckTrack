@@ -109,6 +109,9 @@ dependencies {
     // --- Lottie Animation ---
     implementation(libs.lottie.compose)
 
+    implementation("androidx.glance:glance-appwidget:1.1.0")
+    implementation("androidx.glance:glance-material3:1.1.0")
+
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")    // --- Testing ---
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

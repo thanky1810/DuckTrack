@@ -22,15 +22,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Enum loại thẻ (Giữ nguyên tên chuẩn)
+// --- CẬP NHẬT TÊN GỌI CHUẨN EISENHOWER ---
 enum class EisenhowerType(val title: String, val color: Color, val isImp: Boolean, val isUrg: Boolean) {
-    DO_NOW("Quan trọng & Khẩn cấp", Color(0xFFD32F2F), true, true),
-    SCHEDULE("Quan trọng & Không khẩn cấp", Color(0xFF1976D2), true, false),
-    DELEGATE("Không quan trọng & Khẩn cấp", Color(0xFFF57C00), false, true),
-    DELETE("Không quan trọng & Không khẩn cấp", Color(0xFF757575), false, false)
+    DO_NOW("Quan trọng & Khẩn cấp", Color(0xFFD32F2F), true, true),          // Đỏ
+    SCHEDULE("Quan trọng & Không khẩn cấp", Color(0xFF1976D2), true, false), // Xanh dương
+    DELEGATE("Không quan trọng & Khẩn cấp", Color(0xFFF57C00), false, true), // Cam
+    DELETE("Không quan trọng & Không khẩn cấp", Color(0xFF757575), false, false) // Xám
 }
 
-// --- 1. Ô NHẬP LIỆU (CÓ RÀNG BUỘC CHỌN THẺ) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskInput(
@@ -39,14 +38,12 @@ fun TaskInput(
     onAddClick: (Boolean, Boolean) -> Unit,
     focusManager: FocusManager
 ) {
-    // --- SỬA: Khởi tạo là null để bắt buộc người dùng phải chọn ---
+    // Khởi tạo là null để bắt buộc người dùng phải chọn
     var selectedType by remember { mutableStateOf<EisenhowerType?>(null) }
     var expanded by remember { mutableStateOf(false) }
 
     // Nếu chưa chọn, hiển thị màu xám nhạt
     val flagColor = selectedType?.color ?: Color.Gray
-
-    // Điều kiện để nút Add sáng lên: Có chữ VÀ Đã chọn thẻ
     val isButtonEnabled = text.isNotBlank() && selectedType != null
 
     Row(
@@ -80,7 +77,7 @@ fun TaskInput(
                                 type.title,
                                 color = type.color,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                fontSize = 13.sp // Giảm font xíu vì tên dài
                             )
                         },
                         onClick = {
@@ -107,7 +104,6 @@ fun TaskInput(
                 .background(Color.White, RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                // Viền đổi màu theo loại đã chọn (nếu chưa chọn thì viền xám)
                 focusedBorderColor = selectedType?.color?.copy(alpha = 0.5f) ?: Color(0xFFE0E0E0),
                 unfocusedBorderColor = Color(0xFFE0E0E0),
                 focusedContainerColor = Color.White,
@@ -116,33 +112,32 @@ fun TaskInput(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
-                // Chỉ cho Enter nếu đã chọn thẻ
                 if (isButtonEnabled) {
                     onAddClick(selectedType!!.isImp, selectedType!!.isUrg)
                     focusManager.clearFocus()
-                    selectedType = null // Reset về null
+                    selectedType = null
                 }
             })
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // --- NÚT THÊM (SẼ BỊ MỜ NẾU CHƯA CHỌN THẺ) ---
+        // --- NÚT THÊM ---
         Button(
             onClick = {
                 if (selectedType != null) {
                     onAddClick(selectedType!!.isImp, selectedType!!.isUrg)
                     focusManager.clearFocus()
-                    selectedType = null // Reset về null
+                    selectedType = null
                 }
             },
-            enabled = isButtonEnabled, // <--- Logic quan trọng ở đây
+            enabled = isButtonEnabled,
             modifier = Modifier.size(56.dp),
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(0.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF62B26A), // Màu xanh khi active
-                disabledContainerColor = Color(0xFFBDBDBD), // Màu xám khi disable
+                containerColor = Color(0xFF62B26A),
+                disabledContainerColor = Color(0xFFBDBDBD),
                 contentColor = Color.White,
                 disabledContentColor = Color.White
             )
@@ -156,7 +151,7 @@ fun TaskInput(
     }
 }
 
-// --- THANH CÔNG CỤ KHI CHỌN TASK (Giữ nguyên) ---
+// ... (Phần TaskActionRows giữ nguyên)
 @Composable
 fun TaskActionRows(
     onDelete: () -> Unit,
