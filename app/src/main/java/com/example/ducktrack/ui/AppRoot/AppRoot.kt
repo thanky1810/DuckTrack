@@ -29,6 +29,7 @@ import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
 import com.example.ducktrack.ui.main.MainScreen
 import com.example.ducktrack.ui.main.ViewModelFactory
+import com.example.ducktrack.ui.main.ai.AiChatScreen
 import com.example.ducktrack.ui.main.pomodoro.FocusModeScreen
 import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.AboutUsScreen // <--- IMPORT MỚI
@@ -69,14 +70,12 @@ fun AppRoot(
     val activityContext = LocalContext.current
     val nav = rememberNavController()
 
-    // --- SETUP DATA ---
     val limitsStore = remember { LimitsStore(appContext) }
-    val userPrefs = remember { UserPreferences(appContext) }
 
     val isOnboardingCompleted by limitsStore.onboardingCompleted.collectAsState(initial = null)
 
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(appContext))
-    val pomodoroViewModel: PomodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
+    val promodoroViewModel: PomodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
 
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
     val hasPermission = checkUsageAccessPermission(appContext)
@@ -88,7 +87,7 @@ fun AppRoot(
                 startDestination = Routes.Splash,
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
-                // --- SPLASH ---
+                // SPLASH
                 composable(Routes.Splash) {
                     SplashScreen(
                         isDataReady = (isOnboardingCompleted != null),
@@ -101,7 +100,7 @@ fun AppRoot(
                     )
                 }
 
-                // --- ONBOARDING ---
+                // ONBOARDING
                 composable(Routes.Onboarding) {
                     OnboardingScreen(onFinish = {
                         CoroutineScope(Dispatchers.IO).launch { limitsStore.saveOnboardingCompleted() }
@@ -109,10 +108,10 @@ fun AppRoot(
                     })
                 }
 
-                // --- HOME (INTRO) ---
+                // HOME / INTRO
                 composable(Routes.Home) { introduceScreen(onGoLogin = { nav.navigate(Routes.Login) }) }
 
-                // --- LOGIN ---
+                // LOGIN
                 composable(Routes.Login) {
                     LoginScreen(googleSignInClient = googleSignInClient, onLogin = {
                         if (checkUsageAccessPermission(appContext)) nav.navigate(Routes.Main) { popUpTo(Routes.Home) { inclusive = true } }
@@ -120,7 +119,7 @@ fun AppRoot(
                     })
                 }
 
-                // --- PERMISSION ---
+                // PERMISSION
                 composable(Routes.Permission) {
                     PermissionScreen(
                         onGoToSettings = { try { activityContext.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {} },
@@ -129,7 +128,7 @@ fun AppRoot(
                     )
                 }
 
-                // --- MAIN SCREEN ---
+                // MAIN
                 composable(Routes.Main) {
                     val currentHasPermission = checkUsageAccessPermission(appContext)
                     MainScreen(
@@ -139,47 +138,28 @@ fun AppRoot(
                             authViewModel.logout()
                             nav.navigate(Routes.Home) { popUpTo(Routes.Main) { inclusive = true } }
                         },
-                        pomodoroViewModel = pomodoroViewModel,
+                        promodoroViewModel = promodoroViewModel,
                         onNavigateToFocus = { nav.navigate(Routes.FocusMode) },
-                        // Callback mở màn hình Lịch sử Xuất file
                         onNavigateToExportHistory = { nav.navigate(Routes.ExportHistory) },
-                        // Callback mở màn hình Về chúng tôi (About Us)
                         onNavigateToAbout = { nav.navigate(Routes.AboutUs) },
                         onNavigateToAchievements = { nav.navigate(Routes.Achievements) },
-                        onNavigateToStatistics = { nav.navigate(Routes.Statistics) }
+                        onNavigateToStatistics = { nav.navigate(Routes.Statistics) },
+                        // --- MỚI: Truyền xuống MainScreen ---
+                        onNavigateToAiChat = { nav.navigate(Routes.AiChat) }
                     )
                 }
 
-                // --- CÁC MÀN HÌNH CON ---
-                composable(Routes.FocusMode) { FocusModeScreen(viewModel = pomodoroViewModel, onExit = { nav.popBackStack() }) }
-
+                // SUB-SCREENS
+                composable(Routes.FocusMode) { FocusModeScreen(viewModel = promodoroViewModel, onExit = { nav.popBackStack() }) }
                 composable(Routes.UserProfile) { UserProfileScreen(onBack = { nav.popBackStack() }) }
+                composable(Routes.ExportHistory) { ExportHistoryScreen(onBack = { nav.popBackStack() }) }
+                composable(Routes.AboutUs) { AboutUsScreen(onBack = { nav.popBackStack() }) }
+                composable(Routes.Achievements) { AchievementsScreen(onBack = { nav.popBackStack() }) }
+                composable(Routes.Statistics) { StatisticsScreen(onBack = { nav.popBackStack() }) }
 
-                // --- MÀN HÌNH LỊCH SỬ XUẤT FILE ---
-                composable(Routes.ExportHistory) {
-                    ExportHistoryScreen(
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-
-                // --- MÀN HÌNH THÀNH TỰU (MỚI) ---
-                composable(Routes.Achievements) {
-                    AchievementsScreen(
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // --- MÀN HÌNH VỀ CHÚNG TÔI (ABOUT US) ---
-                composable(Routes.AboutUs) {
-                    AboutUsScreen(
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // --- MÀN HÌNH THỐNG KÊ (MỚI) ---
-                composable(Routes.Statistics) {
-                    StatisticsScreen(onBack = { nav.popBackStack() })
+                // --- MỚI: Màn hình AI Chat ---
+                composable(Routes.AiChat) {
+                    AiChatScreen(onBack = { nav.popBackStack() })
                 }
             }
         }

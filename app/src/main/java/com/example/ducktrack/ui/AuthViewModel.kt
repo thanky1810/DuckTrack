@@ -183,7 +183,49 @@ class AuthViewModel(context: Context) : ViewModel() {
         else { firebaseAuth.startActivityForSignInWithProvider(activity, provider.build()).addOnSuccessListener { _isAuthenticated.update { true }; prefs.edit { putBoolean(authKey, true); putString(providerKey, "GitHub") }; onSuccess() }.addOnFailureListener { onError(it.message ?: "") } }
     }
 
-    fun logout() { viewModelScope.launch { firebaseAuth.signOut(); _isAuthenticated.update { false }; _cachedBase64Avatar = null; prefs.edit { putBoolean(authKey, false); remove(providerKey) } } }
+    fun logout() {
+        viewModelScope.launch {
+            // 1. Xóa dữ liệu local trước để tránh hiển thị nhầm cho user sau
+            repository.clearLocalData()
+
+            // 2. Đăng xuất Firebase
+            firebaseAuth.signOut()
+            _isAuthenticated.update { false }
+            _cachedBase64Avatar = null
+
+            // 3. Xóa Prefs
+            prefs.edit {
+                putBoolean(authKey, false)
+                remove(providerKey)
+            }
+        }
+    }
+
+    // --- THÊM HÀM XÓA TÀI KHOẢN ---
+    fun deleteAccount(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _isUploading.value = true
+            try {
+                // 1. Xóa dữ liệu trên Firestore & Local
+                repository.deleteAccountData()
+
+                // 2. Xóa user khỏi Firebase Authentication (Quan trọng)
+                val user = firebaseAuth.currentUser
+                user?.delete()?.await()
+
+                // 3. Logout cục bộ
+                logout()
+
+                _isUploading.value = false
+                onSuccess()
+            } catch (e: Exception) {
+                _isUploading.value = false
+                onError("Lỗi xóa tài khoản: ${e.message}")
+                // Dù lỗi mạng thì cũng nên logout để an toàn
+                logout()
+            }
+        }
+    }
     fun getLinkedProviders() = firebaseAuth.currentUser?.providerData?.map { it.providerId } ?: emptyList()
     fun linkWithGithub(act: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) { firebaseAuth.currentUser?.startActivityForLinkWithProvider(act, OAuthProvider.newBuilder("github.com").build())?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
     fun unlinkProvider(id: String, onSuccess: () -> Unit, onError: (String) -> Unit) { if((firebaseAuth.currentUser?.providerData?.size ?: 0) <= 1) onError("Giữ lại ít nhất 1 phương thức!") else firebaseAuth.currentUser?.unlink(id)?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }

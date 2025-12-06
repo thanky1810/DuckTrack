@@ -388,4 +388,47 @@ class UserDataRepository(private val userDao: UserDao) {
             e.printStackTrace()
         }
     }
+
+    // --- 1. HÀM XÓA DỮ LIỆU LOCAL (Dùng khi Logout) ---
+    suspend fun clearLocalData() {
+        withContext(Dispatchers.IO) {
+            // Xóa sạch database cũ
+            userDao.clearAllData()
+
+            // Tạo lại profile mặc định (để app không bị lỗi null khi user mới chưa kịp load)
+            val defaultProfile = UserProfile(id = 1, points = 0)
+            userDao.upsertUserProfile(defaultProfile)
+
+            val defaultSeed = UnlockedSeed(SeedType.NORMAL.id)
+            userDao.insertUnlockedSeed(defaultSeed)
+        }
+    }
+
+    // --- 2. HÀM XÓA TÀI KHOẢN VĨNH VIỄN (Cloud + Local) ---
+    suspend fun deleteAccountData() {
+        val uid = auth.currentUser?.uid ?: return
+        withContext(Dispatchers.IO) {
+            try {
+                // A. Xóa dữ liệu trên Firestore
+                val userDoc = firestore.collection("users").document(uid)
+
+                // 1. Xóa Collection con 'garden'
+                val gardenDocs = userDoc.collection("garden").get().await()
+                for (doc in gardenDocs) doc.reference.delete()
+
+                // 2. Xóa Collection con 'tasks'
+                val taskDocs = userDoc.collection("tasks").get().await()
+                for (doc in taskDocs) doc.reference.delete()
+
+                // 3. Xóa Document chính của User
+                userDoc.delete().await()
+
+                // B. Sau khi xóa trên mây xong -> Xóa local
+                clearLocalData()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 }

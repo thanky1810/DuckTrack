@@ -56,14 +56,15 @@ fun MainScreen(
     hasPermission: Boolean,
     onLogout: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
-    pomodoroViewModel: PomodoroViewModel,
+    promodoroViewModel: PomodoroViewModel,
     onNavigateToFocus: () -> Unit,
+    onNavigateToExportHistory: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     onNavigateToAchievements: () -> Unit,
     onNavigateToStatistics: () -> Unit,
-
-    // >>> THÊM 2 CALLBACK ĐIỀU HƯỚNG MỚI <<<
-    onNavigateToExportHistory: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    // --- MỚI: Callback AI Chat ---
+    onNavigateToAiChat: () -> Unit
+    // ----------------------------
 ) {
     val bottomNavController = rememberNavController()
     var currentPageTitle by remember { mutableStateOf("Trang chủ") }
@@ -119,7 +120,7 @@ fun MainScreen(
                         onGoToPermission = { mainNavController.navigate(Routes.Permission) },
                         onHeaderNoteChange = { note -> headerNote = note },
                         vm = homeViewModel,
-                        onNavigateToStatistics = onNavigateToStatistics // <--- Truyền xuống
+                        onNavigateToStatistics = onNavigateToStatistics
                     )
                 }
 
@@ -132,7 +133,7 @@ fun MainScreen(
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Pomodoro + currentRoute) {
                         PromodoroScreen(
-                            viewModel = pomodoroViewModel,
+                            viewModel = promodoroViewModel,
                             onStartFocus = onNavigateToFocus
                         )
                     }
@@ -158,13 +159,12 @@ fun MainScreen(
                     LaunchedEffect(Unit) { headerNote = null }
                     SettingsScreen(
                         onLogout = onLogout,
-                        onNavigateToProfile = {
-                            mainNavController.navigate(Routes.UserProfile)
-                        },
-                        // >>> TRUYỀN CALLBACK XUỐNG SETTINGS SCREEN <<<
+                        onNavigateToProfile = { mainNavController.navigate(Routes.UserProfile) },
                         onNavigateToExportHistory = onNavigateToExportHistory,
                         onNavigateToAbout = onNavigateToAbout,
-                        onNavigateToAchievements = onNavigateToAchievements
+                        onNavigateToAchievements = onNavigateToAchievements,
+                        // --- MỚI: Truyền callback vào SettingsScreen ---
+                        onNavigateToAiChat = onNavigateToAiChat
                     )
                 }
             }
