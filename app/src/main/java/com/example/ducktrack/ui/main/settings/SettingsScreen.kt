@@ -1,7 +1,6 @@
 package com.example.ducktrack.ui.main.settings
 
 import android.app.Activity
-import android.content.Context
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.widget.Toast
@@ -36,8 +35,6 @@ import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
-
-// --- IMPORT DANH SÁCH THÀNH TỰU ---
 import com.example.ducktrack.ui.main.settings.AchievementList
 
 @Composable
@@ -47,7 +44,10 @@ fun SettingsScreen(
     onNavigateToExportHistory: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
     onNavigateToAbout: () -> Unit,
-    onNavigateToAchievements: () -> Unit, // Callback điều hướng thành tựu
+    onNavigateToAchievements: () -> Unit,
+    // --- MỚI: Callback điều hướng sang AI Chat ---
+    onNavigateToAiChat: () -> Unit,
+    // ---------------------------------------------
     authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext)
     )
@@ -60,15 +60,14 @@ fun SettingsScreen(
 
     val isVibration by settingsViewModel.isVibration.collectAsState()
     val isKeepScreenOn by settingsViewModel.isKeepScreenOn.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // --- LOGIC MỚI: TÌM TÊN THÀNH TỰU ĐANG CHỌN ---
     val selectedTitle = remember(userInfo?.selectedAchievementId) {
         val id = userInfo?.selectedAchievementId
         if (id != null) {
             AchievementList.list.find { it.id == id }?.title
         } else null
     }
-    // ----------------------------------------------
 
     LaunchedEffect(Unit) {
         authViewModel.loadUserInfo { info -> userInfo = info }
@@ -85,7 +84,7 @@ fun SettingsScreen(
     ) {
         Text("Cài đặt", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
 
-        // --- 1. THẺ USER (ĐÃ SỬA UI) ---
+        // 1. THẺ USER
         Card(
             modifier = Modifier.fillMaxWidth().clickable { onNavigateToProfile() },
             colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.1f)),
@@ -93,7 +92,6 @@ fun SettingsScreen(
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Avatar
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(70.dp)) {
                     val base64Str = userInfo?.photoBase64
                     val bitmap = remember(base64Str) { try { val b = Base64.decode(base64Str, Base64.DEFAULT); BitmapFactory.decodeByteArray(b, 0, b.size).asImageBitmap() } catch (e: Exception) { null } }
@@ -103,48 +101,32 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Cột thông tin (Badge + Tên + Subtitle)
                 Column(modifier = Modifier.weight(1f)) {
-
-                    // --- HIỂN THỊ BADGE THÀNH TỰU (NẾU CÓ) ---
                     if (selectedTitle != null) {
                         Surface(
-                            color = Color(0xFFFFF9C4), // Vàng nhạt
+                            color = Color(0xFFFFF9C4),
                             shape = RoundedCornerShape(50),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBC02D)),
-                            modifier = Modifier.padding(bottom = 4.dp) // Cách tên một chút
+                            modifier = Modifier.padding(bottom = 4.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.EmojiEvents,
-                                    contentDescription = null,
-                                    tint = Color(0xFFF57F17),
-                                    modifier = Modifier.size(12.dp)
-                                )
+                                Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFF57F17), modifier = Modifier.size(12.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = selectedTitle,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFF57F17)
-                                )
+                                Text(text = selectedTitle, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF57F17))
                             }
                         }
                     }
-                    // ------------------------------------------
-
                     Text(text = userInfo?.name ?: "Đang tải...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                     Text(text = "Xem hồ sơ chi tiết & thống kê", fontSize = 12.sp, color = primaryColor)
                 }
-
                 Icon(Icons.Default.ChevronRight, null, tint = primaryColor)
             }
         }
 
-        // --- 2. TRẢI NGHIỆM ---
+        // 2. TRẢI NGHIỆM
         Text("Trải nghiệm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -154,18 +136,30 @@ fun SettingsScreen(
             }
         }
 
-        // --- 3. DỮ LIỆU & ỨNG DỤNG ---
+        // 3. DỮ LIỆU & ỨNG DỤNG
         Text("Dữ liệu & Ứng dụng", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
+
+                // --- TẠM ẨN TÍNH NĂNG AI (Bọc trong /* ... */) ---
+                /*
+                SettingActionRow(
+                    icon = Icons.Default.AutoAwesome,
+                    title = "Trợ lý Vịt AI",
+                    subtitle = "Tư vấn lộ trình & Trò chuyện thông minh"
+                ) {
+                    onNavigateToAiChat()
+                }
+
+                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                */
+                // -------------------------------------------------
 
                 SettingActionRow(
                     icon = Icons.Default.Download,
                     title = "Xuất dữ liệu & Lịch sử",
                     subtitle = "Tải về và quản lý các file báo cáo CSV"
-                ) {
-                    onNavigateToExportHistory()
-                }
+                ) { onNavigateToExportHistory() }
 
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
@@ -173,9 +167,7 @@ fun SettingsScreen(
                     icon = Icons.Default.EmojiEvents,
                     title = "Thành tựu",
                     subtitle = "Xem danh hiệu bạn đã đạt được"
-                ) {
-                    onNavigateToAchievements()
-                }
+                ) { onNavigateToAchievements() }
 
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
@@ -183,13 +175,11 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     title = "Về chúng tôi",
                     subtitle = "Thông tin nhóm phát triển"
-                ) {
-                    onNavigateToAbout()
-                }
+                ) { onNavigateToAbout() }
             }
         }
 
-        // --- 4. LIÊN KẾT TÀI KHOẢN ---
+        // 4. LIÊN KẾT TÀI KHOẢN
         Text("Liên kết tài khoản", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -209,14 +199,70 @@ fun SettingsScreen(
         MonitoringControlSection(settingsViewModel)
         Divider(color = Color(0xFFEEEEEE))
 
-        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)), shape = RoundedCornerShape(12.dp)) {
+        // NÚT ĐĂNG XUẤT (Cũ)
+        Button(
+            onClick = onLogout, // Hàm này giờ đã gọi authViewModel.logout() -> clear data
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF757575)), // Đổi màu xám cho nút Đăng xuất
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Icon(Icons.Filled.ExitToApp, null); Spacer(Modifier.width(8.dp)); Text("Đăng xuất", fontWeight = FontWeight.Bold)
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // --- NÚT XÓA TÀI KHOẢN (MỚI - MÀU ĐỎ) ---
+        OutlinedButton(
+            onClick = { showDeleteDialog = true },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD32F2F)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.DeleteForever, null); Spacer(Modifier.width(8.dp)); Text("Xóa tài khoản vĩnh viễn", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(32.dp)) // Padding bottom
     }
+
+    // --- DIALOG XÁC NHẬN XÓA ---
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xóa tài khoản?", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)) },
+            text = { Text("Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu (Nhiệm vụ, Cây trồng, Thành tựu) của bạn trên máy chủ. Bạn không thể hoàn tác.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        authViewModel.deleteAccount(
+                            onSuccess = {
+                                Toast.makeText(context, "Đã xóa tài khoản", Toast.LENGTH_SHORT).show()
+                                onLogout() // Điều hướng về màn hình Login
+                            },
+                            onError = { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Text("Xóa vĩnh viễn", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
 }
 
-// ... (Giữ nguyên các Composable phụ trợ bên dưới: SettingSwitchRow, SettingActionRow, AccountLinkRow, MonitoringControlSection)
-// ... Nếu bạn chưa có file backup của phần này thì báo mình gửi lại, nhưng thường thì nó nằm ở cuối file cũ rồi.
+// Các Composable phụ trợ (Giữ nguyên)
 @Composable
 fun SettingSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

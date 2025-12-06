@@ -2,53 +2,64 @@ package com.example.ducktrack.data
 
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
-import com.google.ai.client.generativeai.type.generationConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object GeminiHelper {
-    // Thay API KEY của bạn vào đây
-    private const val API_KEY = "YOUR_API_KEY_HERE"
+    // 1. Dán Key MỚI TẠO vào đây
+    private const val API_KEY = "DÁN_KEY_MỚI_VÀO_ĐÂY"
 
-    // Cấu hình con Vịt
-    private val duckSystemInstruction = """
-        Bạn là DuckTrack, một trợ lý ảo hình con vịt thông minh và hài hước.
-        Nhiệm vụ của bạn là giúp người dùng cai nghiện điện thoại và tập trung làm việc.
-        
-        Tính cách của bạn:
-        - Luôn xưng hô là "Vịt" hoặc "Tớ" và gọi người dùng là "Bạn".
-        - Thỉnh thoảng thêm tiếng "Quạc quạc!" hoặc biểu tượng 🦆 vào câu nói.
-        - Hơi đanh đá một chút nếu người dùng lười biếng, nhưng rất động viên khi họ làm tốt.
-        - Trả lời ngắn gọn, súc tích, không dài dòng.
-    """.trimIndent()
-
+    // 2. Dùng model này để tương thích tốt nhất với SDK 0.9.0
     private val model = GenerativeModel(
-        modelName = "gemini-1.5-flash", // Bản Flash nhanh và rẻ (free)
-        apiKey = API_KEY,
-        systemInstruction = content { text(duckSystemInstruction) }
+        modelName = "gemini-1.5-flash-latest",
+        apiKey = API_KEY
     )
 
-    // Hàm 1: Chat bình thường
     suspend fun chatWithDuck(history: List<Pair<String, String>>, userMessage: String): String {
-        val chat = model.startChat(
-            history = history.map { (role, msg) ->
-                content(role) { text(msg) }
+        return withContext(Dispatchers.IO) {
+            try {
+                val chat = model.startChat(
+                    history = history.map { (role, msg) ->
+                        content(role) { text(msg) }
+                    }
+                )
+                // Nhắc tính cách Vịt ở mỗi tin nhắn để AI nhớ
+                val prompt = "Bạn là trợ lý Vịt DuckTrack hài hước. Hãy trả lời ngắn gọn: $userMessage"
+
+                val response = chat.sendMessage(prompt)
+                response.text ?: "Quạc? Mạng lag quá!"
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Bắt lỗi MissingFieldException để không crash app
+                if (e.message?.contains("MissingFieldException") == true || e.message?.contains("404") == true) {
+                    "Quạc! Lỗi kết nối API (404). Vui lòng kiểm tra lại API Key."
+                } else {
+                    "Quạc! Có lỗi xảy ra: ${e.localizedMessage}"
+                }
             }
-        )
-        val response = chat.sendMessage(userMessage)
-        return response.text ?: "Quạc? Mạng lag quá, Vịt không nghe rõ!"
+        }
     }
 
-    // Hàm 2: Phân tích thói quen và gợi ý lịch trình
     suspend fun analyzeUsageAndSuggest(usageData: String): String {
-        val prompt = """
-            Đây là dữ liệu sử dụng điện thoại hôm nay của tôi:
-            $usageData
-            
-            Hãy phân tích ngắn gọn xem tôi đang lãng phí thời gian vào đâu.
-            Sau đó gợi ý cho tôi một lịch trình tập trung (Pomodoro) cụ thể để khắc phục.
-            Hãy trả lời theo phong cách con vịt DuckTrack.
-        """.trimIndent()
+        return withContext(Dispatchers.IO) {
+            try {
+                val prompt = """
+                    Đóng vai trợ lý Vịt DuckTrack (hài hước, hay nói Quạc).
+                    Dữ liệu sử dụng điện thoại:
+                    $usageData
+                    Hãy phân tích ngắn gọn và gợi ý lịch trình Pomodoro.
+                """.trimIndent()
 
-        val response = model.generateContent(prompt)
-        return response.text ?: "Quạc! Vịt không đọc được dữ liệu."
+                val response = model.generateContent(prompt)
+                response.text ?: "Quạc! Không đọc được dữ liệu."
+            } catch (e: Exception) {
+                e.printStackTrace()
+                if (e.message?.contains("404") == true) {
+                    "Quạc! Lỗi API Key (404). Hãy tạo Key mới trong Project mới."
+                } else {
+                    "Quạc! Lỗi phân tích: ${e.localizedMessage}"
+                }
+            }
+        }
     }
 }

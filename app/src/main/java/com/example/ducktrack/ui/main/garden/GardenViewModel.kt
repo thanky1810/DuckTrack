@@ -26,44 +26,50 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     private val _selectedDateMs = MutableStateFlow(System.currentTimeMillis())
 
     init {
-        // Kết hợp dữ liệu từ: Điểm số, Cây từ Cloud, và Ngày đang chọn
+        // Kết hợp 4 luồng dữ liệu:
+        // 1. Điểm số
+        // 2. Cây trồng từ Cloud
+        // 3. Ngày đang chọn
+        // 4. Danh sách hạt giống đã mở khóa (TỪ LOCAL DB)
         combine(
             repository.userPoints,
             repository.getGrownTreesStream(),
-            _selectedDateMs
-        ) { points, allTreesFromCloud, selectedDate ->
+            _selectedDateMs,
+            repository.unlockedSeeds // <--- THÊM LUỒNG NÀY
+        ) { points, allTreesFromCloud, selectedDate, unlockedSeedsSet ->
 
-            // 1. LOGIC LỌC CÂY THEO NGÀY
+            // 1. LOGIC LỌC CÂY ĐÃ TRỒNG THEO NGÀY
             val startOfDay = getStartOfDay(selectedDate)
             val endOfDay = getEndOfDay(selectedDate)
 
             val treesToday = allTreesFromCloud.filter {
                 it.plantedAt in startOfDay..endOfDay
             }.map { treeFirestore ->
-                // Convert ID string sang Enum
                 val type = SeedType.values().find { it.id == treeFirestore.seedId } ?: SeedType.NORMAL
-
                 GrownTreeUI(
-                    id = treeFirestore.id, // ID từ Firestore
+                    id = treeFirestore.id,
                     seedType = type,
                     plantedAt = treeFirestore.plantedAt,
-                    config = treeFirestore.config // Map chuỗi cấu hình sang UI
+                    config = treeFirestore.config
                 )
             }
 
-            // 2. TẠO DANH SÁCH CỬA HÀNG (Giả sử store items luôn available)
-            // Nếu bạn muốn check unlockedSeeds từ Room, bạn có thể combine thêm flow unlockedSeeds
-            // Ở đây mình tạm để tất cả là true hoặc logic đơn giản
-            val storeItems = SeedType.values().map { StoreItem(it, true) }
+            // 2. TẠO DANH SÁCH CỬA HÀNG (CHECK KHÓA/MỞ TỪ DB)
+            val storeItems = SeedType.values().map { seed ->
+                // Kiểm tra xem seed này có trong danh sách đã mở khóa không
+                // Seed NORMAL luôn luôn mở
+                val isUnlocked = (seed == SeedType.NORMAL) || unlockedSeedsSet.contains(seed)
+
+                StoreItem(seed, isUnlocked)
+            }
 
             // 3. CẬP NHẬT UI
             val dateText = formatDate(selectedDate)
             val isToday = isSameDay(selectedDate, System.currentTimeMillis())
 
-            // Trả về state mới, giữ nguyên giá trị showDialog cũ nếu có
             _uiState.value.copy(
                 userPoints = points,
-                storeItems = storeItems,
+                storeItems = storeItems, // List này giờ đã phản ánh đúng trạng thái mua/chưa mua
                 treesForSelectedDate = treesToday,
                 dateText = dateText,
                 isToday = isToday
@@ -73,14 +79,13 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }.launchIn(viewModelScope)
     }
 
-    // --- CÁC HÀM XỬ LÝ SỰ KIỆN TỪ UI (ĐÃ THÊM LẠI) ---
+    // --- CÁC HÀM XỬ LÝ SỰ KIỆN TỪ UI ---
 
     fun onUnlockSeed(seed: SeedType) {
         viewModelScope.launch {
-            // Gọi repository để trừ điểm và mở khóa
+            // Gọi repository để trừ điểm và mở khóa (Lưu vào Room)
             val success = repository.unlockSeed(seed)
             if (!success) {
-                // Nếu không đủ điểm -> Hiện dialog
                 _uiState.update { it.copy(showNotEnoughPointsDialog = true) }
             }
         }

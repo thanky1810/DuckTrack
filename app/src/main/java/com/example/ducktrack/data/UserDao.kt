@@ -40,4 +40,26 @@ interface UserDao {
 
     @Query("UPDATE tasks SET isPinned = :isPinned WHERE id IN (:ids)")
     suspend fun updateTasksPinStatus(ids: List<Int>, isPinned: Boolean)
+
+    @Query("DELETE FROM user_profile")
+    suspend fun clearUserProfile()
+
+    @Query("DELETE FROM unlocked_seeds")
+    suspend fun clearUnlockedSeeds()
+
+    @Query("DELETE FROM grown_trees")
+    suspend fun clearGrownTrees()
+
+    @Query("DELETE FROM tasks")
+    suspend fun clearTasks()
+
+    // Hàm Transaction để xóa sạch tất cả cùng lúc
+    @Transaction
+    suspend fun clearAllData() {
+        clearUserProfile()
+        clearUnlockedSeeds()
+        clearGrownTrees()
+        clearTasks()
+    }
+
 }
