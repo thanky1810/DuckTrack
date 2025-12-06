@@ -431,4 +431,12 @@ class UserDataRepository(private val userDao: UserDao) {
             }
         }
     }
+    // Thêm vào UserDataRepository.kt
+    suspend fun toggleTaskStatus(taskId: String, currentStatus: Boolean) {
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            firestore.collection("users").document(uid).collection("tasks")
+                .document(taskId).update("completed", !currentStatus).await()
+        } catch (e: Exception) { e.printStackTrace() }
+    }
 }

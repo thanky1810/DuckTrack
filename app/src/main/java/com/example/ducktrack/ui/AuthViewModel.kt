@@ -7,11 +7,13 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.edit
+import androidx.glance.appwidget.updateAll // <--- IMPORT QUAN TRỌNG
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.ui.main.tasks.TaskStats
+import com.example.ducktrack.ui.widget.DuckWidget // <--- IMPORT WIDGET
 import com.example.ducktrack.utils.AppUsageCsvItem
 import com.example.ducktrack.utils.CsvExporter
 import com.example.ducktrack.utils.ImageUtils
@@ -80,6 +82,16 @@ class AuthViewModel(context: Context) : ViewModel() {
         }
     }
 
+    // --- HÀM PHỤ TRỢ: CẬP NHẬT WIDGET ---
+    private suspend fun refreshWidget() {
+        try {
+            // Lệnh này bắt buộc tất cả Widget DuckTrack đang gắn trên màn hình phải load lại dữ liệu
+            DuckWidget().updateAll(appContext)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     // =========================================================================
     //                           QUẢN LÝ THÔNG TIN USER
     // =========================================================================
@@ -90,6 +102,7 @@ class AuthViewModel(context: Context) : ViewModel() {
 
         if (user != null) {
             viewModelScope.launch {
+                // ... (Logic lấy dữ liệu giữ nguyên) ...
                 val name = user.displayName ?: user.email ?: "Người dùng"
                 val email = user.email ?: "Không có email"
                 val createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
@@ -100,7 +113,6 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val treeCounts = mutableMapOf<String, Int>()
 
                 try {
-                    // 1. Lấy thông tin từ Firestore (Avatar, Tên vịt, Thành tựu đang chọn)
                     val doc = firestore.collection("users").document(user.uid).get().await()
                     if (doc.exists()) {
                         avatarStr = doc.getString("avatarBase64")
@@ -109,7 +121,6 @@ class AuthViewModel(context: Context) : ViewModel() {
                         selectedAchieveId = doc.getString("selectedAchievementId")
                     }
 
-                    // 2. Lấy thống kê Vườn cây (để hiện số lượng trên UI Profile)
                     val gardenSnapshot = firestore.collection("users").document(user.uid)
                         .collection("garden").get().await()
 
@@ -123,11 +134,13 @@ class AuthViewModel(context: Context) : ViewModel() {
                     e.printStackTrace()
                 }
 
-                // 3. Lấy thống kê Nhiệm vụ từ Repository
                 val stats = repository.getTaskStats()
                 _taskStats.value = stats
 
                 onLoaded(UserInfo(name, email, savedProvider, avatarStr, duckName, createdAt, treeCounts, selectedAchieveId))
+
+                // --- CẬP NHẬT WIDGET KHI LOAD XONG INFO (Tức là đã login thành công) ---
+                refreshWidget()
             }
         }
     }
@@ -173,7 +186,12 @@ class AuthViewModel(context: Context) : ViewModel() {
     // --- CÁC HÀM ĐĂNG NHẬP / ĐĂNG XUẤT ---
 
     suspend fun signInWithGoogleToken(idToken: String) {
-        try { firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await(); _isAuthenticated.update { true }; prefs.edit { putBoolean(authKey, true); putString(providerKey, "Google") } } catch (e: Exception) { logout() }
+        try {
+            firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
+            _isAuthenticated.update { true }
+            prefs.edit { putBoolean(authKey, true); putString(providerKey, "Google") }
+            // Widget sẽ được cập nhật khi loadUserInfo được gọi ở MainScreen
+        } catch (e: Exception) { logout() }
     }
 
     fun signInWithGithub(activity: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -185,7 +203,7 @@ class AuthViewModel(context: Context) : ViewModel() {
 
     fun logout() {
         viewModelScope.launch {
-            // 1. Xóa dữ liệu local trước để tránh hiển thị nhầm cho user sau
+            // 1. Xóa dữ liệu local
             repository.clearLocalData()
 
             // 2. Đăng xuất Firebase
@@ -198,22 +216,22 @@ class AuthViewModel(context: Context) : ViewModel() {
                 putBoolean(authKey, false)
                 remove(providerKey)
             }
+
+            // 4. --- CẬP NHẬT WIDGET NGAY LẬP TỨC ---
+            // Khi logout, widget sẽ refresh -> thấy user null -> hiển thị trống
+            refreshWidget()
         }
     }
 
-    // --- THÊM HÀM XÓA TÀI KHOẢN ---
     fun deleteAccount(onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             _isUploading.value = true
             try {
-                // 1. Xóa dữ liệu trên Firestore & Local
                 repository.deleteAccountData()
-
-                // 2. Xóa user khỏi Firebase Authentication (Quan trọng)
                 val user = firebaseAuth.currentUser
                 user?.delete()?.await()
 
-                // 3. Logout cục bộ
+                // Logout sẽ tự gọi refreshWidget
                 logout()
 
                 _isUploading.value = false
@@ -221,19 +239,18 @@ class AuthViewModel(context: Context) : ViewModel() {
             } catch (e: Exception) {
                 _isUploading.value = false
                 onError("Lỗi xóa tài khoản: ${e.message}")
-                // Dù lỗi mạng thì cũng nên logout để an toàn
                 logout()
             }
         }
     }
+
     fun getLinkedProviders() = firebaseAuth.currentUser?.providerData?.map { it.providerId } ?: emptyList()
     fun linkWithGithub(act: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) { firebaseAuth.currentUser?.startActivityForLinkWithProvider(act, OAuthProvider.newBuilder("github.com").build())?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
     fun unlinkProvider(id: String, onSuccess: () -> Unit, onError: (String) -> Unit) { if((firebaseAuth.currentUser?.providerData?.size ?: 0) <= 1) onError("Giữ lại ít nhất 1 phương thức!") else firebaseAuth.currentUser?.unlink(id)?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
 
-    // =========================================================================
-    //               LOGIC XUẤT DỮ LIỆU (EXPORT CSV) - ĐẦY ĐỦ
-    // =========================================================================
-
+    // ... (Các hàm Export Data giữ nguyên như cũ) ...
+    // (Tôi lược bớt phần Export Data để code ngắn gọn, bạn giữ nguyên phần đó nhé)
+    // Vì phần Export không ảnh hưởng đến Widget.
     fun exportData(context: Context, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             _isUploading.value = true
@@ -244,8 +261,6 @@ class AuthViewModel(context: Context) : ViewModel() {
                     onError("Chưa đăng nhập!")
                     return@launch
                 }
-
-                // 1. Lấy User Info
                 val userInfoDeferred = withContext(Dispatchers.IO) {
                     val savedProvider = prefs.getString("LOGIN_PROVIDER", "Không rõ") ?: "Không rõ"
                     val name = user.displayName ?: user.email ?: "Người dùng"
@@ -259,101 +274,41 @@ class AuthViewModel(context: Context) : ViewModel() {
                     UserInfo(name, email, savedProvider, null, duckName, createdAt, emptyMap())
                 }
 
-                // 2. Lấy dữ liệu Lịch sử (Tuần này) và Top App (30 ngày)
                 val weeklyTrees = getWeeklyTreeHistory(user.uid)
                 val monthlyApps = getTopAppsUsage(context)
-
-                // 3. Lấy dữ liệu Thống kê Task (Tổng & Eisenhower)
                 val currentTaskStats = repository.getTaskStats()
-
-                // 4. --- MỚI: TÍNH TOÁN SỐ LƯỢNG TỪNG LOẠI CÂY (TỔNG CỘNG) ---
                 val treeCountsMap = withContext(Dispatchers.IO) {
                     val mapNameCount = mutableMapOf<String, Int>()
                     try {
-                        // Lấy toàn bộ cây từ Firestore
-                        val allTreesSnapshot = firestore.collection("users").document(user.uid)
-                            .collection("garden").get().await()
-
-                        // Đếm số lượng theo ID
+                        val allTreesSnapshot = firestore.collection("users").document(user.uid).collection("garden").get().await()
                         val countsById = allTreesSnapshot.documents.groupingBy { it.getString("seedId") ?: "normal" }.eachCount()
-
-                        // Đổi ID sang Tên Tiếng Việt để ghi vào CSV
                         countsById.forEach { (id, count) ->
-                            val nameVN = when (id) {
-                                "normal" -> "Cây thường"
-                                "pine" -> "Cây thông"
-                                "red_leaf", "redleaf" -> "Cây lá đỏ"
-                                "sakura" -> "Hoa anh đào"
-                                else -> "Cây khác"
-                            }
-                            val current = mapNameCount[nameVN] ?: 0
-                            mapNameCount[nameVN] = current + count
+                            val nameVN = when (id) { "normal" -> "Cây thường"; "pine" -> "Cây thông"; "red_leaf", "redleaf" -> "Cây lá đỏ"; "sakura" -> "Hoa anh đào"; else -> "Cây khác" }
+                            mapNameCount[nameVN] = (mapNameCount[nameVN] ?: 0) + count
                         }
                     } catch (e: Exception) { e.printStackTrace() }
                     mapNameCount
                 }
-                // -----------------------------------------------------------
 
-                // 5. GHI FILE (Gọi hàm saveToDownloads với đầy đủ tham số)
                 withContext(Dispatchers.IO) {
-                    val resultMessage = CsvExporter.saveToDownloads(
-                        context,
-                        userInfoDeferred,
-                        weeklyTrees,
-                        monthlyApps,
-                        currentTaskStats, // Thống kê Task
-                        treeCountsMap     // Thống kê Cây
-                    )
-
+                    val resultMessage = CsvExporter.saveToDownloads(context, userInfoDeferred, weeklyTrees, monthlyApps, currentTaskStats, treeCountsMap)
                     withContext(Dispatchers.Main) {
                         _isUploading.value = false
-                        if (resultMessage != null) {
-                            val realPath = resultMessage.replace("Đã lưu tại: ", "")
-                            onSuccess(realPath)
-                        } else {
-                            onError("Lỗi khi lưu file.")
-                        }
+                        if (resultMessage != null) onSuccess(resultMessage.replace("Đã lưu tại: ", "")) else onError("Lỗi khi lưu file.")
                     }
                 }
-            } catch (e: Exception) {
-                _isUploading.value = false
-                onError(e.message ?: "Lỗi export")
-            }
+            } catch (e: Exception) { _isUploading.value = false; onError(e.message ?: "Lỗi export") }
         }
     }
 
-    // --- HELPER 1: Lấy cây trồng từ Thứ 2 -> Chủ nhật tuần này ---
     private suspend fun getWeeklyTreeHistory(uid: String): List<TreeHistoryCsvItem> = withContext(Dispatchers.IO) {
+        // ... (Giữ nguyên logic cũ)
         val list = mutableListOf<TreeHistoryCsvItem>()
         try {
-            val cal = Calendar.getInstance()
-            cal.firstDayOfWeek = Calendar.MONDAY
-            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-            cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-            val startOfWeek = cal.timeInMillis
-
-            cal.add(Calendar.DAY_OF_YEAR, 7)
-            val endOfWeek = cal.timeInMillis
-
-            val snapshot = firestore.collection("users").document(uid)
-                .collection("garden")
-                .whereGreaterThanOrEqualTo("plantedAt", startOfWeek)
-                .whereLessThan("plantedAt", endOfWeek)
-                .get().await()
-
+            val cal = Calendar.getInstance(); cal.firstDayOfWeek = Calendar.MONDAY; cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY); cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0); val startOfWeek = cal.timeInMillis; cal.add(Calendar.DAY_OF_YEAR, 7); val endOfWeek = cal.timeInMillis
+            val snapshot = firestore.collection("users").document(uid).collection("garden").whereGreaterThanOrEqualTo("plantedAt", startOfWeek).whereLessThan("plantedAt", endOfWeek).get().await()
             for (doc in snapshot.documents) {
-                val seedId = doc.getString("seedId") ?: ""
-                val treeNameVN = when (seedId) {
-                    "normal" -> "Cây thường"
-                    "pine" -> "Cây thông"
-                    "red_leaf", "redleaf" -> "Cây lá đỏ"
-                    "sakura" -> "Hoa anh đào"
-                    else -> "Cây khác ($seedId)"
-                }
-                val timestamp = doc.getLong("plantedAt") ?: 0L
-                val configStr = doc.getString("config") ?: "N/A"
-                val status = doc.getString("status") ?: "Hoàn thành"
-
+                val seedId = doc.getString("seedId") ?: ""; val treeNameVN = when (seedId) { "normal" -> "Cây thường"; "pine" -> "Cây thông"; "red_leaf", "redleaf" -> "Cây lá đỏ"; "sakura" -> "Hoa anh đào"; else -> "Cây khác ($seedId)" }; val timestamp = doc.getLong("plantedAt") ?: 0L; val configStr = doc.getString("config") ?: "N/A"; val status = doc.getString("status") ?: "Hoàn thành"
                 list.add(TreeHistoryCsvItem(treeNameVN, timestamp, configStr, status))
             }
             list.sortByDescending { it.timestamp }
@@ -361,38 +316,14 @@ class AuthViewModel(context: Context) : ViewModel() {
         list
     }
 
-    // --- HELPER 2: Lấy Top 10 App (30 ngày) ---
     private suspend fun getTopAppsUsage(context: Context): List<AppUsageCsvItem> = withContext(Dispatchers.IO) {
+        // ... (Giữ nguyên logic cũ)
         val list = mutableListOf<AppUsageCsvItem>()
         try {
-            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-            val packageManager = context.packageManager
-
-            val cal = Calendar.getInstance()
-            val endTime = cal.timeInMillis
-            cal.add(Calendar.DAY_OF_YEAR, -30)
-            val startTime = cal.timeInMillis
-
-            val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager; val packageManager = context.packageManager; val cal = Calendar.getInstance(); val endTime = cal.timeInMillis; cal.add(Calendar.DAY_OF_YEAR, -30); val startTime = cal.timeInMillis; val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
             if (statsMap.isNotEmpty()) {
-                val sortedStats = statsMap.values
-                    .filter { it.totalTimeInForeground > 0 }
-                    .sortedByDescending { it.totalTimeInForeground }
-
-                var count = 0
-                for (usageStats in sortedStats) {
-                    if (count >= 10) break
-                    val packageName = usageStats.packageName
-                    var appName = packageName
-                    try {
-                        val ai = packageManager.getApplicationInfo(packageName, 0)
-                        appName = packageManager.getApplicationLabel(ai).toString()
-                    } catch (e: PackageManager.NameNotFoundException) { }
-
-                    list.add(AppUsageCsvItem(appName, usageStats.totalTimeInForeground))
-                    count++
-                }
+                val sortedStats = statsMap.values.filter { it.totalTimeInForeground > 0 }.sortedByDescending { it.totalTimeInForeground }; var count = 0
+                for (usageStats in sortedStats) { if (count >= 10) break; val packageName = usageStats.packageName; var appName = packageName; try { val ai = packageManager.getApplicationInfo(packageName, 0); appName = packageManager.getApplicationLabel(ai).toString() } catch (e: PackageManager.NameNotFoundException) { }; list.add(AppUsageCsvItem(appName, usageStats.totalTimeInForeground)); count++ }
             }
         } catch (e: Exception) { e.printStackTrace() }
         list
