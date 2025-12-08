@@ -10,6 +10,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
@@ -52,55 +53,74 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         }.launchIn(viewModelScope)
     }
 
-    // --- MỚI: HỦY PHIÊN & TRỪ ĐIỂM ---
-    // --- SỬA LOGIC HỦY PHIÊN ---
+    // --- SỬA LOGIC HỦY PHIÊN & GỬI THÔNG BÁO ---
     fun cancelSession(isHomeExit: Boolean) {
         val state = _uiState.value
 
-        // Tính số phiên còn lại
-        // VD: Tổng 4, đang ở phiên 1 (current=0) -> Còn lại 4 phiên (1,2,3,4) chưa xong
-        // VD: Tổng 4, đang ở phiên 2 (current=1) -> Còn lại 3 phiên (2,3,4) chưa xong
-        val remainingSessions = state.sessionsBeforeLongBreak - state.currentSessionCount
+        if (state.pomodoroState == PomodoroState.Running || state.pomodoroState == PomodoroState.Break) {
 
-        if (remainingSessions > 0) {
-            val penaltyPerSession = if (isHomeExit) 50 else 25
-            val totalPenalty = remainingSessions * penaltyPerSession
+            val remainingSessions = state.sessionsBeforeLongBreak - state.currentSessionCount
 
-            // Gọi coroutine để trừ điểm (Sử dụng viewModelScope mặc định là đủ an toàn khi không thoát màn hình ngay)
-            viewModelScope.launch {
-                repository.deductPoints(totalPenalty)
-            }
+            if (remainingSessions > 0) {
+                val penaltyPerSession = if (isHomeExit) 50 else 25
+                val totalPenalty = remainingSessions * penaltyPerSession
 
-            if (isHomeExit) {
-                sendFailureNotification(totalPenalty)
+                viewModelScope.launch {
+                    repository.deductPoints(totalPenalty)
+                }
+
+                // --- GỬI THÔNG BÁO NẾU THOÁT BẰNG HOME ---
+                if (isHomeExit) {
+                    sendFailureNotification(totalPenalty)
+                }
             }
         }
 
-        // Dừng timer và hiện FailedDialog
         stopTimer(isFailed = true)
     }
 
     private fun sendFailureNotification(penalty: Int) {
         val context = getApplication<Application>()
-        val channelId = "pomodoro_fail"
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "pomodoro_fail_channel"
+        val notificationId = 999 // ID cố định hoặc random
 
+        // 1. Tạo Notification Channel (Bắt buộc cho Android 8.0+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Cảnh báo tập trung", NotificationManager.IMPORTANCE_HIGH)
-            manager.createNotificationChannel(channel)
+            val name = "Cảnh báo tập trung"
+            val descriptionText = "Thông báo khi bạn thoát ứng dụng trong lúc tập trung"
+            val importance = NotificationManager.IMPORTANCE_HIGH // Quan trọng cao để hiện popup
+            val channel = NotificationChannel(channelId, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
 
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.duck_crying) // Icon thông báo
-            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D")
+        // 2. Tạo Notification
+        // Lưu ý: Icon R.drawable.duck_crying phải là ảnh nhỏ, đơn giản (nếu ảnh quá phức tạp có thể không hiện đúng)
+        // Tốt nhất nên dùng icon vector đơn sắc hoặc icon launcher mặc định để test trước.
+        // Ở đây mình dùng R.mipmap.ic_launcher (icon app) cho an toàn, bạn có thể đổi lại.
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert) // Icon hệ thống cho chắc ăn
+            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D") // Mặt khóc
             .setContentText("Bạn đã thoát ứng dụng. Bị trừ $penalty điểm sao.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
+            .setAutoCancel(true) // Bấm vào tự tắt
 
-        manager.notify(999, notification)
+        // 3. Gửi (Cần check quyền cho Android 13+)
+        // Vì đây là ViewModel, ta không check quyền trực tiếp được dễ dàng,
+        // nhưng nếu user đã cấp quyền ở màn hình PermissionScreen thì sẽ gửi được.
+        try {
+            val notificationManager = NotificationManagerCompat.from(context)
+            // Cần check quyền SecurityException
+            notificationManager.notify(notificationId, builder.build())
+        } catch (e: SecurityException) {
+            // User chưa cấp quyền thông báo
+            e.printStackTrace()
+        }
     }
-    // ----------------------------------------
+    //--------------------------------
 
     private fun vibratePhone() {
         if (!_uiState.value.isVibrationEnabled) return

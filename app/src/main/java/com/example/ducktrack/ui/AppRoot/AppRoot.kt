@@ -23,7 +23,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.data.LimitsStore
-import com.example.ducktrack.data.UserPreferences
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.introducePage.introduceScreen
 import com.example.ducktrack.ui.login.LoginScreen
@@ -75,7 +74,7 @@ fun AppRoot(
     val isOnboardingCompleted by limitsStore.onboardingCompleted.collectAsState(initial = null)
 
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(appContext))
-    val promodoroViewModel: PomodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
+    val pomodoroViewModel: PomodoroViewModel = viewModel(factory = ViewModelFactory(appContext as MyApplication))
 
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
     val hasPermission = checkUsageAccessPermission(appContext)
@@ -138,7 +137,7 @@ fun AppRoot(
                             authViewModel.logout()
                             nav.navigate(Routes.Home) { popUpTo(Routes.Main) { inclusive = true } }
                         },
-                        promodoroViewModel = promodoroViewModel,
+                        pomodoroViewModel = pomodoroViewModel,
                         onNavigateToFocus = { nav.navigate(Routes.FocusMode) },
                         onNavigateToExportHistory = { nav.navigate(Routes.ExportHistory) },
                         onNavigateToAbout = { nav.navigate(Routes.AboutUs) },
@@ -150,7 +149,7 @@ fun AppRoot(
                 }
 
                 // SUB-SCREENS
-                composable(Routes.FocusMode) { FocusModeScreen(viewModel = promodoroViewModel, onExit = { nav.popBackStack() }) }
+                composable(Routes.FocusMode) { FocusModeScreen(viewModel = pomodoroViewModel, onExit = { nav.popBackStack() }) }
                 composable(Routes.UserProfile) { UserProfileScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.ExportHistory) { ExportHistoryScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.AboutUs) { AboutUsScreen(onBack = { nav.popBackStack() }) }
