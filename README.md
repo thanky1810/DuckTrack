@@ -21,7 +21,7 @@
 </h2>
 
 <p align="center">
-  <img src="CedraVN (1).png" width="100%">
+  <img src="result_screens.png" width="100%">
 </p>
 
 <h2>
