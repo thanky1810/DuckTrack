@@ -7,13 +7,13 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.edit
-import androidx.glance.appwidget.updateAll // <--- IMPORT QUAN TRỌNG
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.ui.main.tasks.TaskStats
-import com.example.ducktrack.ui.widget.DuckWidget // <--- IMPORT WIDGET
+import com.example.ducktrack.ui.widget.DuckWidget
 import com.example.ducktrack.utils.AppUsageCsvItem
 import com.example.ducktrack.utils.CsvExporter
 import com.example.ducktrack.utils.ImageUtils
@@ -34,7 +34,6 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 
-// Data Model chứa thông tin người dùng
 data class UserInfo(
     val name: String,
     val email: String,
@@ -51,18 +50,11 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val prefs: SharedPreferences = context.getSharedPreferences("DuckTrackPrefs", Context.MODE_PRIVATE)
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
-
-    // Repository để lấy dữ liệu thống kê Task/Thành tựu
     private val repository = (context.applicationContext as MyApplication).repository
-
-    // Key lưu trong SharedPreferences
     private val providerKey = "LOGIN_PROVIDER"
     private val authKey = "IS_LOGGED_IN"
-
-    // Context ứng dụng
     private val appContext = context.applicationContext
 
-    // StateFlow quản lý trạng thái
     private val initialAuthState: Boolean get() = firebaseAuth.currentUser != null
     private val _isAuthenticated = MutableStateFlow(initialAuthState)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
@@ -70,7 +62,6 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
-    // StateFlow chứa thống kê Task (cho UI Profile)
     private val _taskStats = MutableStateFlow(TaskStats())
     val taskStats: StateFlow<TaskStats> = _taskStats.asStateFlow()
 
@@ -82,19 +73,9 @@ class AuthViewModel(context: Context) : ViewModel() {
         }
     }
 
-    // --- HÀM PHỤ TRỢ: CẬP NHẬT WIDGET ---
     private suspend fun refreshWidget() {
-        try {
-            // Lệnh này bắt buộc tất cả Widget DuckTrack đang gắn trên màn hình phải load lại dữ liệu
-            DuckWidget().updateAll(appContext)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        try { DuckWidget().updateAll(appContext) } catch (e: Exception) { e.printStackTrace() }
     }
-
-    // =========================================================================
-    //                           QUẢN LÝ THÔNG TIN USER
-    // =========================================================================
 
     fun loadUserInfo(onLoaded: (UserInfo) -> Unit) {
         val user = firebaseAuth.currentUser
@@ -102,7 +83,6 @@ class AuthViewModel(context: Context) : ViewModel() {
 
         if (user != null) {
             viewModelScope.launch {
-                // ... (Logic lấy dữ liệu giữ nguyên) ...
                 val name = user.displayName ?: user.email ?: "Người dùng"
                 val email = user.email ?: "Không có email"
                 val createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
@@ -129,22 +109,18 @@ class AuthViewModel(context: Context) : ViewModel() {
                         val currentCount = treeCounts[seedId] ?: 0
                         treeCounts[seedId] = currentCount + 1
                     }
-
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                } catch (e: Exception) { e.printStackTrace() }
 
                 val stats = repository.getTaskStats()
                 _taskStats.value = stats
 
                 onLoaded(UserInfo(name, email, savedProvider, avatarStr, duckName, createdAt, treeCounts, selectedAchieveId))
-
-                // --- CẬP NHẬT WIDGET KHI LOAD XONG INFO (Tức là đã login thành công) ---
                 refreshWidget()
             }
         }
     }
 
+    // ... (Giữ nguyên các hàm getCurrentUserInfo, updateAvatar, updateUserName, updateDuckName...)
     fun getCurrentUserInfo(): UserInfo? {
         val user = firebaseAuth.currentUser
         val savedProvider = prefs.getString(providerKey, "Không rõ") ?: "Không rõ"
@@ -157,8 +133,6 @@ class AuthViewModel(context: Context) : ViewModel() {
             )
         } else null
     }
-
-    // --- CÁC HÀM CẬP NHẬT THÔNG TIN ---
 
     fun updateAvatar(uri: Uri, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = firebaseAuth.currentUser ?: return
@@ -183,14 +157,11 @@ class AuthViewModel(context: Context) : ViewModel() {
         viewModelScope.launch { try { firestore.collection("users").document(user.uid).set(mapOf("duckName" to newName), SetOptions.merge()).await(); onSuccess() } catch (ex: Exception) { onError(ex.message ?: "Lỗi") } }
     }
 
-    // --- CÁC HÀM ĐĂNG NHẬP / ĐĂNG XUẤT ---
-
     suspend fun signInWithGoogleToken(idToken: String) {
         try {
             firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
             _isAuthenticated.update { true }
             prefs.edit { putBoolean(authKey, true); putString(providerKey, "Google") }
-            // Widget sẽ được cập nhật khi loadUserInfo được gọi ở MainScreen
         } catch (e: Exception) { logout() }
     }
 
@@ -203,22 +174,11 @@ class AuthViewModel(context: Context) : ViewModel() {
 
     fun logout() {
         viewModelScope.launch {
-            // 1. Xóa dữ liệu local
             repository.clearLocalData()
-
-            // 2. Đăng xuất Firebase
             firebaseAuth.signOut()
             _isAuthenticated.update { false }
             _cachedBase64Avatar = null
-
-            // 3. Xóa Prefs
-            prefs.edit {
-                putBoolean(authKey, false)
-                remove(providerKey)
-            }
-
-            // 4. --- CẬP NHẬT WIDGET NGAY LẬP TỨC ---
-            // Khi logout, widget sẽ refresh -> thấy user null -> hiển thị trống
+            prefs.edit { putBoolean(authKey, false); remove(providerKey) }
             refreshWidget()
         }
     }
@@ -230,10 +190,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                 repository.deleteAccountData()
                 val user = firebaseAuth.currentUser
                 user?.delete()?.await()
-
-                // Logout sẽ tự gọi refreshWidget
                 logout()
-
                 _isUploading.value = false
                 onSuccess()
             } catch (e: Exception) {
@@ -248,9 +205,6 @@ class AuthViewModel(context: Context) : ViewModel() {
     fun linkWithGithub(act: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) { firebaseAuth.currentUser?.startActivityForLinkWithProvider(act, OAuthProvider.newBuilder("github.com").build())?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
     fun unlinkProvider(id: String, onSuccess: () -> Unit, onError: (String) -> Unit) { if((firebaseAuth.currentUser?.providerData?.size ?: 0) <= 1) onError("Giữ lại ít nhất 1 phương thức!") else firebaseAuth.currentUser?.unlink(id)?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
 
-    // ... (Các hàm Export Data giữ nguyên như cũ) ...
-    // (Tôi lược bớt phần Export Data để code ngắn gọn, bạn giữ nguyên phần đó nhé)
-    // Vì phần Export không ảnh hưởng đến Widget.
     fun exportData(context: Context, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             _isUploading.value = true
@@ -301,23 +255,32 @@ class AuthViewModel(context: Context) : ViewModel() {
         }
     }
 
+    // --- SỬA HÀM NÀY: Lấy thêm sessionSetIndex và sessionIndexInSet ---
     private suspend fun getWeeklyTreeHistory(uid: String): List<TreeHistoryCsvItem> = withContext(Dispatchers.IO) {
-        // ... (Giữ nguyên logic cũ)
         val list = mutableListOf<TreeHistoryCsvItem>()
         try {
             val cal = Calendar.getInstance(); cal.firstDayOfWeek = Calendar.MONDAY; cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY); cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0); val startOfWeek = cal.timeInMillis; cal.add(Calendar.DAY_OF_YEAR, 7); val endOfWeek = cal.timeInMillis
             val snapshot = firestore.collection("users").document(uid).collection("garden").whereGreaterThanOrEqualTo("plantedAt", startOfWeek).whereLessThan("plantedAt", endOfWeek).get().await()
             for (doc in snapshot.documents) {
-                val seedId = doc.getString("seedId") ?: ""; val treeNameVN = when (seedId) { "normal" -> "Cây thường"; "pine" -> "Cây thông"; "red_leaf", "redleaf" -> "Cây lá đỏ"; "sakura" -> "Hoa anh đào"; else -> "Cây khác ($seedId)" }; val timestamp = doc.getLong("plantedAt") ?: 0L; val configStr = doc.getString("config") ?: "N/A"; val status = doc.getString("status") ?: "Hoàn thành"
-                list.add(TreeHistoryCsvItem(treeNameVN, timestamp, configStr, status))
+                val seedId = doc.getString("seedId") ?: ""
+                val treeNameVN = when (seedId) { "normal" -> "Cây thường"; "pine" -> "Cây thông"; "red_leaf", "redleaf" -> "Cây lá đỏ"; "sakura" -> "Hoa anh đào"; else -> "Cây khác ($seedId)" }
+                val timestamp = doc.getLong("plantedAt") ?: 0L
+                val configStr = doc.getString("config") ?: "N/A"
+                val status = doc.getString("status") ?: "Hoàn thành"
+
+                // Lấy thêm thông tin bộ phiên (nếu có)
+                val setIdx = doc.getLong("sessionSetIndex")?.toInt() ?: 0
+                val sessIdx = doc.getLong("sessionIndexInSet")?.toInt() ?: 0
+
+                list.add(TreeHistoryCsvItem(treeNameVN, timestamp, configStr, status, setIdx, sessIdx))
             }
             list.sortByDescending { it.timestamp }
         } catch (e: Exception) { e.printStackTrace() }
         list
     }
 
+    // ... (Hàm getTopAppsUsage giữ nguyên) ...
     private suspend fun getTopAppsUsage(context: Context): List<AppUsageCsvItem> = withContext(Dispatchers.IO) {
-        // ... (Giữ nguyên logic cũ)
         val list = mutableListOf<AppUsageCsvItem>()
         try {
             val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager; val packageManager = context.packageManager; val cal = Calendar.getInstance(); val endTime = cal.timeInMillis; cal.add(Calendar.DAY_OF_YEAR, -30); val startTime = cal.timeInMillis; val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)

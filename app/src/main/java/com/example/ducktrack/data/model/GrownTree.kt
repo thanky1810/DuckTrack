@@ -1,18 +1,24 @@
 package com.example.ducktrack.data.model
 
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 
 data class GrownTree(
-    // @DocumentId giúp Firestore tự điền ID của document vào biến này
     @DocumentId
     val id: String = "",
 
-    // Lưu ID của loại hạt giống (vd: "pine", "normal")
     val seedId: String = "normal",
-
-    // Thời gian trồng xong (tính bằng mili giây)
     val plantedAt: Long = 0L,
+    val config: String = "25/5/4/15",
 
-    // THÊM MỚI: Lưu cấu hình phiên tập trung (vd: "25/5/4/15")
-    val config: String = "25/5/4/15"
+    // --- THÊM MỚI ---
+    // Số thứ tự của bộ phiên trong ngày (Bộ 1, Bộ 2...)
+    @get:PropertyName("sessionSetIndex")
+    @set:PropertyName("sessionSetIndex")
+    var sessionSetIndex: Int = 1,
+
+    // Thứ tự của phiên trong bộ đó (Phiên 1/4, 2/4...)
+    @get:PropertyName("sessionIndexInSet")
+    @set:PropertyName("sessionIndexInSet")
+    var sessionIndexInSet: Int = 1
 )

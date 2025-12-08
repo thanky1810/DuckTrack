@@ -174,17 +174,30 @@ fun TreeDetailDialog(
                     modifier = Modifier.size(100.dp)
                 )
 
+                // ... Ảnh cây ...
                 Spacer(Modifier.height(24.dp))
 
                 DetailRow(label = "Loại cây:", value = tree.seedType.displayName)
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
 
-                // Hiển thị thời gian đã format rõ ràng
+                // --- THÊM HIỂN THỊ THÔNG TIN MỚI ---
+                DetailRow(label = "Bộ phiên:", value = "Bộ thứ ${tree.setIndex}")
+                Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
+
+                // Lấy tổng số phiên từ chuỗi config (vd "25/5/4/15" -> lấy số 4)
+                val totalSessionsInSet = try {
+                    tree.config.split("/")[2]
+                } catch (e: Exception) { "?" }
+
+                DetailRow(label = "Phiên trong bộ:", value = "${tree.sessionIndex} / $totalSessionsInSet")
+                Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
+                // ------------------------------------
+
                 DetailRow(label = "Thời gian trồng:", value = dateString)
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
 
                 DetailRow(label = "Thông số (F/S/N/L):", value = tree.config)
-                Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
+
 
                 DetailRow(label = "Kết quả:", value = "Hoàn thành", valueColor = Color(0xFF2E7D32))
 

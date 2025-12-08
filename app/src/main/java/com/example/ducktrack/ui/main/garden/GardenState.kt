@@ -8,10 +8,13 @@ data class StoreItem(
 
 // Model cho cây đã trồng để hiển thị lên UI
 data class GrownTreeUI(
-    val id: String, // Cần ID để định danh
+    val id: String,
     val seedType: SeedType,
     val plantedAt: Long,
-    val config: String // Chuỗi cấu hình (25/5/4/15)
+    val config: String,
+    // THÊM 2 TRƯỜNG NÀY ĐỂ HIỂN THỊ
+    val setIndex: Int = 1,
+    val sessionIndex: Int = 1
 )
 
 // Trạng thái tổng của GardenScreen

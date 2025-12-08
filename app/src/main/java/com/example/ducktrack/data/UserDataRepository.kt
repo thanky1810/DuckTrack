@@ -37,7 +37,10 @@ class UserDataRepository(private val userDao: UserDao) {
         val collection = firestore.collection("users").document(uid).collection("garden")
         val listener = collection.orderBy("plantedAt", Query.Direction.DESCENDING).addSnapshotListener { snapshot, error ->
             if (snapshot != null) {
-                val trees = snapshot.documents.mapNotNull { doc -> doc.toObject(GrownTree::class.java)?.copy(id = doc.id) }
+                val trees = snapshot.documents.mapNotNull { doc ->
+                    // toObject sẽ tự map các trường mới nếu tên khớp
+                    doc.toObject(GrownTree::class.java)?.copy(id = doc.id)
+                }
                 trySend(trees)
             }
         }
@@ -66,10 +69,24 @@ class UserDataRepository(private val userDao: UserDao) {
             } else false
         }
     }
-    suspend fun addGrownTreeToCloud(seed: SeedType, configString: String) {
+    suspend fun addGrownTreeToCloud(
+        seed: SeedType,
+        configString: String,
+        sessionSetIndex: Int, // Mới
+        sessionIndexInSet: Int // Mới
+    ) {
         val uid = auth.currentUser?.uid ?: return
-        val newTree = GrownTree(seedId = seed.id, plantedAt = System.currentTimeMillis(), config = configString)
-        try { firestore.collection("users").document(uid).collection("garden").add(newTree).await() } catch (e: Exception) { e.printStackTrace() }
+        val newTree = GrownTree(
+            seedId = seed.id,
+            plantedAt = System.currentTimeMillis(),
+            config = configString,
+            // Lưu thông tin phiên
+            sessionSetIndex = sessionSetIndex,
+            sessionIndexInSet = sessionIndexInSet
+        )
+        try {
+            firestore.collection("users").document(uid).collection("garden").add(newTree).await()
+        } catch (e: Exception) { e.printStackTrace() }
     }
     private suspend fun syncUserProfileToCloud() {
         val uid = auth.currentUser?.uid ?: return
