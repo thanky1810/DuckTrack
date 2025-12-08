@@ -42,12 +42,14 @@ fun TaskItem(
         else -> Color(0xFFFFF6F6)
     }
 
-    // --- CẬP NHẬT TÊN THẺ HIỂN THỊ ---
+    // --- CẬP NHẬT TÊN THẺ VÀ MÀU SẮC (ĐỦ 4 LOẠI) ---
     val (tagLabel, tagColor) = when {
-        task.isImportant && task.isUrgent -> "Quan trọng & Khẩn cấp" to Color(0xFFD32F2F)
-        task.isImportant && !task.isUrgent -> "Quan trọng & Không khẩn cấp" to Color(0xFF1976D2)
-        !task.isImportant && task.isUrgent -> "Không quan trọng & Khẩn cấp" to Color(0xFFF57C00)
-        else -> null to null // Nhóm 4 (Xám) không cần hiện thẻ cho đỡ rối
+        task.isImportant && task.isUrgent -> "Quan trọng & Khẩn cấp" to Color(0xFFD32F2F) // Đỏ
+        task.isImportant && !task.isUrgent -> "Quan trọng & Không khẩn cấp" to Color(0xFF1976D2) // Xanh dương
+        !task.isImportant && task.isUrgent -> "Không quan trọng & Khẩn cấp" to Color(0xFFF57C00) // Cam
+
+        // --- SỬA Ở ĐÂY: Thêm trường hợp thứ 4 ---
+        else -> "Không quan trọng & Không khẩn cấp" to Color(0xFF388E3C) // Xanh lá (hoặc Xám: Color.Gray)
     }
 
     Row(
@@ -65,7 +67,7 @@ fun TaskItem(
     ) {
         Checkbox(
             checked = task.isCompleted,
-            onCheckedChange = null,
+            onCheckedChange = null, // Để Row xử lý click
             colors = CheckboxDefaults.colors(
                 checkedColor = Color(0xFF62B26A),
                 uncheckedColor = Color(0xFFCCCCCC),
@@ -85,7 +87,7 @@ fun TaskItem(
                 fontFamily = FontFamily.SansSerif
             )
 
-            // Hiển thị thẻ
+            // Hiển thị thẻ (Chỉ hiện khi chưa hoàn thành để đỡ rối, hoặc bỏ điều kiện !isCompleted nếu muốn hiện luôn)
             if (tagLabel != null && tagColor != null && !task.isCompleted) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Surface(
@@ -96,7 +98,7 @@ fun TaskItem(
                     Text(
                         text = tagLabel,
                         color = tagColor,
-                        fontSize = 9.sp, // Chữ nhỏ lại vì tên dài
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )

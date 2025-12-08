@@ -3,7 +3,9 @@ package com.example.ducktrack.ui.main.pomodoro
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent // <--- Thêm import
 import android.content.Context
+import android.content.Intent // <--- Thêm import
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
@@ -13,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ducktrack.MainActivity // <--- Import MainActivity của bạn
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.R
 import com.example.ducktrack.data.UserPreferences
@@ -26,7 +29,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
 class PomodoroViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as MyApplication).repository
@@ -79,16 +81,26 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         stopTimer(isFailed = true)
     }
 
+    // --- SỬA HÀM GỬI THÔNG BÁO ---
     private fun sendFailureNotification(penalty: Int) {
         val context = getApplication<Application>()
         val channelId = "pomodoro_fail_channel"
-        val notificationId = 999 // ID cố định hoặc random
+        val notificationId = 999
 
-        // 1. Tạo Notification Channel (Bắt buộc cho Android 8.0+)
+        // 1. Tạo PendingIntent để mở app khi bấm vào thông báo
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        // 2. Tạo Notification Channel
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Cảnh báo tập trung"
-            val descriptionText = "Thông báo khi bạn thoát ứng dụng trong lúc tập trung"
-            val importance = NotificationManager.IMPORTANCE_HIGH // Quan trọng cao để hiện popup
+            val descriptionText = "Thông báo khi bạn thoát ứng dụng"
+            val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
@@ -97,26 +109,22 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
             notificationManager.createNotificationChannel(channel)
         }
 
-        // 2. Tạo Notification
-        // Lưu ý: Icon R.drawable.duck_crying phải là ảnh nhỏ, đơn giản (nếu ảnh quá phức tạp có thể không hiện đúng)
-        // Tốt nhất nên dùng icon vector đơn sắc hoặc icon launcher mặc định để test trước.
-        // Ở đây mình dùng R.mipmap.ic_launcher (icon app) cho an toàn, bạn có thể đổi lại.
+        // 3. Build Notification (Đổi Icon & Thêm ContentIntent)
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert) // Icon hệ thống cho chắc ăn
-            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D") // Mặt khóc
+            // Đổi icon tam giác thành con vịt (lưu ý: icon nhỏ trên status bar phải là ảnh trong suốt/trắng đen để đẹp nhất,
+            // nhưng dùng ảnh màu cũng được, Android sẽ tự xử lý)
+            .setSmallIcon(R.drawable.duck_crying)
+            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D")
             .setContentText("Bạn đã thoát ứng dụng. Bị trừ $penalty điểm sao.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true) // Bấm vào tự tắt
+            .setContentIntent(pendingIntent) // <--- GẮN INTENT MỞ APP VÀO ĐÂY
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Bạn đã thoát ứng dụng. Bị trừ $penalty điểm sao.")) // Hiển thị full text
 
-        // 3. Gửi (Cần check quyền cho Android 13+)
-        // Vì đây là ViewModel, ta không check quyền trực tiếp được dễ dàng,
-        // nhưng nếu user đã cấp quyền ở màn hình PermissionScreen thì sẽ gửi được.
         try {
             val notificationManager = NotificationManagerCompat.from(context)
-            // Cần check quyền SecurityException
             notificationManager.notify(notificationId, builder.build())
         } catch (e: SecurityException) {
-            // User chưa cấp quyền thông báo
             e.printStackTrace()
         }
     }
