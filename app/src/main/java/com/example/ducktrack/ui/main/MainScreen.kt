@@ -38,7 +38,7 @@ import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.OverlayPermissionDialog
 import com.example.ducktrack.ui.components.PieChart
 import com.example.ducktrack.ui.main.garden.GardenScreen
-import com.example.ducktrack.ui.main.pomodoro.PromodoroScreen
+import com.example.ducktrack.ui.main.pomodoro.PomodoroScreen
 import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
@@ -132,7 +132,7 @@ fun MainScreen(
                 composable(Routes.Pomodoro) {
                     LaunchedEffect(Unit) { headerNote = null }
                     key(Routes.Pomodoro + currentRoute) {
-                        PromodoroScreen(
+                        PomodoroScreen(
                             viewModel = promodoroViewModel,
                             onStartFocus = onNavigateToFocus
                         )
