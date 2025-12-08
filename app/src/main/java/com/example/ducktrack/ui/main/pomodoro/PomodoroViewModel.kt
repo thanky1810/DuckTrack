@@ -1,18 +1,20 @@
-// FILE: PromodoroViewModel.kt
 package com.example.ducktrack.ui.main.pomodoro
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.R
-import com.example.ducktrack.data.UserPreferences // Import này
+import com.example.ducktrack.data.UserPreferences
 import com.example.ducktrack.ui.main.garden.SeedType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,7 +29,7 @@ import kotlinx.coroutines.launch
 class PomodoroViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as MyApplication).repository
-    private val userPrefs = UserPreferences(application) // Khởi tạo UserPrefs để đọc cài đặt
+    private val userPrefs = UserPreferences(application)
 
     private val _uiState = MutableStateFlow(PomodoroUiState())
     val uiState: StateFlow<PomodoroUiState> = _uiState.asStateFlow()
@@ -37,12 +39,10 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
     private var effectPlayer: MediaPlayer? = null
 
     init {
-        // Lấy danh sách hạt giống
         repository.unlockedSeeds.onEach { unlockedSet ->
             _uiState.update { it.copy(availableSeeds = unlockedSet.toList()) }
         }.launchIn(viewModelScope)
 
-        // --- LẤY CÀI ĐẶT NGƯỜI DÙNG (Rung & Màn hình) ---
         userPrefs.isVibrationEnabled.onEach { enabled ->
             _uiState.update { it.copy(isVibrationEnabled = enabled) }
         }.launchIn(viewModelScope)
@@ -52,11 +52,58 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         }.launchIn(viewModelScope)
     }
 
-    // --- HÀM RUNG ĐIỆN THOẠI ---
-    private fun vibratePhone() {
-        // Chỉ rung nếu user bật trong cài đặt
-        if (!_uiState.value.isVibrationEnabled) return
+    // --- MỚI: HỦY PHIÊN & TRỪ ĐIỂM ---
+    // --- SỬA LOGIC HỦY PHIÊN ---
+    fun cancelSession(isHomeExit: Boolean) {
+        val state = _uiState.value
 
+        // Tính số phiên còn lại
+        // VD: Tổng 4, đang ở phiên 1 (current=0) -> Còn lại 4 phiên (1,2,3,4) chưa xong
+        // VD: Tổng 4, đang ở phiên 2 (current=1) -> Còn lại 3 phiên (2,3,4) chưa xong
+        val remainingSessions = state.sessionsBeforeLongBreak - state.currentSessionCount
+
+        if (remainingSessions > 0) {
+            val penaltyPerSession = if (isHomeExit) 50 else 25
+            val totalPenalty = remainingSessions * penaltyPerSession
+
+            // Gọi coroutine để trừ điểm (Sử dụng viewModelScope mặc định là đủ an toàn khi không thoát màn hình ngay)
+            viewModelScope.launch {
+                repository.deductPoints(totalPenalty)
+            }
+
+            if (isHomeExit) {
+                sendFailureNotification(totalPenalty)
+            }
+        }
+
+        // Dừng timer và hiện FailedDialog
+        stopTimer(isFailed = true)
+    }
+
+    private fun sendFailureNotification(penalty: Int) {
+        val context = getApplication<Application>()
+        val channelId = "pomodoro_fail"
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Cảnh báo tập trung", NotificationManager.IMPORTANCE_HIGH)
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.duck_crying) // Icon thông báo
+            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D")
+            .setContentText("Bạn đã thoát ứng dụng. Bị trừ $penalty điểm sao.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        manager.notify(999, notification)
+    }
+    // ----------------------------------------
+
+    private fun vibratePhone() {
+        if (!_uiState.value.isVibrationEnabled) return
         val context = getApplication<Application>()
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -65,9 +112,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
             @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Rung mạnh trong 500ms
             vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
         } else {
             @Suppress("DEPRECATION")
@@ -75,7 +120,6 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // ... (Giữ nguyên các hàm Audio: onSoundSelected, playBackgroundMusic...) ...
     fun onSoundSelected(sound: BackgroundSound) {
         _uiState.update { it.copy(selectedSound = sound) }
         if (_uiState.value.isTimerRunning) playBackgroundMusic()
@@ -98,20 +142,23 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         effectPlayer?.setOnCompletionListener { it.release(); effectPlayer = null }
     }
 
-    // --- CÁC HÀM TIMER ---
     fun onMainButtonClick() {
         val currentState = _uiState.value
         if (currentState.isTimerRunning) {
-            if (currentState.pomodoroState == PomodoroState.Running) stopTimer(isFailed = true)
-            else pauseTimer()
-        } else resumeTimer()
+            if (currentState.pomodoroState == PomodoroState.Running) {
+                pauseTimer() // Pause để hiện dialog bên View
+            } else {
+                pauseTimer()
+            }
+        } else {
+            resumeTimer()
+        }
     }
 
     private fun resumeTimer() {
         timerJob?.cancel()
         _uiState.update { it.copy(isTimerRunning = true) }
         playBackgroundMusic()
-
         timerJob = viewModelScope.launch {
             while (_uiState.value.remainingTimeMillis > 0) {
                 delay(1000L)
@@ -124,10 +171,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
     private fun handleTimerFinished() {
         stopBackgroundMusic()
         val state = _uiState.value
-
-        // ==> KÍCH HOẠT RUNG TẠI ĐÂY
         vibratePhone()
-
         if (state.pomodoroState == PomodoroState.Running) {
             autoHarvest()
             val completedSessions = state.currentSessionCount + 1
@@ -151,8 +195,11 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
     fun stopTimer(isFailed: Boolean) {
         timerJob?.cancel()
         stopBackgroundMusic()
-        if (isFailed) _uiState.update { it.copy(pomodoroState = PomodoroState.Failed, isTimerRunning = false, remainingTimeMillis = it.focusDurationMillis, showFailedDialog = true) }
-        else pauseTimer()
+        if (isFailed) {
+            _uiState.update { it.copy(pomodoroState = PomodoroState.Failed, isTimerRunning = false, remainingTimeMillis = it.focusDurationMillis, showFailedDialog = true) }
+        } else {
+            pauseTimer()
+        }
     }
 
     private fun pauseTimer() {
@@ -173,7 +220,6 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         effectPlayer?.release()
     }
 
-    // ... (Giữ nguyên các hàm autoHarvest, onSeedSelected, Settings Dialog...) ...
     fun onSeedSelected(seed: SeedType) { _uiState.update { it.copy(selectedSeed = seed) } }
     fun autoHarvest() {
         viewModelScope.launch {

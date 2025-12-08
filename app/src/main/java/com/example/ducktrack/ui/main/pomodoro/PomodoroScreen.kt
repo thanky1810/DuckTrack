@@ -1,9 +1,7 @@
 package com.example.ducktrack.ui.main.pomodoro
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
-import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -17,10 +15,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -31,6 +33,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
+import com.example.ducktrack.utils.formatTime
+// Import hàm findActivity từ file Extensions.kt (hoặc file utils khác nếu bạn đã tạo)
+// Nếu báo đỏ dòng này, hãy chắc chắn bạn đã tạo file utils/Extensions.kt như hướng dẫn trước
+import com.example.ducktrack.utils.findActivity
 import kotlinx.coroutines.launch
 
 @Composable
@@ -44,24 +50,21 @@ fun PomodoroScreen(
     val duckScale = remember { Animatable(1f) }
     val plantScale = remember { Animatable(1f) }
 
-    // --- SỬA LỖI TẠI ĐÂY ---
     val currentContext = LocalContext.current
-    // Dùng remember để không phải tìm lại Activity mỗi lần recompose
+    // Sử dụng findActivity từ import
     val activity = remember(currentContext) { currentContext.findActivity() }
 
-    // --- LOGIC GIỮ MÀN HÌNH SÁNG ---
     DisposableEffect(uiState.isKeepScreenOn, uiState.isTimerRunning) {
         if (uiState.isKeepScreenOn && uiState.isTimerRunning) {
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
         onDispose {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
-    // Màu Động
     val bgColor = MaterialTheme.colorScheme.background
     val textColor = MaterialTheme.colorScheme.onBackground
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -79,6 +82,7 @@ fun PomodoroScreen(
     val longBreakMin = uiState.longBreakDurationMillis / 60000
     val configDisplayString = "$focusMin / $breakMin / $sessions / $longBreakMin"
 
+    // Sử dụng Quadruple để destructure dữ liệu
     val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.pomodoroState) {
         PomodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
         PomodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
@@ -186,14 +190,7 @@ fun PomodoroScreen(
     }
 }
 
-// --- HÀM HỖ TRỢ TÌM ACTIVITY TỪ CONTEXT (ĐÃ THÊM MỚI) ---
-fun Context.findActivity(): Activity? {
-    var context = this
-    while (context is ContextWrapper) {
-        if (context is Activity) return context
-        context = context.baseContext
-    }
-    return null
-}
-
+// --- CLASS QUADRUPLE (THÊM VÀO ĐÂY ĐỂ TRÁNH LỖI UNRESOLVED REFERENCE) ---
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+// --- ĐÃ XÓA HÀM findActivity Ở ĐÂY ĐỂ TRÁNH TRÙNG LẶP ---
