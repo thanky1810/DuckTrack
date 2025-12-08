@@ -50,7 +50,10 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                     id = treeFirestore.id,
                     seedType = type,
                     plantedAt = treeFirestore.plantedAt,
-                    config = treeFirestore.config
+                    config = treeFirestore.config,
+                    // Map dữ liệu từ Firestore sang UI
+                    setIndex = treeFirestore.sessionSetIndex,
+                    sessionIndex = treeFirestore.sessionIndexInSet
                 )
             }
 

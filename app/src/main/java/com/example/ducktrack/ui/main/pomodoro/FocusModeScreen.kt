@@ -40,7 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.ducktrack.R
 import com.example.ducktrack.utils.formatTime
-import com.example.ducktrack.utils.findActivity // Import hàm tiện ích
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,7 +50,6 @@ fun FocusModeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
-
     val duckScale = remember { Animatable(1f) }
     val plantScale = remember { Animatable(1f) }
 
@@ -60,12 +59,21 @@ fun FocusModeScreen(
     var showConfirmExitDialog by remember { mutableStateOf(false) }
     var isSoundMenuExpanded by remember { mutableStateOf(false) }
 
-    // --- LẮNG NGHE SỰ KIỆN THOÁT APP (BẤM HOME) ---
+    // --- TỰ ĐỘNG THOÁT KHI HOÀN THÀNH ---
+    // Khi trạng thái chuyển sang Finished -> Đợi 2 giây rồi thoát
+    LaunchedEffect(uiState.pomodoroState) {
+        if (uiState.pomodoroState == PomodoroState.Finished) {
+            delay(2000) // Đợi 2 giây để người dùng kịp nhìn thấy chữ "Hoàn thành"
+            viewModel.onDismissHarvestDialog() // Reset trạng thái
+            onExit() // Thoát ra ngoài
+        }
+    }
+    // ------------------------------------
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
-                // Nếu Timer đang chạy mà thoát ra -> Phạt
                 if (uiState.isTimerRunning && (uiState.pomodoroState == PomodoroState.Running || uiState.pomodoroState == PomodoroState.Break)) {
                     viewModel.cancelSession(isHomeExit = true)
                 }
@@ -77,7 +85,6 @@ fun FocusModeScreen(
         }
     }
 
-    // Giữ màn hình sáng
     DisposableEffect(uiState.isKeepScreenOn, uiState.isTimerRunning) {
         if (uiState.isKeepScreenOn && uiState.isTimerRunning) {
             activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -89,7 +96,6 @@ fun FocusModeScreen(
         }
     }
 
-    // Nút Back
     BackHandler {
         if (uiState.pomodoroState == PomodoroState.Finished || uiState.pomodoroState == PomodoroState.Failed) {
             onExit()
@@ -107,7 +113,13 @@ fun FocusModeScreen(
     val isBreak = uiState.pomodoroState == PomodoroState.Break
     val currentSessionDisplay = uiState.currentSessionCount + 1
     val targetSession = uiState.sessionsBeforeLongBreak
-    val statusText = if (isBreak) "ĐANG NGHỈ NGƠI" else "PHIÊN $currentSessionDisplay / $targetSession"
+
+    // Sửa hiển thị trạng thái khi Finished
+    val statusText = when (uiState.pomodoroState) {
+        PomodoroState.Break -> "ĐANG NGHỈ NGƠI"
+        PomodoroState.Finished -> "HOÀN THÀNH TẤT CẢ!"
+        else -> "PHIÊN $currentSessionDisplay / $targetSession"
+    }
 
     val (duckImageRes, plantImageRes) = when (uiState.pomodoroState) {
         PomodoroState.Ready -> R.drawable.duck_waiting to R.drawable.plant_chit
@@ -121,51 +133,52 @@ fun FocusModeScreen(
         modifier = Modifier.fillMaxSize().background(Color.White),
         contentAlignment = Alignment.Center
     ) {
-        // Nút chọn nhạc
-        Box(
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 20.dp)
-        ) {
-            Button(
-                onClick = { isSoundMenuExpanded = true },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0F2F1), contentColor = Color(0xFF00695C)),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        // Nút chọn nhạc (Ẩn khi đã xong)
+        if (uiState.pomodoroState != PomodoroState.Finished) {
+            Box(
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 20.dp)
             ) {
-                Icon(Icons.Filled.Audiotrack, "Nhạc", modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                val label = if (uiState.selectedSound == BackgroundSound.OFF) "Nhạc nền" else uiState.selectedSound.displayName.substringBefore(" ")
-                Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            }
-            DropdownMenu(
-                expanded = isSoundMenuExpanded,
-                onDismissRequest = { isSoundMenuExpanded = false },
-                modifier = Modifier.background(Color.White)
-            ) {
-                BackgroundSound.values().forEach { sound ->
-                    DropdownMenuItem(
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(sound.displayName, fontWeight = if (sound == uiState.selectedSound) FontWeight.Bold else FontWeight.Normal, color = if (sound == uiState.selectedSound) Color(0xFF2E7D32) else Color.Black)
-                                if (sound == uiState.selectedSound) { Spacer(Modifier.width(8.dp)); Icon(Icons.Filled.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(16.dp)) }
-                            }
-                        },
-                        onClick = { viewModel.onSoundSelected(sound); isSoundMenuExpanded = false }
-                    )
+                Button(
+                    onClick = { isSoundMenuExpanded = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0F2F1), contentColor = Color(0xFF00695C)),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(Icons.Filled.Audiotrack, "Nhạc", modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    val label = if (uiState.selectedSound == BackgroundSound.OFF) "Nhạc nền" else uiState.selectedSound.displayName.substringBefore(" ")
+                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                DropdownMenu(
+                    expanded = isSoundMenuExpanded,
+                    onDismissRequest = { isSoundMenuExpanded = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    BackgroundSound.values().forEach { sound ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(sound.displayName, fontWeight = if (sound == uiState.selectedSound) FontWeight.Bold else FontWeight.Normal, color = if (sound == uiState.selectedSound) Color(0xFF2E7D32) else Color.Black)
+                                    if (sound == uiState.selectedSound) { Spacer(Modifier.width(8.dp)); Icon(Icons.Filled.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(16.dp)) }
+                                }
+                            },
+                            onClick = { viewModel.onSoundSelected(sound); isSoundMenuExpanded = false }
+                        )
+                    }
                 }
             }
         }
 
-        // Nội dung chính
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                color = if (isBreak) Color(0xFFE0F7FA) else Color(0xFFF1F8E9),
+                color = if (isBreak) Color(0xFFE0F7FA) else if (uiState.pomodoroState == PomodoroState.Finished) Color(0xFFFFD700) else Color(0xFFF1F8E9),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.padding(bottom = 20.dp)
             ) {
-                Text(statusText, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = if (isBreak) Color(0xFF0097A7) else Color(0xFF388E3C), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(statusText, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = if (isBreak) Color(0xFF0097A7) else if (uiState.pomodoroState == PomodoroState.Finished) Color.Black else Color(0xFF388E3C), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
             Spacer(Modifier.height(20.dp))
             Text(uiState.remainingTimeMillis.formatTime(), fontSize = 80.sp, fontWeight = FontWeight.Bold, color = Color.Black)
@@ -178,7 +191,7 @@ fun FocusModeScreen(
             )
             Spacer(Modifier.height(60.dp))
 
-            // Chỉ hiện nút khi chưa kết thúc/thất bại
+            // Chỉ hiện nút khi chưa xong
             if (uiState.pomodoroState != PomodoroState.Finished && uiState.pomodoroState != PomodoroState.Failed) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -207,40 +220,24 @@ fun FocusModeScreen(
         }
     }
 
-    // DIALOGS
-
     if (showConfirmExitDialog) {
         ExitConfirmDialog(
             onConfirmExit = {
-                // 1. Trừ điểm
                 viewModel.cancelSession(isHomeExit = false)
-                // 2. Tắt dialog confirm
                 showConfirmExitDialog = false
-                // LƯU Ý: KHÔNG GỌI onExit() Ở ĐÂY
-                // Để nó tự chuyển sang FailedDialog
+                onExit()
             },
             onCancel = { showConfirmExitDialog = false }
         )
     }
 
-    // Khi bị Failed (do thoát hoặc bấm hủy), dialog này sẽ hiện lên
-    if (uiState.showFailedDialog) {
-        FailedDialog(onDismiss = {
-            viewModel.onDismissFailedDialog()
-            // 3. CHỈ THOÁT KHI BẤM "ĐÃ HIỂU"
-            onExit()
-        })
-    }
+    if (uiState.showFailedDialog) FailedDialog(onDismiss = { viewModel.onDismissFailedDialog(); onExit() })
 
-    if (uiState.showHarvestDialog) {
-        HarvestDialog(onDismiss = {
-            viewModel.onDismissHarvestDialog()
-            onExit()
-        })
-    }
+    // Bỏ HarvestDialog nếu muốn tự thoát, hoặc giữ lại nếu muốn hiện thông báo xong mới thoát.
+    // Ở đây tôi đã thêm logic tự thoát sau 2s ở trên, nên Dialog này có thể hiện lên trong 2s đó rồi tắt.
+    if (uiState.showHarvestDialog) HarvestDialog(onDismiss = { viewModel.onDismissHarvestDialog(); onExit() })
 }
 
-// ... (ExitConfirmDialog giữ nguyên)
 @Composable
 fun ExitConfirmDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit) {
     Dialog(onDismissRequest = onCancel) {
@@ -260,4 +257,13 @@ fun ExitConfirmDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit) {
             }
         }
     }
+}
+
+fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
