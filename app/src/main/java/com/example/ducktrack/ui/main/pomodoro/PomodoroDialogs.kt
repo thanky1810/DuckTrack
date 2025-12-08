@@ -46,7 +46,7 @@ fun TimeSettingsDialog(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Cài đặt Promodoro", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = mainGreen)
+                    Text("Cài đặt Pomodoro", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = mainGreen)
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Hàng 1

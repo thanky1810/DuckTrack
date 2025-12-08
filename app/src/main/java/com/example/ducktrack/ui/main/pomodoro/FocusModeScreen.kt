@@ -41,13 +41,13 @@ fun FocusModeScreen(
         showConfirmExitDialog = true
     }
 
-    LaunchedEffect(uiState.promodoroState) {
-        if (uiState.promodoroState == PromodoroState.Finished) {
+    LaunchedEffect(uiState.pomodoroState) {
+        if (uiState.pomodoroState == PomodoroState.Finished) {
             onExit()
         }
     }
 
-    val isBreak = uiState.promodoroState == PromodoroState.Break
+    val isBreak = uiState.pomodoroState == PomodoroState.Break
     val currentSessionDisplay = uiState.currentSessionCount + 1
     val targetSession = uiState.sessionsBeforeLongBreak
 

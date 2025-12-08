@@ -34,7 +34,7 @@ import com.example.ducktrack.R
 import kotlinx.coroutines.launch
 
 @Composable
-fun PromodoroScreen(
+fun PomodoroScreen(
     context: Context = LocalContext.current.applicationContext,
     viewModel: PomodoroViewModel,
     onStartFocus: () -> Unit
@@ -68,7 +68,7 @@ fun PromodoroScreen(
     val cardColor = MaterialTheme.colorScheme.surface
     val cardBorder = MaterialTheme.colorScheme.outlineVariant
 
-    LaunchedEffect(uiState.promodoroState) {
+    LaunchedEffect(uiState.pomodoroState) {
         scope.launch { duckScale.animateTo(1.2f, tween(150)); duckScale.animateTo(1f, tween(150)) }
         scope.launch { plantScale.animateTo(1.2f, tween(150)); plantScale.animateTo(1f, tween(150)) }
     }
@@ -79,12 +79,12 @@ fun PromodoroScreen(
     val longBreakMin = uiState.longBreakDurationMillis / 60000
     val configDisplayString = "$focusMin / $breakMin / $sessions / $longBreakMin"
 
-    val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.promodoroState) {
-        PromodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
-        PromodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
-        PromodoroState.Break -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Đến giờ nghỉ ngơi rồi!")
-        PromodoroState.Finished -> Quadruple(R.drawable.duck_happy, R.drawable.plant_grown, "Thu hoạch thôi!", "Hoàn thành! Thu hoạch ngay.")
-        PromodoroState.Failed -> Quadruple(R.drawable.duck_crying, R.drawable.plant_dead, "Thất bại", "Đã dừng lại.")
+    val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.pomodoroState) {
+        PomodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
+        PomodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
+        PomodoroState.Break -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Đến giờ nghỉ ngơi rồi!")
+        PomodoroState.Finished -> Quadruple(R.drawable.duck_happy, R.drawable.plant_grown, "Thu hoạch thôi!", "Hoàn thành! Thu hoạch ngay.")
+        PomodoroState.Failed -> Quadruple(R.drawable.duck_crying, R.drawable.plant_dead, "Thất bại", "Đã dừng lại.")
     }
 
     Box(modifier = Modifier.fillMaxSize().background(bgColor)) {
@@ -103,7 +103,7 @@ fun PromodoroScreen(
                 border = BorderStroke(1.dp, cardBorder)
             ) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    val sessionDisplay = if (uiState.promodoroState == PromodoroState.Break) "Nghỉ giải lao" else "Tập trung / Nghỉ ngắn / Số phiên / Nghỉ dài"
+                    val sessionDisplay = if (uiState.pomodoroState == PomodoroState.Break) "Nghỉ giải lao" else "Tập trung / Nghỉ ngắn / Số phiên / Nghỉ dài"
                     Text(text = sessionDisplay, color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = configDisplayString, color = textColor, fontSize = 40.sp, fontWeight = FontWeight.Bold)
@@ -113,17 +113,17 @@ fun PromodoroScreen(
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
                         OutlinedButton(onClick = { viewModel.onSettingsClick() }, shape = RoundedCornerShape(12.dp)) { Text("Cấu hình"); Icon(Icons.Default.ArrowDropDown, null) }
 
-                        val (mainButtonColor, mainButtonText) = when (uiState.promodoroState) {
-                            PromodoroState.Running -> Pair(Color(0xFFD9534F), "Đang chạy...")
-                            PromodoroState.Break -> Pair(Color(0xFFF5A623), "Nghỉ ngơi")
+                        val (mainButtonColor, mainButtonText) = when (uiState.pomodoroState) {
+                            PomodoroState.Running -> Pair(Color(0xFFD9534F), "Đang chạy...")
+                            PomodoroState.Break -> Pair(Color(0xFFF5A623), "Nghỉ ngơi")
                             else -> Pair(Color(0xFFF5A623), "Bắt đầu")
                         }
 
                         Button(
                             onClick = {
-                                when (uiState.promodoroState) {
-                                    PromodoroState.Ready, PromodoroState.Finished, PromodoroState.Failed -> { viewModel.startNewSession(); onStartFocus() }
-                                    PromodoroState.Running, PromodoroState.Break -> onStartFocus()
+                                when (uiState.pomodoroState) {
+                                    PomodoroState.Ready, PomodoroState.Finished, PomodoroState.Failed -> { viewModel.startNewSession(); onStartFocus() }
+                                    PomodoroState.Running, PomodoroState.Break -> onStartFocus()
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = mainButtonColor),
@@ -160,7 +160,7 @@ fun PromodoroScreen(
                         Image(painter = painterResource(id = plantImageRes), contentDescription = null, modifier = Modifier.height(140.dp).graphicsLayer(scaleX = plantScale.value, scaleY = plantScale.value), contentScale = ContentScale.Fit)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    if (uiState.promodoroState == PromodoroState.Finished) {
+                    if (uiState.pomodoroState == PomodoroState.Finished) {
                         Button(onClick = {}, enabled = false, colors = ButtonDefaults.buttonColors(disabledContainerColor = Color(0xFFFFC107), disabledContentColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("Đã thu hoạch +50 ⭐", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                     } else {
                         Text(statusText, color = primaryColor, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
