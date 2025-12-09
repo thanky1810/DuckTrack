@@ -9,9 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    // THÊM TaskEntity::class VÀO ĐÂY
-    entities = [UserProfile::class, UnlockedSeed::class, GrownTree::class, TaskEntity::class],
-    version = 2 // TĂNG VERSION TỪ 1 LÊN 2
+    entities = [UserProfile::class, UnlockedSeed::class, GrownTree::class, TaskEntity::class], // Đảm bảo đủ Entity (có thể bạn có TaskEntity)
+    version = 1,
+    exportSchema = false // <--- THÊM DÒNG NÀY ĐỂ SỬA LỖI ROOM
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -29,7 +29,6 @@ abstract class AppDatabase : RoomDatabase() {
                     "ducktrack_database"
                 )
                     .addCallback(DatabaseCallback(context))
-                    // Thêm dòng này để nếu update database mà lỗi thì nó xóa làm lại (chỉ dùng lúc dev)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
@@ -38,7 +37,6 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 
-    // ... (Phần Callback giữ nguyên)
     private class DatabaseCallback(private val context: Context) : RoomDatabase.Callback() {
         override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
             super.onCreate(db)

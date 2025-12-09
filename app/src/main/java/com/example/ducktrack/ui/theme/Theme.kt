@@ -16,66 +16,57 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// --- Bảng màu tối (Sẽ không dùng tới, nhưng cứ để đây để tránh lỗi reference) ---
+// Dark Theme dùng màu mặc định (Purple80...) từ file Color.kt
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
     tertiary = Pink80
 )
 
-// --- Bảng màu sáng (Sẽ luôn dùng bảng này) ---
+// Light Theme dùng màu custom từ AppColors.kt
 private val LightColorScheme = lightColorScheme(
-    primary = AppColors.ButtonGreen, // Dùng màu xanh của app làm màu chính
+    primary = AppColors.ButtonGreen,
     secondary = AppColors.TextGreen,
     tertiary = Pink40,
-    background = Color.White,        // Nền mặc định luôn là trắng
-    surface = Color.White,           // Nền các card/surface luôn là trắng
+    background = AppColors.BackgroundWhite,
+    surface = AppColors.SurfaceColor,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
-    onBackground = Color.Black,      // Chữ trên nền trắng là đen
-    onSurface = Color.Black,
-
-    )
+    onBackground = Color.Black,
+    onSurface = Color.Black
+)
 
 @Composable
 fun DuckTrackTheme(
-    // 1. ÉP BUỘC darkTheme luôn là false (không quan tâm hệ thống)
-    darkTheme: Boolean = false,
-
-    // 2. Tắt Dynamic Color (để tránh màu bị đổi theo hình nền điện thoại Android 12+)
-    // Bạn có thể để true nếu muốn, nhưng để false sẽ giữ đúng màu thiết kế của bạn hơn.
-    dynamicColor: Boolean = false,
-
+    darkTheme: Boolean = false, // Ép buộc Light Mode
+    dynamicColor: Boolean = false, // Tắt Dynamic Color
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            // Nếu có dynamic color, ép buộc dùng bản Light
             dynamicLightColorScheme(context)
         }
-        // Luôn rơi vào trường hợp này hoặc dynamicLight vì darkTheme = false
+        darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
 
-    // 3. Logic xử lý thanh trạng thái (Status Bar) để icon luôn hiển thị rõ trên nền trắng
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Đặt màu status bar trùng với màu primary hoặc màu trắng tùy bạn
-            // Ở đây tôi để trong suốt hoặc trắng để icon đen hiện lên
-            window.statusBarColor = Color.Transparent.toArgb()
-
-            // Ép buộc icon trên status bar là màu tối (đen) để nổi trên nền trắng
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            // Đặt status bar cùng màu primary
+            window.statusBarColor = colorScheme.primary.toArgb()
+            // Icon status bar màu sáng (trắng) vì nền xanh đậm
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = Shapes, // Đảm bảo bạn đã có file Shape.kt
         content = content
     )
 }
