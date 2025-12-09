@@ -35,6 +35,9 @@ fun TimeSettingsDialog(
     var longBreakMinutes by remember { mutableStateOf(initialLongBreakMinutes) }
     var sessionsInput by remember { mutableStateOf(initialSessions) }
 
+    // State lưu thông báo lỗi
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -54,7 +57,9 @@ fun TimeSettingsDialog(
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                             Text("Tập trung", fontSize = 12.sp, color = grayText)
                             OutlinedTextField(
-                                value = focusMinutes, onValueChange = { focusMinutes = it.filter { c -> c.isDigit() } },
+                                value = focusMinutes,
+                                // Chỉ cho nhập số
+                                onValueChange = { if (it.all { char -> char.isDigit() }) focusMinutes = it },
                                 modifier = Modifier.fillMaxWidth(0.9f),
                                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
@@ -64,7 +69,8 @@ fun TimeSettingsDialog(
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                             Text("Nghỉ ngắn", fontSize = 12.sp, color = grayText)
                             OutlinedTextField(
-                                value = breakMinutes, onValueChange = { breakMinutes = it.filter { c -> c.isDigit() } },
+                                value = breakMinutes,
+                                onValueChange = { if (it.all { char -> char.isDigit() }) breakMinutes = it },
                                 modifier = Modifier.fillMaxWidth(0.9f),
                                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
@@ -78,7 +84,8 @@ fun TimeSettingsDialog(
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                             Text("Số phiên", fontSize = 12.sp, color = grayText)
                             OutlinedTextField(
-                                value = sessionsInput, onValueChange = { sessionsInput = it.filter { c -> c.isDigit() } },
+                                value = sessionsInput,
+                                onValueChange = { if (it.all { char -> char.isDigit() }) sessionsInput = it },
                                 modifier = Modifier.fillMaxWidth(0.9f),
                                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
@@ -88,7 +95,8 @@ fun TimeSettingsDialog(
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                             Text("Nghỉ dài", fontSize = 12.sp, color = grayText)
                             OutlinedTextField(
-                                value = longBreakMinutes, onValueChange = { longBreakMinutes = it.filter { c -> c.isDigit() } },
+                                value = longBreakMinutes,
+                                onValueChange = { if (it.all { char -> char.isDigit() }) longBreakMinutes = it },
                                 modifier = Modifier.fillMaxWidth(0.9f),
                                 textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
@@ -97,9 +105,20 @@ fun TimeSettingsDialog(
                         }
                     }
 
+                    // HIỂN THỊ LỖI (NẾU CÓ)
+                    if (errorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = errorMessage!!,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // PRESETS (Sửa text hiển thị đầy đủ)
+                    // PRESETS
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         val presets = listOf(
                             Triple("25/5/4/15", "25", "5"),
@@ -116,12 +135,13 @@ fun TimeSettingsDialog(
                             Button(
                                 onClick = {
                                     focusMinutes = f; breakMinutes = b; sessionsInput = s; longBreakMinutes = l
+                                    errorMessage = null // Xóa lỗi khi chọn preset
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = buttonBgColor, contentColor = buttonTextColor),
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 4.dp)
                             ) {
-                                Text(fullStr, fontSize = 11.sp) // Hiển thị full chuỗi
+                                Text(fullStr, fontSize = 11.sp)
                             }
                         }
                     }
@@ -129,10 +149,23 @@ fun TimeSettingsDialog(
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = {
-                            val newFocus = focusMinutes.toLongOrNull() ?: 25L
-                            val newBreak = breakMinutes.toLongOrNull() ?: 5L
-                            val newLongBreak = longBreakMinutes.toLongOrNull() ?: 15L
-                            val newSessions = sessionsInput.toIntOrNull() ?: 4
+                            // --- KIỂM TRA ĐẦU VÀO (VALIDATION) ---
+                            if (focusMinutes.isBlank() || breakMinutes.isBlank() || sessionsInput.isBlank() || longBreakMinutes.isBlank()) {
+                                errorMessage = "Vui lòng nhập đầy đủ thông tin!"
+                                return@Button
+                            }
+
+                            val newFocus = focusMinutes.toLongOrNull() ?: 0L
+                            val newBreak = breakMinutes.toLongOrNull() ?: 0L
+                            val newLongBreak = longBreakMinutes.toLongOrNull() ?: 0L
+                            val newSessions = sessionsInput.toIntOrNull() ?: 0
+
+                            if (newFocus <= 0 || newBreak <= 0 || newLongBreak <= 0 || newSessions <= 0) {
+                                errorMessage = "Thời gian và số phiên phải lớn hơn 0!"
+                                return@Button
+                            }
+
+                            // Nếu hợp lệ thì lưu và đóng
                             onSettingsApplied(newFocus, newBreak, newLongBreak, newSessions)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = yellowButton),
@@ -150,7 +183,7 @@ fun TimeSettingsDialog(
     }
 }
 
-// ... (Giữ nguyên FailedDialog, HarvestDialog, NotEnoughPointsDialog) ...
+// ... (Giữ nguyên FailedDialog, HarvestDialog, NotEnoughPointsDialog bên dưới)
 @Composable
 fun FailedDialog(onDismiss: () -> Unit) {
     AlertDialog(
