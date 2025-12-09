@@ -34,6 +34,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 
+// Data Model chứa thông tin người dùng
 data class UserInfo(
     val name: String,
     val email: String,
@@ -50,11 +51,18 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val prefs: SharedPreferences = context.getSharedPreferences("DuckTrackPrefs", Context.MODE_PRIVATE)
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
+
+    // Repository để lấy dữ liệu thống kê Task/Thành tựu
     private val repository = (context.applicationContext as MyApplication).repository
+
+    // Key lưu trong SharedPreferences
     private val providerKey = "LOGIN_PROVIDER"
     private val authKey = "IS_LOGGED_IN"
+
+    // Context ứng dụng
     private val appContext = context.applicationContext
 
+    // StateFlow quản lý trạng thái
     private val initialAuthState: Boolean get() = firebaseAuth.currentUser != null
     private val _isAuthenticated = MutableStateFlow(initialAuthState)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
@@ -62,6 +70,7 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
+    // StateFlow chứa thống kê Task (cho UI Profile)
     private val _taskStats = MutableStateFlow(TaskStats())
     val taskStats: StateFlow<TaskStats> = _taskStats.asStateFlow()
 
@@ -73,9 +82,18 @@ class AuthViewModel(context: Context) : ViewModel() {
         }
     }
 
+    // --- HÀM PHỤ TRỢ: CẬP NHẬT WIDGET ---
     private suspend fun refreshWidget() {
-        try { DuckWidget().updateAll(appContext) } catch (e: Exception) { e.printStackTrace() }
+        try {
+            DuckWidget().updateAll(appContext)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
+
+    // =========================================================================
+    //                           QUẢN LÝ THÔNG TIN USER
+    // =========================================================================
 
     fun loadUserInfo(onLoaded: (UserInfo) -> Unit) {
         val user = firebaseAuth.currentUser
@@ -109,7 +127,10 @@ class AuthViewModel(context: Context) : ViewModel() {
                         val currentCount = treeCounts[seedId] ?: 0
                         treeCounts[seedId] = currentCount + 1
                     }
-                } catch (e: Exception) { e.printStackTrace() }
+
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
 
                 val stats = repository.getTaskStats()
                 _taskStats.value = stats
@@ -120,7 +141,6 @@ class AuthViewModel(context: Context) : ViewModel() {
         }
     }
 
-    // ... (Giữ nguyên các hàm getCurrentUserInfo, updateAvatar, updateUserName, updateDuckName...)
     fun getCurrentUserInfo(): UserInfo? {
         val user = firebaseAuth.currentUser
         val savedProvider = prefs.getString(providerKey, "Không rõ") ?: "Không rõ"
@@ -134,6 +154,8 @@ class AuthViewModel(context: Context) : ViewModel() {
         } else null
     }
 
+    // --- CÁC HÀM CẬP NHẬT THÔNG TIN ---
+
     fun updateAvatar(uri: Uri, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = firebaseAuth.currentUser ?: return
         viewModelScope.launch {
@@ -142,34 +164,67 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val base64 = withContext(Dispatchers.IO) { ImageUtils.uriToBase64(appContext, uri) }
                 if (base64 == null) throw Exception("Lỗi xử lý ảnh")
                 firestore.collection("users").document(user.uid).set(mapOf("avatarBase64" to base64), SetOptions.merge()).await()
-                _cachedBase64Avatar = base64; _isUploading.value = false; onSuccess()
-            } catch (e: Exception) { _isUploading.value = false; onError(e.message ?: "Lỗi upload") }
+                _cachedBase64Avatar = base64
+                _isUploading.value = false
+                onSuccess()
+            } catch (e: Exception) {
+                _isUploading.value = false
+                onError(e.message ?: "Lỗi upload")
+            }
         }
     }
 
     fun updateUserName(newName: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         firebaseAuth.currentUser?.updateProfile(UserProfileChangeRequest.Builder().setDisplayName(newName).build())
-            ?.addOnCompleteListener { if(it.isSuccessful) onSuccess() else onError(it.exception?.message ?: "Lỗi") }
+            ?.addOnCompleteListener {
+                if (it.isSuccessful) onSuccess() else onError(it.exception?.message ?: "Lỗi")
+            }
     }
 
     fun updateDuckName(newName: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = firebaseAuth.currentUser ?: return
-        viewModelScope.launch { try { firestore.collection("users").document(user.uid).set(mapOf("duckName" to newName), SetOptions.merge()).await(); onSuccess() } catch (ex: Exception) { onError(ex.message ?: "Lỗi") } }
+        viewModelScope.launch {
+            try {
+                firestore.collection("users").document(user.uid).set(mapOf("duckName" to newName), SetOptions.merge()).await()
+                onSuccess()
+            } catch (ex: Exception) {
+                onError(ex.message ?: "Lỗi")
+            }
+        }
     }
+
+    // --- CÁC HÀM ĐĂNG NHẬP / ĐĂNG XUẤT ---
 
     suspend fun signInWithGoogleToken(idToken: String) {
         try {
             firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
             _isAuthenticated.update { true }
             prefs.edit { putBoolean(authKey, true); putString(providerKey, "Google") }
-        } catch (e: Exception) { logout() }
+        } catch (e: Exception) {
+            logout()
+        }
     }
 
     fun signInWithGithub(activity: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val provider = OAuthProvider.newBuilder("github.com"); provider.addCustomParameter("allow_signup", "true"); provider.scopes = listOf("user:email")
+        val provider = OAuthProvider.newBuilder("github.com")
+        provider.addCustomParameter("allow_signup", "true")
+        provider.scopes = listOf("user:email")
+
         val pending = firebaseAuth.pendingAuthResult
-        if (pending != null) { pending.addOnSuccessListener { _isAuthenticated.update { true }; prefs.edit { putBoolean(authKey, true); putString(providerKey, "GitHub") }; onSuccess() }.addOnFailureListener { onError(it.message ?: "") } }
-        else { firebaseAuth.startActivityForSignInWithProvider(activity, provider.build()).addOnSuccessListener { _isAuthenticated.update { true }; prefs.edit { putBoolean(authKey, true); putString(providerKey, "GitHub") }; onSuccess() }.addOnFailureListener { onError(it.message ?: "") } }
+        if (pending != null) {
+            pending.addOnSuccessListener {
+                _isAuthenticated.update { true }
+                prefs.edit { putBoolean(authKey, true); putString(providerKey, "GitHub") }
+                onSuccess()
+            }.addOnFailureListener { onError(it.message ?: "") }
+        } else {
+            firebaseAuth.startActivityForSignInWithProvider(activity, provider.build())
+                .addOnSuccessListener {
+                    _isAuthenticated.update { true }
+                    prefs.edit { putBoolean(authKey, true); putString(providerKey, "GitHub") }
+                    onSuccess()
+                }.addOnFailureListener { onError(it.message ?: "") }
+        }
     }
 
     fun logout() {
@@ -178,7 +233,10 @@ class AuthViewModel(context: Context) : ViewModel() {
             firebaseAuth.signOut()
             _isAuthenticated.update { false }
             _cachedBase64Avatar = null
-            prefs.edit { putBoolean(authKey, false); remove(providerKey) }
+            prefs.edit {
+                putBoolean(authKey, false)
+                remove(providerKey)
+            }
             refreshWidget()
         }
     }
@@ -202,8 +260,26 @@ class AuthViewModel(context: Context) : ViewModel() {
     }
 
     fun getLinkedProviders() = firebaseAuth.currentUser?.providerData?.map { it.providerId } ?: emptyList()
-    fun linkWithGithub(act: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) { firebaseAuth.currentUser?.startActivityForLinkWithProvider(act, OAuthProvider.newBuilder("github.com").build())?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
-    fun unlinkProvider(id: String, onSuccess: () -> Unit, onError: (String) -> Unit) { if((firebaseAuth.currentUser?.providerData?.size ?: 0) <= 1) onError("Giữ lại ít nhất 1 phương thức!") else firebaseAuth.currentUser?.unlink(id)?.addOnSuccessListener { onSuccess() }?.addOnFailureListener { onError(it.message ?: "") } }
+
+    fun linkWithGithub(act: Activity, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        firebaseAuth.currentUser?.startActivityForLinkWithProvider(act, OAuthProvider.newBuilder("github.com").build())
+            ?.addOnSuccessListener { onSuccess() }
+            ?.addOnFailureListener { onError(it.message ?: "") }
+    }
+
+    fun unlinkProvider(id: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if ((firebaseAuth.currentUser?.providerData?.size ?: 0) <= 1) {
+            onError("Giữ lại ít nhất 1 phương thức!")
+        } else {
+            firebaseAuth.currentUser?.unlink(id)
+                ?.addOnSuccessListener { onSuccess() }
+                ?.addOnFailureListener { onError(it.message ?: "") }
+        }
+    }
+
+    // =========================================================================
+    //               LOGIC XUẤT DỮ LIỆU (EXPORT CSV)
+    // =========================================================================
 
     fun exportData(context: Context, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
@@ -215,6 +291,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                     onError("Chưa đăng nhập!")
                     return@launch
                 }
+
                 val userInfoDeferred = withContext(Dispatchers.IO) {
                     val savedProvider = prefs.getString("LOGIN_PROVIDER", "Không rõ") ?: "Không rõ"
                     val name = user.displayName ?: user.email ?: "Người dùng"
@@ -231,13 +308,15 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val weeklyTrees = getWeeklyTreeHistory(user.uid)
                 val monthlyApps = getTopAppsUsage(context)
                 val currentTaskStats = repository.getTaskStats()
+
                 val treeCountsMap = withContext(Dispatchers.IO) {
                     val mapNameCount = mutableMapOf<String, Int>()
                     try {
                         val allTreesSnapshot = firestore.collection("users").document(user.uid).collection("garden").get().await()
                         val countsById = allTreesSnapshot.documents.groupingBy { it.getString("seedId") ?: "normal" }.eachCount()
                         countsById.forEach { (id, count) ->
-                            val nameVN = when (id) { "normal" -> "Cây thường"; "pine" -> "Cây thông"; "red_leaf", "redleaf" -> "Cây lá đỏ"; "sakura" -> "Hoa anh đào"; else -> "Cây khác" }
+                            val type = SeedType.fromId(id)
+                            val nameVN = type?.displayName ?: "Cây khác ($id)"
                             mapNameCount[nameVN] = (mapNameCount[nameVN] ?: 0) + count
                         }
                     } catch (e: Exception) { e.printStackTrace() }
@@ -251,24 +330,44 @@ class AuthViewModel(context: Context) : ViewModel() {
                         if (resultMessage != null) onSuccess(resultMessage.replace("Đã lưu tại: ", "")) else onError("Lỗi khi lưu file.")
                     }
                 }
-            } catch (e: Exception) { _isUploading.value = false; onError(e.message ?: "Lỗi export") }
+            } catch (e: Exception) {
+                _isUploading.value = false
+                onError(e.message ?: "Lỗi export")
+            }
         }
     }
 
-    // --- SỬA HÀM NÀY: Lấy thêm sessionSetIndex và sessionIndexInSet ---
     private suspend fun getWeeklyTreeHistory(uid: String): List<TreeHistoryCsvItem> = withContext(Dispatchers.IO) {
         val list = mutableListOf<TreeHistoryCsvItem>()
         try {
-            val cal = Calendar.getInstance(); cal.firstDayOfWeek = Calendar.MONDAY; cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY); cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0); val startOfWeek = cal.timeInMillis; cal.add(Calendar.DAY_OF_YEAR, 7); val endOfWeek = cal.timeInMillis
-            val snapshot = firestore.collection("users").document(uid).collection("garden").whereGreaterThanOrEqualTo("plantedAt", startOfWeek).whereLessThan("plantedAt", endOfWeek).get().await()
+            val cal = Calendar.getInstance()
+            cal.firstDayOfWeek = Calendar.MONDAY
+            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            val startOfWeek = cal.timeInMillis
+
+            cal.add(Calendar.DAY_OF_YEAR, 7)
+            val endOfWeek = cal.timeInMillis
+
+            val snapshot = firestore.collection("users").document(uid).collection("garden")
+                .whereGreaterThanOrEqualTo("plantedAt", startOfWeek)
+                .whereLessThan("plantedAt", endOfWeek)
+                .get().await()
+
             for (doc in snapshot.documents) {
                 val seedId = doc.getString("seedId") ?: ""
-                val treeNameVN = when (seedId) { "normal" -> "Cây thường"; "pine" -> "Cây thông"; "red_leaf", "redleaf" -> "Cây lá đỏ"; "sakura" -> "Hoa anh đào"; else -> "Cây khác ($seedId)" }
+
+                // Tự động lấy tên từ Enum SeedType
+                val type = SeedType.fromId(seedId)
+                val treeNameVN = type?.displayName ?: "Cây khác ($seedId)"
+
                 val timestamp = doc.getLong("plantedAt") ?: 0L
                 val configStr = doc.getString("config") ?: "N/A"
                 val status = doc.getString("status") ?: "Hoàn thành"
 
-                // Lấy thêm thông tin bộ phiên (nếu có)
                 val setIdx = doc.getLong("sessionSetIndex")?.toInt() ?: 0
                 val sessIdx = doc.getLong("sessionIndexInSet")?.toInt() ?: 0
 
@@ -279,14 +378,36 @@ class AuthViewModel(context: Context) : ViewModel() {
         list
     }
 
-    // ... (Hàm getTopAppsUsage giữ nguyên) ...
     private suspend fun getTopAppsUsage(context: Context): List<AppUsageCsvItem> = withContext(Dispatchers.IO) {
         val list = mutableListOf<AppUsageCsvItem>()
         try {
-            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager; val packageManager = context.packageManager; val cal = Calendar.getInstance(); val endTime = cal.timeInMillis; cal.add(Calendar.DAY_OF_YEAR, -30); val startTime = cal.timeInMillis; val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val packageManager = context.packageManager
+            val cal = Calendar.getInstance()
+            val endTime = cal.timeInMillis
+            cal.add(Calendar.DAY_OF_YEAR, -30)
+            val startTime = cal.timeInMillis
+
+            val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+
             if (statsMap.isNotEmpty()) {
-                val sortedStats = statsMap.values.filter { it.totalTimeInForeground > 0 }.sortedByDescending { it.totalTimeInForeground }; var count = 0
-                for (usageStats in sortedStats) { if (count >= 10) break; val packageName = usageStats.packageName; var appName = packageName; try { val ai = packageManager.getApplicationInfo(packageName, 0); appName = packageManager.getApplicationLabel(ai).toString() } catch (e: PackageManager.NameNotFoundException) { }; list.add(AppUsageCsvItem(appName, usageStats.totalTimeInForeground)); count++ }
+                val sortedStats = statsMap.values
+                    .filter { it.totalTimeInForeground > 0 }
+                    .sortedByDescending { it.totalTimeInForeground }
+
+                var count = 0
+                for (usageStats in sortedStats) {
+                    if (count >= 10) break
+                    val packageName = usageStats.packageName
+                    var appName = packageName
+                    try {
+                        val ai = packageManager.getApplicationInfo(packageName, 0)
+                        appName = packageManager.getApplicationLabel(ai).toString()
+                    } catch (e: PackageManager.NameNotFoundException) { }
+
+                    list.add(AppUsageCsvItem(appName, usageStats.totalTimeInForeground))
+                    count++
+                }
             }
         } catch (e: Exception) { e.printStackTrace() }
         list
