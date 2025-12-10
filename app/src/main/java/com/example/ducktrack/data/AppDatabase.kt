@@ -1,4 +1,5 @@
 package com.example.ducktrack.data
+
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -9,9 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [UserProfile::class, UnlockedSeed::class, GrownTree::class, TaskEntity::class], // Đảm bảo đủ Entity (có thể bạn có TaskEntity)
-    version = 1,
-    exportSchema = false // <--- THÊM DÒNG NÀY ĐỂ SỬA LỖI ROOM
+    // THÊM TaskEntity::class VÀO ĐÂY
+    entities = [UserProfile::class, UnlockedSeed::class, GrownTree::class, TaskEntity::class],
+    version = 2, // TĂNG VERSION TỪ 1 LÊN 2
+    exportSchema = false // Tắt lỗi schema export
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -29,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "ducktrack_database"
                 )
                     .addCallback(DatabaseCallback(context))
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // Cho phép xóa dữ liệu cũ nếu đổi version
                     .build()
                 INSTANCE = instance
                 instance

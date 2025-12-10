@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val description: String,
+    val date: Long,
     val isCompleted: Boolean = false,
-    val isPinned: Boolean = false,
-    val date: Long
+    val isPinned: Boolean = false
 )
