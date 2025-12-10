@@ -1,6 +1,5 @@
 package com.example.ducktrack.data
 
-import android.util.Log
 import com.example.ducktrack.data.model.GrownTree
 import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.ui.main.tasks.TodoTask
@@ -17,18 +16,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import com.example.ducktrack.ui.main.tasks.TaskStats
-import com.example.ducktrack.ui.main.settings.AchievementList
-import com.example.ducktrack.ui.main.settings.AchievementType
-import com.google.firebase.firestore.FieldValue
 import com.example.ducktrack.ui.main.tasks.QuadrantStat
-import com.example.ducktrack.utils.TreeHistoryCsvItem // Import này
 
 class UserDataRepository(private val userDao: UserDao) {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    // --- PHẦN 1: DỮ LIỆU TỪ ROOM (LOCAL) ---
+    // --- ROOM ---
     val userPoints: Flow<Int> = userDao.getUserProfile().map { it?.points ?: 0 }
     val unlockedSeeds: Flow<Set<SeedType>> = userDao.getUnlockedSeeds().map { list -> list.mapNotNull { SeedType.fromId(it.seedId) }.toSet() }
 
@@ -46,13 +41,7 @@ class UserDataRepository(private val userDao: UserDao) {
     }
 
     suspend fun addPoints(amount: Int) { withContext(Dispatchers.IO) { userDao.increasePoints(amount); syncUserProfileToCloud() } }
-
-    suspend fun deductPoints(amount: Int) {
-        withContext(Dispatchers.IO) {
-            userDao.decreasePoints(amount)
-            syncUserProfileToCloud()
-        }
-    }
+    suspend fun deductPoints(amount: Int) { withContext(Dispatchers.IO) { userDao.decreasePoints(amount); syncUserProfileToCloud() } }
 
     suspend fun unlockSeed(seed: SeedType): Boolean {
         return withContext(Dispatchers.IO) {
@@ -67,11 +56,13 @@ class UserDataRepository(private val userDao: UserDao) {
         }
     }
 
+    // --- SỬA: Thêm tham số lưu bộ phiên ---
     suspend fun addGrownTreeToCloud(
         seed: SeedType,
         configString: String,
         sessionSetIndex: Int,
-        sessionIndexInSet: Int
+        sessionIndexInSet: Int,
+        currentTag: String
     ) {
         val uid = auth.currentUser?.uid ?: return
         val newTree = GrownTree(
@@ -94,6 +85,7 @@ class UserDataRepository(private val userDao: UserDao) {
             firestore.collection("users").document(uid).set(hashMapOf("points" to points, "unlockedSeeds" to seeds), SetOptions.merge())
         } catch (e: Exception) { e.printStackTrace() }
     }
+
     suspend fun restoreDataFromCloud() {
         val uid = auth.currentUser?.uid ?: return
         withContext(Dispatchers.IO) {
@@ -109,15 +101,13 @@ class UserDataRepository(private val userDao: UserDao) {
         }
     }
 
-    // --- PHẦN 5: QUẢN LÝ TASK ---
+    // --- TASK ---
     fun getTasksStream(dateMs: Long): Flow<List<TodoTask>> = callbackFlow {
         val uid = auth.currentUser?.uid
         if (uid == null) { close(); return@callbackFlow }
-        val startOfDay = getStartOfDay(dateMs)
-        val endOfDay = getEndOfDay(dateMs)
+        val startOfDay = getStartOfDay(dateMs); val endOfDay = getEndOfDay(dateMs)
         val collection = firestore.collection("users").document(uid).collection("tasks")
         val listener = collection.whereGreaterThanOrEqualTo("date", startOfDay).whereLessThanOrEqualTo("date", endOfDay).addSnapshotListener { snapshot, error ->
-            if (error != null) return@addSnapshotListener
             if (snapshot != null) {
                 val tasks = snapshot.documents.mapNotNull { doc -> doc.toObject(TodoTask::class.java)?.copy(id = doc.id) }
                 val sortedTasks = tasks.sortedWith(compareByDescending<TodoTask> { it.isPinned }.thenBy { it.isCompleted }.thenByDescending { it.id })
@@ -132,23 +122,17 @@ class UserDataRepository(private val userDao: UserDao) {
         val newTask = TodoTask(description = description, isCompleted = false, isPinned = false, isImportant = isImportant, isUrgent = isUrgent, date = dateMs)
         try { firestore.collection("users").document(uid).collection("tasks").add(newTask).await() } catch (e: Exception) { e.printStackTrace() }
     }
-
     suspend fun updateTaskInCloud(task: TodoTask) {
-        val uid = auth.currentUser?.uid ?: return
-        if (task.id.isEmpty()) return
+        val uid = auth.currentUser?.uid ?: return; if (task.id.isEmpty()) return
         try { firestore.collection("users").document(uid).collection("tasks").document(task.id).set(task).await() } catch (e: Exception) { e.printStackTrace() }
     }
     suspend fun deleteMultipleTasksCloud(taskIds: Set<String>) {
-        val uid = auth.currentUser?.uid ?: return
-        val batch = firestore.batch()
-        val colRef = firestore.collection("users").document(uid).collection("tasks")
+        val uid = auth.currentUser?.uid ?: return; val batch = firestore.batch(); val colRef = firestore.collection("users").document(uid).collection("tasks")
         taskIds.forEach { id -> if (id.isNotEmpty()) batch.delete(colRef.document(id)) }
         try { batch.commit().await() } catch (e: Exception) { e.printStackTrace() }
     }
     suspend fun pinMultipleTasksCloud(taskIds: Set<String>) {
-        val uid = auth.currentUser?.uid ?: return
-        val batch = firestore.batch()
-        val colRef = firestore.collection("users").document(uid).collection("tasks")
+        val uid = auth.currentUser?.uid ?: return; val batch = firestore.batch(); val colRef = firestore.collection("users").document(uid).collection("tasks")
         taskIds.forEach { id -> if (id.isNotEmpty()) batch.update(colRef.document(id), "isPinned", true) }
         try { batch.commit().await() } catch (e: Exception) { e.printStackTrace() }
     }
@@ -192,63 +176,18 @@ class UserDataRepository(private val userDao: UserDao) {
         } catch (e: Exception) { return TaskStats() }
     }
 
-    // --- SỬA HÀM NÀY ĐỂ TỰ ĐỘNG NHẬN TÊN CÂY MỚI (Lấy từ SeedType) ---
-    // (Đã thêm 2 trường mới: setIndex, sessionIndex để khớp với CSV)
-    suspend fun getWeeklyTreeHistory(uid: String): List<TreeHistoryCsvItem> = withContext(Dispatchers.IO) {
-        val list = mutableListOf<TreeHistoryCsvItem>()
-        try {
-            val cal = java.util.Calendar.getInstance()
-            cal.firstDayOfWeek = java.util.Calendar.MONDAY
-            cal.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.MONDAY)
-            cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0); cal.set(java.util.Calendar.SECOND, 0); cal.set(java.util.Calendar.MILLISECOND, 0)
-            val startOfWeek = cal.timeInMillis
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 7)
-            val endOfWeek = cal.timeInMillis
-
-            val snapshot = firestore.collection("users").document(uid).collection("garden")
-                .whereGreaterThanOrEqualTo("plantedAt", startOfWeek)
-                .whereLessThan("plantedAt", endOfWeek)
-                .get().await()
-
-            for (doc in snapshot.documents) {
-                val seedId = doc.getString("seedId") ?: ""
-
-                // --- TỰ ĐỘNG LẤY TÊN TỪ ENUM ---
-                val type = SeedType.fromId(seedId)
-                val treeNameVN = type?.displayName ?: "Cây khác ($seedId)"
-                // -------------------------------
-
-                val timestamp = doc.getLong("plantedAt") ?: 0L
-                val configStr = doc.getString("config") ?: "N/A"
-                val status = doc.getString("status") ?: "Hoàn thành"
-
-                val setIdx = doc.getLong("sessionSetIndex")?.toInt() ?: 0
-                val sessIdx = doc.getLong("sessionIndexInSet")?.toInt() ?: 0
-
-                list.add(TreeHistoryCsvItem(treeNameVN, timestamp, configStr, status, setIdx, sessIdx))
-            }
-            list.sortByDescending { it.timestamp }
-        } catch (e: Exception) { e.printStackTrace() }
-        list
-    }
-
     suspend fun checkAndSyncAchievements(): List<String> {
         val uid = auth.currentUser?.uid ?: return emptyList()
         try {
             val userDoc = firestore.collection("users").document(uid).get().await()
             val currentUnlocked = (userDoc.get("unlockedAchievements") as? List<String> ?: emptyList()).toMutableSet()
-
-            // Logic check achievement giữ nguyên...
-            // (Đoạn này không cần sửa vì nó check dựa trên số lượng cây tổng, không care loại mới)
             return currentUnlocked.toList()
         } catch (e: Exception) { return emptyList() }
     }
 
     suspend fun selectAchievement(achievementId: String) {
         val uid = auth.currentUser?.uid ?: return
-        try {
-            firestore.collection("users").document(uid).update("selectedAchievementId", achievementId).await()
-        } catch (e: Exception) { e.printStackTrace() }
+        try { firestore.collection("users").document(uid).update("selectedAchievementId", achievementId).await() } catch (e: Exception) { e.printStackTrace() }
     }
 
     suspend fun clearLocalData() { withContext(Dispatchers.IO) { userDao.clearAllData(); val defaultProfile = UserProfile(id = 1, points = 0); userDao.upsertUserProfile(defaultProfile); val defaultSeed = UnlockedSeed(SeedType.NORMAL.id); userDao.insertUnlockedSeed(defaultSeed) } }

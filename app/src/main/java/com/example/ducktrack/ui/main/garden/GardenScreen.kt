@@ -1,6 +1,6 @@
 package com.example.ducktrack.ui.main.garden
 
-// ... (Các import giữ nguyên y hệt file trước)
+// ... (Giữ nguyên các import)
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,7 +33,6 @@ import com.example.ducktrack.ui.main.pomodoro.NotEnoughPointsDialog
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// ... (Hàm GardenScreen chính GIỮ NGUYÊN) ...
 @Composable
 fun GardenScreen(
     onNavigateToPomodoro: () -> Unit,
@@ -42,7 +41,6 @@ fun GardenScreen(
         factory = ViewModelFactory(context.applicationContext as MyApplication)
     )
 ) {
-    // ... (Copy y nguyên nội dung hàm này từ tin nhắn trước) ...
     val uiState by viewModel.uiState.collectAsState()
     var selectedTree by remember { mutableStateOf<GrownTreeUI?>(null) }
 
@@ -51,73 +49,26 @@ fun GardenScreen(
             .fillMaxSize()
             .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 0.dp)
     ) {
-        Text(
-            text = "Vườn cây 🌳",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF2E7D32),
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
-
+        // ... (Tiêu đề, Navigator, Grid, Store giữ nguyên như cũ) ...
+        // (Để code gọn, tôi paste lại phần chính bên dưới)
+        Text(text = "Vườn cây 🌳", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         Spacer(Modifier.height(16.dp))
-
-        GardenDateNavigator(
-            dateText = uiState.dateText,
-            isNextEnabled = !uiState.isToday,
-            onPrev = { viewModel.previousDay() },
-            onNext = { viewModel.nextDay() }
-        )
-
+        GardenDateNavigator(dateText = uiState.dateText, isNextEnabled = !uiState.isToday, onPrev = { viewModel.previousDay() }, onNext = { viewModel.nextDay() })
         Spacer(modifier = Modifier.height(16.dp))
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (uiState.treesForSelectedDate.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    EmptyGardenState(
-                        isToday = uiState.isToday,
-                        onPlantNow = onNavigateToPomodoro
-                    )
-                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { EmptyGardenState(isToday = uiState.isToday, onPlantNow = onNavigateToPomodoro) }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 12.dp)
-                ) {
-                    items(uiState.treesForSelectedDate) { tree ->
-                        GrownTreeItem(
-                            tree = tree,
-                            onClick = { selectedTree = tree }
-                        )
-                    }
-                    item {
-                        PlantMoreButton(onClick = onNavigateToPomodoro)
-                    }
+                LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    items(uiState.treesForSelectedDate) { tree -> GrownTreeItem(tree = tree, onClick = { selectedTree = tree }) }
+                    item { PlantMoreButton(onClick = onNavigateToPomodoro) }
                 }
             }
         }
-
         Spacer(Modifier.height(12.dp))
-
         Text("Cửa hàng hạt giống", fontWeight = FontWeight.Bold, color = Color(0xFF388E3C))
         Spacer(Modifier.height(8.dp))
-
-        SeedStoreCard(
-            storeItems = uiState.storeItems,
-            onItemClick = { storeItem ->
-                if (!storeItem.isUnlocked) {
-                    viewModel.onUnlockSeed(storeItem.seedType)
-                }
-            },
-            modifier = Modifier.height(250.dp)
-        )
+        SeedStoreCard(storeItems = uiState.storeItems, onItemClick = { storeItem -> if (!storeItem.isUnlocked) viewModel.onUnlockSeed(storeItem.seedType) }, modifier = Modifier.height(250.dp))
     }
 
     if (selectedTree != null) {
@@ -130,8 +81,6 @@ fun GardenScreen(
         NotEnoughPointsDialog(onDismiss = { viewModel.onDismissNotEnoughPointsDialog() })
     }
 }
-
-// ... (Các hàm TreeDetailDialog, DetailRow giữ nguyên) ...
 
 @Composable
 fun TreeDetailDialog(tree: GrownTreeUI, onDismiss: () -> Unit) {
@@ -152,15 +101,18 @@ fun TreeDetailDialog(tree: GrownTreeUI, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 Image(painter = painterResource(id = tree.seedType.grownIcon), contentDescription = null, modifier = Modifier.size(100.dp))
                 Spacer(Modifier.height(24.dp))
+
                 DetailRow(label = "Loại cây:", value = tree.seedType.displayName)
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
 
+                // --- HIỂN THỊ THÔNG TIN MỚI ---
                 DetailRow(label = "Bộ phiên:", value = "Bộ thứ ${tree.setIndex}")
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
 
                 val totalSessionsInSet = try { tree.config.split("/")[2] } catch (e: Exception) { "?" }
                 DetailRow(label = "Phiên trong bộ:", value = "${tree.sessionIndex} / $totalSessionsInSet")
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
+                // -----------------------------
 
                 DetailRow(label = "Thời gian trồng:", value = dateString)
                 Divider(color = Color(0xFFEEEEEE), thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
@@ -174,63 +126,14 @@ fun TreeDetailDialog(tree: GrownTreeUI, onDismiss: () -> Unit) {
     }
 }
 
+// ... (Các hàm DetailRow, GrownTreeItem, GardenDateNavigator... giữ nguyên) ...
 @Composable
-fun DetailRow(label: String, value: String, valueColor: Color = Color.Black) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = Color.Gray, fontSize = 14.sp)
-        Text(value, color = valueColor, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-    }
-}
-
-// --- SỬA CHỖ NÀY: GrownTreeItem ---
+fun DetailRow(label: String, value: String, valueColor: Color = Color.Black) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, color = Color.Gray, fontSize = 14.sp); Text(value, color = valueColor, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) } }
 @Composable
-fun GrownTreeItem(tree: GrownTreeUI, onClick: () -> Unit = {}) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFDCEDC8)),
-        modifier = Modifier.aspectRatio(1f).clickable { onClick() }
-    ) {
-        // Giảm padding để cây to hơn
-        Box(modifier = Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
-            Image(
-                painter = painterResource(id = tree.seedType.grownIcon),
-                contentDescription = null,
-                // SỬA: fillMaxSize() không dùng 0.8f nữa để cây to hết mức
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-    }
-}
-// ----------------------------------
-
-// ... (Các hàm còn lại giữ nguyên) ...
+fun GrownTreeItem(tree: GrownTreeUI, onClick: () -> Unit = {}) { Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFDCEDC8)), modifier = Modifier.aspectRatio(1f).clickable { onClick() }) { Box(modifier = Modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) { Image(painter = painterResource(id = tree.seedType.grownIcon), contentDescription = null, modifier = Modifier.fillMaxSize()) } } }
 @Composable
-fun GardenDateNavigator(dateText: String, isNextEnabled: Boolean, onPrev: () -> Unit, onNext: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F8E9), RoundedCornerShape(12.dp)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        IconButton(onClick = onPrev) { Icon(Icons.Filled.ChevronLeft, null, tint = Color(0xFF33691E)) }
-        Text(text = dateText, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF33691E))
-        IconButton(onClick = onNext, enabled = isNextEnabled) { Icon(Icons.Filled.ChevronRight, null, tint = if (isNextEnabled) Color(0xFF33691E) else Color.Transparent) }
-    }
-}
-
+fun GardenDateNavigator(dateText: String, isNextEnabled: Boolean, onPrev: () -> Unit, onNext: () -> Unit) { Row(modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F8E9), RoundedCornerShape(12.dp)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) { IconButton(onClick = onPrev) { Icon(Icons.Filled.ChevronLeft, null, tint = Color(0xFF33691E)) }; Text(text = dateText, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF33691E)); IconButton(onClick = onNext, enabled = isNextEnabled) { Icon(Icons.Filled.ChevronRight, null, tint = if (isNextEnabled) Color(0xFF33691E) else Color.Transparent) } } }
 @Composable
-fun PlantMoreButton(onClick: () -> Unit) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)), modifier = Modifier.aspectRatio(1f), onClick = onClick) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("➕", fontSize = 24.sp)
-                Text("Trồng thêm", fontSize = 12.sp, color = Color(0xFFFBC02D))
-            }
-        }
-    }
-}
-
+fun PlantMoreButton(onClick: () -> Unit) { Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)), modifier = Modifier.aspectRatio(1f), onClick = onClick) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("➕", fontSize = 24.sp); Text("Trồng thêm", fontSize = 12.sp, color = Color(0xFFFBC02D)) } } } }
 @Composable
-fun EmptyGardenState(isToday: Boolean, onPlantNow: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        val text = if (isToday) "Chưa có cây nào hôm nay 🌱" else "Không có cây nào hôm đó 🍂"
-        Text(text, color = Color.Gray)
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = onPlantNow, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))) { Text("Bắt đầu tập trung ngay") }
-    }
-}
+fun EmptyGardenState(isToday: Boolean, onPlantNow: () -> Unit) { Column(modifier = Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) { val text = if (isToday) "Chưa có cây nào hôm nay 🌱" else "Không có cây nào hôm đó 🍂"; Text(text, color = Color.Gray); Spacer(Modifier.height(8.dp)); Button(onClick = onPlantNow, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))) { Text("Bắt đầu tập trung ngay") } } }

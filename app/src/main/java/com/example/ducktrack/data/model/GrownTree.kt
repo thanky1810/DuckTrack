@@ -20,5 +20,7 @@ data class GrownTree(
     // Thứ tự của phiên trong bộ đó (Phiên 1/4, 2/4...)
     @get:PropertyName("sessionIndexInSet")
     @set:PropertyName("sessionIndexInSet")
-    var sessionIndexInSet: Int = 1
+    var sessionIndexInSet: Int = 1,
+
+    val tag: String = "Chưa phân loại"
 )

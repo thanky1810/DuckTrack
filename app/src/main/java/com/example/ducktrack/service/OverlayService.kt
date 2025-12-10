@@ -3,12 +3,14 @@ package com.example.ducktrack.service
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.FrameLayout
@@ -25,7 +27,6 @@ class OverlayService : Service() {
         getSystemService(WINDOW_SERVICE) as WindowManager
     }
 
-    // Lưu app đang bị chặn và limit hiện tại
     private var currentPackageName: String? = null
     private var currentLimitMinutes: Int? = null
 
@@ -42,76 +43,69 @@ class OverlayService : Service() {
             ACTION_SHOW_BLOCK -> {
                 val packageName = intent.getStringExtra("packageName")
                 val limitMinutes = intent.getIntExtra("limitMinutes", -1)
+                // Nhận thêm cờ Deep Focus từ Service giám sát
+                val isDeepFocus = intent.getBooleanExtra("isDeepFocus", false)
 
-                if (packageName != null && limitMinutes > 0) {
-                    showBlockScreen(packageName, limitMinutes)
+                if (packageName != null) {
+                    showBlockScreen(packageName, limitMinutes, isDeepFocus)
                 } else {
-                    Log.w(TAG, "ACTION_SHOW_BLOCK but missing extras")
+                    Log.w(TAG, "ACTION_SHOW_BLOCK but missing packageName")
                 }
             }
 
             ACTION_HIDE_BLOCK -> {
                 hideBlockScreen()
             }
-
-            else -> {
-                Log.w(TAG, "Unknown action: $action")
-            }
         }
 
         return START_STICKY
     }
 
-    /**
-     * Hiển thị màn hình chặn full-screen (View XML, không dùng Compose)
-     */
-    private fun showBlockScreen(packageName: String, limitMinutes: Int) {
-        Log.d(TAG, "showBlockScreen for $packageName, limit=$limitMinutes")
+    private fun showBlockScreen(packageName: String, limitMinutes: Int, isDeepFocus: Boolean) {
+        if (!PermissionHelper.hasOverlayPermission(this)) return
+        if (overlayView != null) return
 
-        if (!PermissionHelper.hasOverlayPermission(this)) {
-            Log.w(TAG, "No overlay permission, cannot show block screen")
-            Toast.makeText(
-                this,
-                "DuckTrack cần quyền hiển thị trên ứng dụng khác để chặn màn hình.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        // Nếu overlay đang hiển thị rồi thì KHÔNG tạo lại nữa
-        if (overlayView != null) {
-            Log.d(TAG, "Overlay already visible, skip re-adding")
-            return
-        }
-
-        // Lưu lại để dùng cho các nút
         currentPackageName = packageName
         currentLimitMinutes = limitMinutes
 
-        // Inflate layout XML
         val inflater = LayoutInflater.from(this)
         val root = inflater.inflate(R.layout.view_block_overlay, null) as FrameLayout
         overlayView = root
 
         val appName = getAppName(packageName)
+        val txtAppName = root.findViewById<TextView>(R.id.txtBlockedAppName)
+        val txtLimit = root.findViewById<TextView>(R.id.txtBlockedLimit)
+        val btnExtend = root.findViewById<Button>(R.id.btnExtend)
+        val btnRemove = root.findViewById<Button>(R.id.btnRemoveLimit)
 
-        // Set text
-        root.findViewById<TextView>(R.id.txtBlockedAppName)?.text = appName
-        root.findViewById<TextView>(R.id.txtBlockedLimit)?.text =
-            "Giới hạn: $limitMinutes phút/ngày"
+        txtAppName.text = appName
 
-        // Nút "Thêm 15 phút"
-        root.findViewById<Button>(R.id.btnExtend)?.setOnClickListener {
-            handleExtend15Min()
-            // Sau khi gửi yêu cầu extend → đóng overlay
-            hideBlockScreen()
-        }
+        // --- XỬ LÝ GIAO DIỆN THEO CHẾ ĐỘ ---
+        if (isDeepFocus) {
+            // Chế độ Siêu Tập Trung: Chặn cứng, chữ đỏ, ẩn nút thoát
+            txtLimit.text = "🔒 Đang trong chế độ SIÊU TẬP TRUNG!\nBạn không thể sử dụng ứng dụng này."
+            txtLimit.setTextColor(Color.RED)
 
-        // Nút "Xóa giới hạn"
-        root.findViewById<Button>(R.id.btnRemoveLimit)?.setOnClickListener {
-            handleRemoveLimit()
-            // Sau khi xóa giới hạn → đóng overlay
-            hideBlockScreen()
+            btnExtend.visibility = View.GONE
+            btnRemove.visibility = View.GONE
+        } else {
+            // Chế độ thường
+            txtLimit.text = "Giới hạn: $limitMinutes phút/ngày"
+            // Reset màu về mặc định (thường là trắng hoặc theo theme)
+            txtLimit.setTextColor(Color.WHITE)
+
+            btnExtend.visibility = View.VISIBLE
+            btnRemove.visibility = View.VISIBLE
+
+            btnExtend.setOnClickListener {
+                handleExtend15Min()
+                hideBlockScreen()
+            }
+
+            btnRemove.setOnClickListener {
+                handleRemoveLimit()
+                hideBlockScreen()
+            }
         }
 
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -129,21 +123,15 @@ class OverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_FULLSCREEN or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
             PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.CENTER
-        }
+        ).apply { gravity = Gravity.CENTER }
 
         try {
             windowManager.addView(root, layoutParams)
-            Log.d(TAG, "Overlay view added to WindowManager")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add overlay view", e)
         }
     }
 
-    /**
-     * Lấy tên hiển thị từ package name
-     */
     private fun getAppName(packageName: String): String {
         return try {
             val pm = packageManager
@@ -154,54 +142,30 @@ class OverlayService : Service() {
         }
     }
 
-    /**
-     * Nút "Thêm 15 phút" → Gửi ACTION_EXTEND_TIME cho UsageMonitorService
-     */
     private fun handleExtend15Min() {
         val pkg = currentPackageName ?: return
-        Log.d(TAG, "handleExtend15Min for $pkg")
-
         val intent = Intent(this, UsageMonitorService::class.java).apply {
             action = UsageMonitorService.ACTION_EXTEND_TIME
             putExtra("packageName", pkg)
         }
-
-        try {
-            startService(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start UsageMonitorService for EXTEND_TIME", e)
-        }
+        try { startService(intent) } catch (e: Exception) { e.printStackTrace() }
     }
 
-    /**
-     * Nút "Xóa giới hạn" → Gửi ACTION_REMOVE_LIMIT cho UsageMonitorService
-     */
     private fun handleRemoveLimit() {
         val pkg = currentPackageName ?: return
-        Log.d(TAG, "handleRemoveLimit for $pkg")
-
         val intent = Intent(this, UsageMonitorService::class.java).apply {
             action = UsageMonitorService.ACTION_REMOVE_LIMIT
             putExtra("packageName", pkg)
         }
-
-        try {
-            startService(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start UsageMonitorService for REMOVE_LIMIT", e)
-        }
+        try { startService(intent) } catch (e: Exception) { e.printStackTrace() }
     }
 
-    /**
-     * Ẩn overlay nếu đang hiển thị
-     */
     private fun hideBlockScreen() {
         overlayView?.let { view ->
             try {
                 windowManager.removeView(view)
-                Log.d(TAG, "Overlay view removed")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to remove overlay view", e)
+                e.printStackTrace()
             } finally {
                 overlayView = null
                 currentPackageName = null
@@ -212,7 +176,6 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "onDestroy")
         hideBlockScreen()
     }
 

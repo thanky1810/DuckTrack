@@ -5,12 +5,16 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 val Shapes = Shapes(
-    // Bo tròn nhỏ (Button nhỏ, Text field)
-    small = RoundedCornerShape(16.dp),
-    // Bo tròn vừa (Card, Dialog)
-    medium = RoundedCornerShape(24.dp),
-    // Bo tròn lớn (BottomSheet, Container lớn)
-    large = RoundedCornerShape(32.dp),
-    // Bo tròn cực đại (Pill, Circle button)
-    extraLarge = RoundedCornerShape(50)
+    // Bo tròn nhỏ (cho các nút bé, text field)
+    small = RoundedCornerShape(8.dp),
+
+    // Bo tròn vừa (cho Card, Dialog) - Chuẩn đẹp là 16dp
+    medium = RoundedCornerShape(16.dp),
+
+    // Bo tròn lớn (cho BottomSheet hoặc khung to)
+    large = RoundedCornerShape(24.dp),
+
+    // Bo tròn cực đại (nhưng cố định dp để không bị thành hình trứng/viên thuốc)
+    // Giảm từ 50 xuống 28.dp để nó chỉ bo góc thôi, không tròn vo.
+    extraLarge = RoundedCornerShape(28.dp)
 )
