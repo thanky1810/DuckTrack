@@ -8,11 +8,12 @@ data class StoreItem(
 
 // Model cho cây đã trồng để hiển thị lên UI
 data class GrownTreeUI(
-    val id: String,
+    val id: String, // Cần ID để định danh
     val seedType: SeedType,
     val plantedAt: Long,
-    val config: String,
-    // THÊM 2 TRƯỜNG NÀY ĐỂ HIỂN THỊ
+    val config: String, // Chuỗi cấu hình (25/5/4/15)
+
+    // --- THÊM MỚI ---
     val setIndex: Int = 1,
     val sessionIndex: Int = 1
 )

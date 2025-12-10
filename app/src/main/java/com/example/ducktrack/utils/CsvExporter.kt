@@ -14,18 +14,20 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-// --- CẬP NHẬT MODEL: THÊM setIndex VÀ sessionIndex ---
+// Model dữ liệu cho file CSV
 data class TreeHistoryCsvItem(
     val treeType: String,
     val timestamp: Long,
     val configParam: String,
     val status: String,
-    // Thêm 2 trường này (Mặc định là 0 nếu dữ liệu cũ không có)
-    val setIndex: Int = 0,
-    val sessionIndex: Int = 0
+    val setIndex: Int = 0,      // Bộ phiên
+    val sessionIndex: Int = 0   // Thứ tự phiên
 )
 
-data class AppUsageCsvItem(val appName: String, val totalTimeInMonthMs: Long)
+data class AppUsageCsvItem(
+    val appName: String,
+    val totalTimeInMonthMs: Long
+)
 
 object CsvExporter {
 
@@ -47,6 +49,7 @@ object CsvExporter {
 
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+: Dùng MediaStore
                 val resolver = context.contentResolver
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
@@ -62,11 +65,11 @@ object CsvExporter {
                     outputStream.write(csvContent.toByteArray(Charsets.UTF_8))
                 }
 
-                // Trả về đường dẫn tuyệt đối chuẩn xác
-                val absolutePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/DuckTrack/" + fileName
-                absolutePath
+                val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/DuckTrack/" + fileName
+                path
 
             } else {
+                // Android 9-: Dùng File thường
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 val appDir = File(downloadsDir, "DuckTrack")
                 if (!appDir.exists()) appDir.mkdirs()
@@ -106,43 +109,28 @@ object CsvExporter {
 
         sb.append("=== CHI TIẾT THEO PHƯƠNG PHÁP EISENHOWER ===\n")
         sb.append("Loại thẻ (Mức độ),Tổng số,Đã hoàn thành,Chưa hoàn thành\n")
-        if (taskStats.details.isEmpty()) {
-            sb.append("Chưa có dữ liệu chi tiết,,,\n")
-        } else {
-            taskStats.details.forEach { q ->
-                sb.append("${q.name},${q.total},${q.completed},${q.pending}\n")
-            }
-        }
+        if (taskStats.details.isEmpty()) sb.append("Chưa có dữ liệu chi tiết,,,\n")
+        else taskStats.details.forEach { q -> sb.append("${q.name},${q.total},${q.completed},${q.pending}\n") }
         sb.append("\n")
 
         sb.append("=== THỐNG KÊ SỐ LƯỢNG CÂY ĐÃ TRỒNG ===\n")
         sb.append("Loại cây,Số lượng\n")
-        if (treeCounts.isEmpty()) {
-            sb.append("Chưa trồng cây nào,0\n")
-        } else {
-            treeCounts.forEach { (name, count) ->
-                sb.append("$name,$count\n")
-            }
-        }
+        if (treeCounts.isEmpty()) sb.append("Chưa trồng cây nào,0\n")
+        else treeCounts.forEach { (name, count) -> sb.append("$name,$count\n") }
         sb.append("\n")
 
         sb.append("=== LỊCH SỬ TRỒNG CÂY CHI TIẾT (TUẦN NÀY) ===\n")
         // Thêm cột Bộ phiên và Thứ tự
         sb.append("Loại cây,Thời gian,Bộ phiên,Thứ tự,Thông số (Config),Kết quả\n")
-
         if (weeklyTrees.isEmpty()) {
-            sb.append("Chưa có dữ liệu trồng cây tuần này,,,,,\n")
+            sb.append("Chưa có dữ liệu trồng cây tuần này,,,,,,\n")
         } else {
             weeklyTrees.forEach { tree ->
                 val timeStr = fullDateFormat.format(Date(tree.timestamp))
 
-                // Tách chuỗi config "25/5/4/15" để lấy số 4 (tổng số phiên)
-                val totalSessions = try {
-                    val parts = tree.configParam.split("/")
-                    if (parts.size >= 3) parts[2] else "?"
-                } catch (e: Exception) { "?" }
+                // Tách tổng số phiên từ config (vd 25/5/4/15 -> 4)
+                val totalSessions = try { tree.configParam.split("/")[2] } catch (e: Exception) { "?" }
 
-                // Ghi dữ liệu: setIndex và sessionIndex lấy từ object tree
                 val setStr = if (tree.setIndex > 0) "Bộ ${tree.setIndex}" else "-"
                 val sessionStr = if (tree.sessionIndex > 0) "${tree.sessionIndex}/$totalSessions" else "-"
 
@@ -153,18 +141,10 @@ object CsvExporter {
 
         sb.append("=== THỐNG KÊ SỬ DỤNG ĐIỆN THOẠI (30 NGÀY) ===\n")
         sb.append("Tên Ứng Dụng,Thời Gian Sử Dụng\n")
-        if (monthlyApps.isEmpty()) {
-            sb.append("Không có dữ liệu usage stats,0\n")
-        } else {
-            monthlyApps.forEach { app ->
-                val timeStr = String.format(
-                    "%02d:%02d:%02d",
-                    TimeUnit.MILLISECONDS.toHours(app.totalTimeInMonthMs),
-                    TimeUnit.MILLISECONDS.toMinutes(app.totalTimeInMonthMs) % 60,
-                    TimeUnit.MILLISECONDS.toSeconds(app.totalTimeInMonthMs) % 60
-                )
-                sb.append("${app.appName},$timeStr\n")
-            }
+        if (monthlyApps.isEmpty()) sb.append("Không có dữ liệu usage stats,0\n")
+        else monthlyApps.forEach { app ->
+            val timeStr = String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(app.totalTimeInMonthMs), TimeUnit.MILLISECONDS.toMinutes(app.totalTimeInMonthMs) % 60, TimeUnit.MILLISECONDS.toSeconds(app.totalTimeInMonthMs) % 60)
+            sb.append("${app.appName},$timeStr\n")
         }
         return sb.toString()
     }

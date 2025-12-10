@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,9 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
 import com.example.ducktrack.utils.formatTime
-// Import hàm findActivity từ file Extensions.kt (hoặc file utils khác nếu bạn đã tạo)
-// Nếu báo đỏ dòng này, hãy chắc chắn bạn đã tạo file utils/Extensions.kt như hướng dẫn trước
-import com.example.ducktrack.utils.findActivity
+import com.example.ducktrack.utils.findActivity // Dùng Extension
 import kotlinx.coroutines.launch
 
 @Composable
@@ -51,7 +52,6 @@ fun PomodoroScreen(
     val plantScale = remember { Animatable(1f) }
 
     val currentContext = LocalContext.current
-    // Sử dụng findActivity từ import
     val activity = remember(currentContext) { currentContext.findActivity() }
 
     DisposableEffect(uiState.isKeepScreenOn, uiState.isTimerRunning) {
@@ -82,7 +82,6 @@ fun PomodoroScreen(
     val longBreakMin = uiState.longBreakDurationMillis / 60000
     val configDisplayString = "$focusMin / $breakMin / $sessions / $longBreakMin"
 
-    // Sử dụng Quadruple để destructure dữ liệu
     val (duckImageRes, plantImageRes, statusText, timerCardText) = when (uiState.pomodoroState) {
         PomodoroState.Ready -> Quadruple(R.drawable.duck_waiting, R.drawable.plant_chit, "Đang chờ...", "Sẵn sàng gieo hạt")
         PomodoroState.Running -> Quadruple(R.drawable.duck_watering, R.drawable.plant_sendling, "Đang tập trung...", "Đang tập trung...")
@@ -93,7 +92,10 @@ fun PomodoroScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(bgColor)) {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("Chế Độ Tập Trung 🌿", color = primaryColor, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -125,9 +127,13 @@ fun PomodoroScreen(
 
                         Button(
                             onClick = {
-                                when (uiState.pomodoroState) {
-                                    PomodoroState.Ready, PomodoroState.Finished, PomodoroState.Failed -> { viewModel.startNewSession(); onStartFocus() }
-                                    PomodoroState.Running, PomodoroState.Break -> onStartFocus()
+                                if (uiState.pomodoroState == PomodoroState.Ready || uiState.pomodoroState == PomodoroState.Finished || uiState.pomodoroState == PomodoroState.Failed) {
+                                    // Mở Dialog chọn Tag
+                                    viewModel.onMainButtonClick()
+                                } else {
+                                    // Đang chạy/pause -> Chuyển màn hình
+                                    onStartFocus()
+                                    viewModel.onMainButtonClick()
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = mainButtonColor),
@@ -174,7 +180,7 @@ fun PomodoroScreen(
             Spacer(modifier = Modifier.height(60.dp))
         }
 
-        // Dialogs
+        // --- CÁC HỘP THOẠI ---
         if (uiState.showSettingsDialog) {
             TimeSettingsDialog(
                 initialFocusMinutes = (uiState.focusDurationMillis / 60000).toString(),
@@ -185,12 +191,22 @@ fun PomodoroScreen(
                 onSettingsApplied = { f, b, l, s -> viewModel.onSettingsApplied(f, b, l, s) }
             )
         }
+
+        // --- DIALOG CHỌN TAG (MỚI) ---
+        if (uiState.showTagSelectionDialog) {
+            TagSelectionDialog(
+                onDismiss = { viewModel.onDismissTagDialog() },
+                onConfirm = { tag ->
+                    viewModel.onTagConfirmed(tag)
+                    onStartFocus() // Chuyển màn hình
+                }
+            )
+        }
+
         if (uiState.showFailedDialog) FailedDialog(onDismiss = { viewModel.onDismissFailedDialog() })
         if (uiState.showHarvestDialog) HarvestDialog(onDismiss = { viewModel.onDismissHarvestDialog() })
     }
 }
 
-// --- CLASS QUADRUPLE (THÊM VÀO ĐÂY ĐỂ TRÁNH LỖI UNRESOLVED REFERENCE) ---
+// Data class Quadruple để tránh lỗi
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
-// --- ĐÃ XÓA HÀM findActivity Ở ĐÂY ĐỂ TRÁNH TRÙNG LẶP ---

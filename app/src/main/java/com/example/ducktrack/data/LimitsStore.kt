@@ -27,9 +27,10 @@ class LimitsStore(private val ctx: Context) {
         val LIMITS = stringPreferencesKey("limits_json")
         val MONITORING_ENABLED = booleanPreferencesKey("monitoring_enabled")
         val BASELINES = stringPreferencesKey("limits_baselines_json")
-
-        // --- QUAN TRỌNG: Phải khai báo Key này ở đây ---
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+
+        // --- THÊM MỚI: Cờ hiệu Chế độ Siêu Tập Trung ---
+        val DEEP_FOCUS_MODE = booleanPreferencesKey("deep_focus_mode")
     }
 
     // ---------------------- GIỚI HẠN ----------------------
@@ -115,6 +116,16 @@ class LimitsStore(private val ctx: Context) {
     suspend fun saveOnboardingCompleted() {
         ctx.limitsDataStore.edit { pref ->
             pref[Keys.ONBOARDING_COMPLETED] = true
+        }
+    }
+
+    // --- MỚI: Hàm Get/Set Deep Focus ---
+    val isDeepFocusEnabled: Flow<Boolean> = ctx.limitsDataStore.data
+        .map { pref -> pref[Keys.DEEP_FOCUS_MODE] ?: false }
+
+    suspend fun setDeepFocusEnabled(enabled: Boolean) {
+        ctx.limitsDataStore.edit { pref ->
+            pref[Keys.DEEP_FOCUS_MODE] = enabled
         }
     }
 }
