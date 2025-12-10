@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class PomodoroViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -44,28 +45,34 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
     private var backgroundPlayer: MediaPlayer? = null
     private var effectPlayer: MediaPlayer? = null
 
+    // Biến để tính toán bộ phiên (Set) và phiên (Session)
     private var currentDailySetIndex: Int = 1
-    private var lastActiveDay: Int = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+    private var lastActiveDay: Int = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
 
     init {
+        // Load danh sách hạt giống
         repository.unlockedSeeds.onEach { unlockedSet ->
             _uiState.update { it.copy(availableSeeds = unlockedSet.toList()) }
         }.launchIn(viewModelScope)
 
+        // Load cài đặt Rung
         userPrefs.isVibrationEnabled.onEach { enabled ->
             _uiState.update { it.copy(isVibrationEnabled = enabled) }
         }.launchIn(viewModelScope)
 
+        // Load cài đặt Màn hình sáng
         userPrefs.isKeepScreenOn.onEach { enabled ->
             _uiState.update { it.copy(isKeepScreenOn = enabled) }
         }.launchIn(viewModelScope)
     }
 
-    // --- SỬA NÚT BẮT ĐẦU: HIỆN DIALOG CHỌN TAG ---
+    // ==========================================================
+    // 1. LOGIC NÚT BẤM & TRẠNG THÁI
+    // ==========================================================
     fun onMainButtonClick() {
         val currentState = _uiState.value
         if (currentState.isTimerRunning) {
-            // Đang chạy -> Bấm thì Pause
+            // Đang chạy -> Bấm thì Tạm dừng
             if (currentState.pomodoroState == PomodoroState.Running) {
                 pauseTimer()
             } else {
@@ -77,17 +84,17 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
                 currentState.pomodoroState == PomodoroState.Finished ||
                 currentState.pomodoroState == PomodoroState.Failed) {
 
-                // Mở dialog chọn thẻ
+                // Mở dialog chọn thẻ phân loại (Tag)
                 _uiState.update { it.copy(showTagSelectionDialog = true) }
 
             } else {
-                // Đang Pause -> Resume (không hỏi lại)
+                // Đang Pause -> Tiếp tục (không hỏi lại tag)
                 resumeTimer()
             }
         }
     }
 
-    // --- XỬ LÝ TAG ---
+    // Xác nhận Tag -> Bắt đầu chạy
     fun onTagConfirmed(tag: String) {
         _uiState.update { it.copy(currentTag = tag, showTagSelectionDialog = false) }
         startNewSession()
@@ -97,64 +104,35 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(showTagSelectionDialog = false) }
     }
 
-    // --- LOGIC HỦY PHIÊN ---
-    fun cancelSession(isHomeExit: Boolean) {
-        val state = _uiState.value
-        if (state.pomodoroState == PomodoroState.Running || state.pomodoroState == PomodoroState.Break) {
-            val remainingSessions = state.sessionsBeforeLongBreak - state.currentSessionCount
-            if (remainingSessions > 0) {
-                val penaltyPerSession = if (isHomeExit) 50 else 25
-                val totalPenalty = remainingSessions * penaltyPerSession
-                viewModelScope.launch { repository.deductPoints(totalPenalty) }
-                if (isHomeExit) sendFailureNotification(totalPenalty)
-            }
+    // ==========================================================
+    // 2. ĐIỀU KHIỂN TIMER (COROUTINES)
+    // ==========================================================
+    fun startNewSession() {
+        val focusTime = _uiState.value.focusDurationMillis
+        _uiState.update {
+            it.copy(
+                pomodoroState = PomodoroState.Running,
+                currentSessionCount = 0,
+                remainingTimeMillis = focusTime,
+                isTimerRunning = true
+            )
         }
-        stopTimer(isFailed = true)
+        // BẬT CHẾ ĐỘ SIÊU TẬP TRUNG (DEEP FOCUS)
+        viewModelScope.launch { limitsStore.setDeepFocusEnabled(true) }
+        resumeTimer()
     }
-
-    private fun sendFailureNotification(penalty: Int) {
-        val context = getApplication<Application>()
-        val channelId = "pomodoro_fail_channel"
-        val notificationId = 999
-        val intent = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Cảnh báo tập trung", NotificationManager.IMPORTANCE_HIGH)
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
-        val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.duck_crying)
-            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D")
-            .setContentText("Bạn đã thoát ứng dụng. Bị trừ $penalty điểm sao.")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-        try { NotificationManagerCompat.from(context).notify(notificationId, builder.build()) } catch (e: SecurityException) { e.printStackTrace() }
-    }
-
-    private fun vibratePhone() {
-        if (!_uiState.value.isVibrationEnabled) return
-        val context = getApplication<Application>()
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator } else { @Suppress("DEPRECATION") context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE)) else @Suppress("DEPRECATION") vibrator.vibrate(500)
-    }
-
-    fun onSoundSelected(sound: BackgroundSound) { _uiState.update { it.copy(selectedSound = sound) }; if (_uiState.value.isTimerRunning) playBackgroundMusic() }
-    private fun playBackgroundMusic() { backgroundPlayer?.release(); backgroundPlayer = null; val sound = _uiState.value.selectedSound; if (sound.resId != null) { backgroundPlayer = MediaPlayer.create(getApplication(), sound.resId); backgroundPlayer?.isLooping = true; backgroundPlayer?.start() } }
-    private fun pauseBackgroundMusic() { if (backgroundPlayer?.isPlaying == true) backgroundPlayer?.pause() }
-    private fun stopBackgroundMusic() { backgroundPlayer?.stop(); backgroundPlayer?.release(); backgroundPlayer = null }
-    private fun playEffect(resId: Int) { effectPlayer?.release(); effectPlayer = MediaPlayer.create(getApplication(), resId); effectPlayer?.start(); effectPlayer?.setOnCompletionListener { it.release(); effectPlayer = null } }
 
     private fun resumeTimer() {
         timerJob?.cancel()
         _uiState.update { it.copy(isTimerRunning = true) }
 
+        // Bật lại Deep Focus nếu đang ở trạng thái Running
         if (_uiState.value.pomodoroState == PomodoroState.Running) {
             viewModelScope.launch { limitsStore.setDeepFocusEnabled(true) }
         }
 
         playBackgroundMusic()
+
         timerJob = viewModelScope.launch {
             while (_uiState.value.remainingTimeMillis > 0) {
                 delay(1000L)
@@ -164,91 +142,266 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun handleTimerFinished() {
-        stopBackgroundMusic()
-        val state = _uiState.value
-        vibratePhone()
-
+    private fun pauseTimer() {
+        timerJob?.cancel()
+        pauseBackgroundMusic()
+        _uiState.update { it.copy(isTimerRunning = false) }
+        // Tạm dừng -> Tắt Deep Focus để user có thể ra ngoài
         viewModelScope.launch { limitsStore.setDeepFocusEnabled(false) }
-
-        if (state.pomodoroState == PomodoroState.Running) {
-            autoHarvest(state.currentSessionCount, currentDailySetIndex)
-            val completedSessions = state.currentSessionCount + 1
-            if (completedSessions >= state.sessionsBeforeLongBreak) {
-                currentDailySetIndex++
-                playEffect(R.raw.ending_effect)
-                _uiState.update { it.copy(pomodoroState = PomodoroState.Finished, isTimerRunning = false, currentSessionCount = completedSessions, remainingTimeMillis = 0) }
-            } else {
-                playEffect(R.raw.japanese_school_bell)
-                val breakTime = state.breakDurationMillis
-                _uiState.update { it.copy(pomodoroState = PomodoroState.Break, currentSessionCount = completedSessions, remainingTimeMillis = breakTime, isTimerRunning = true) }
-                resumeTimer()
-            }
-        } else if (state.pomodoroState == PomodoroState.Break) {
-            playEffect(R.raw.japanese_school_bell)
-            _uiState.update { it.copy(pomodoroState = PomodoroState.Running, remainingTimeMillis = it.focusDurationMillis, isTimerRunning = true) }
-            resumeTimer()
-        }
     }
 
     fun stopTimer(isFailed: Boolean) {
         timerJob?.cancel()
         stopBackgroundMusic()
+        // Dừng hẳn -> Tắt Deep Focus
         viewModelScope.launch { limitsStore.setDeepFocusEnabled(false) }
 
         if (isFailed) {
-            _uiState.update { it.copy(pomodoroState = PomodoroState.Failed, isTimerRunning = false, remainingTimeMillis = it.focusDurationMillis, showFailedDialog = true) }
+            _uiState.update {
+                it.copy(
+                    pomodoroState = PomodoroState.Failed,
+                    isTimerRunning = false,
+                    remainingTimeMillis = it.focusDurationMillis,
+                    showFailedDialog = true
+                )
+            }
         } else {
             pauseTimer()
         }
     }
 
-    private fun pauseTimer() {
-        timerJob?.cancel()
-        pauseBackgroundMusic()
-        _uiState.update { it.copy(isTimerRunning = false) }
+    // Xử lý khi đồng hồ về 0
+    private fun handleTimerFinished() {
+        stopBackgroundMusic()
+        val state = _uiState.value
+        vibratePhone()
+
+        // Hết giờ -> Tắt Deep Focus
         viewModelScope.launch { limitsStore.setDeepFocusEnabled(false) }
+
+        if (state.pomodoroState == PomodoroState.Running) {
+            // Hoàn thành 1 phiên -> Trồng cây (Lưu trước khi tăng đếm)
+            autoHarvest(state.currentSessionCount, currentDailySetIndex)
+
+            val completedSessions = state.currentSessionCount + 1
+
+            if (completedSessions >= state.sessionsBeforeLongBreak) {
+                // Đủ bộ -> Nghỉ dài
+                currentDailySetIndex++ // Tăng bộ đếm cho lần sau
+                playEffect(R.raw.ending_effect)
+                _uiState.update {
+                    it.copy(
+                        pomodoroState = PomodoroState.Finished,
+                        isTimerRunning = false,
+                        currentSessionCount = completedSessions,
+                        remainingTimeMillis = 0
+                    )
+                }
+            } else {
+                // Chưa đủ bộ -> Nghỉ ngắn
+                playEffect(R.raw.japanese_school_bell)
+                val breakTime = state.breakDurationMillis
+                _uiState.update {
+                    it.copy(
+                        pomodoroState = PomodoroState.Break,
+                        currentSessionCount = completedSessions,
+                        remainingTimeMillis = breakTime,
+                        isTimerRunning = true
+                    )
+                }
+                resumeTimer()
+            }
+        } else if (state.pomodoroState == PomodoroState.Break) {
+            // Hết giờ nghỉ -> Quay lại tập trung
+            playEffect(R.raw.japanese_school_bell)
+            _uiState.update {
+                it.copy(
+                    pomodoroState = PomodoroState.Running,
+                    remainingTimeMillis = it.focusDurationMillis,
+                    isTimerRunning = true
+                )
+            }
+            resumeTimer()
+        }
     }
 
-    fun startNewSession() {
-        val focusTime = _uiState.value.focusDurationMillis
-        _uiState.update { it.copy(pomodoroState = PomodoroState.Running, currentSessionCount = 0, remainingTimeMillis = focusTime, isTimerRunning = true) }
-        viewModelScope.launch { limitsStore.setDeepFocusEnabled(true) }
-        resumeTimer()
+    // ==========================================================
+    // 3. LOGIC HỦY PHIÊN & TRỪ ĐIỂM
+    // ==========================================================
+    fun cancelSession(isHomeExit: Boolean) {
+        val state = _uiState.value
+        if (state.pomodoroState == PomodoroState.Running || state.pomodoroState == PomodoroState.Break) {
+
+            val remainingSessions = state.sessionsBeforeLongBreak - state.currentSessionCount
+
+            if (remainingSessions > 0) {
+                val penaltyPerSession = if (isHomeExit) 50 else 25
+                val totalPenalty = remainingSessions * penaltyPerSession
+
+                viewModelScope.launch {
+                    repository.deductPoints(totalPenalty)
+                }
+
+                if (isHomeExit) {
+                    sendFailureNotification(totalPenalty)
+                }
+            }
+        }
+        stopTimer(isFailed = true)
+    }
+
+    private fun sendFailureNotification(penalty: Int) {
+        val context = getApplication<Application>()
+        val channelId = "pomodoro_fail_channel"
+        val notificationId = 999
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Cảnh báo tập trung", NotificationManager.IMPORTANCE_HIGH)
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.duck_crying)
+            .setContentTitle("Quy trình thất bại! \uD83D\uDE2D")
+            .setContentText("Bạn đã thoát ứng dụng. Bị trừ $penalty điểm sao.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+        }
+    }
+
+    // ==========================================================
+    // 4. LOGIC TRỒNG CÂY & DIALOG
+    // ==========================================================
+    fun onSeedSelected(seed: SeedType) {
+        _uiState.update { it.copy(selectedSeed = seed) }
+    }
+
+    fun autoHarvest(currentSession: Int, currentSet: Int) {
+        viewModelScope.launch {
+            repository.addPoints(50)
+            val f = _uiState.value.focusDurationMillis / 60000
+            val b = _uiState.value.breakDurationMillis / 60000
+            val s = _uiState.value.sessionsBeforeLongBreak
+            val l = _uiState.value.longBreakDurationMillis / 60000
+            val configStr = "$f / $b / $s / $l"
+
+            // Check ngày mới để reset bộ đếm
+            val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+            if (today != lastActiveDay) {
+                currentDailySetIndex = 1
+                lastActiveDay = today
+            }
+
+            repository.addGrownTreeToCloud(
+                _uiState.value.selectedSeed,
+                configStr,
+                currentSet,
+                currentSession + 1,
+                _uiState.value.currentTag // Lưu kèm Tag
+            )
+        }
+    }
+
+    fun onDismissHarvestDialog() {
+        _uiState.update {
+            it.copy(pomodoroState = PomodoroState.Ready, currentSessionCount = 0, isTimerRunning = false)
+        }
+    }
+
+    fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }
+    fun onDismissSettingsDialog() { _uiState.update { it.copy(showSettingsDialog = false) } }
+    fun onDismissFailedDialog() { _uiState.update { it.copy(showFailedDialog = false) } }
+
+    fun onSettingsApplied(f: Long, b: Long, l: Long, s: Int) {
+        val newFocusMillis = f * 60 * 1000L
+        val newBreakMillis = b * 60 * 1000L
+        val newLongBreakMillis = l * 60 * 1000L
+        _uiState.update {
+            it.copy(
+                focusDurationMillis = newFocusMillis,
+                breakDurationMillis = newBreakMillis,
+                longBreakDurationMillis = newLongBreakMillis,
+                sessionsBeforeLongBreak = s,
+                remainingTimeMillis = newFocusMillis,
+                showSettingsDialog = false
+            )
+        }
+    }
+
+    // ==========================================================
+    // 5. CÁC HÀM PHỤ TRỢ (ÂM THANH, RUNG)
+    // ==========================================================
+    private fun vibratePhone() {
+        if (!_uiState.value.isVibrationEnabled) return
+        val context = getApplication<Application>()
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(500)
+        }
+    }
+
+    fun onSoundSelected(sound: BackgroundSound) {
+        _uiState.update { it.copy(selectedSound = sound) }
+        if (_uiState.value.isTimerRunning) playBackgroundMusic()
+    }
+
+    private fun playBackgroundMusic() {
+        backgroundPlayer?.release()
+        backgroundPlayer = null
+        val sound = _uiState.value.selectedSound
+        if (sound.resId != null) {
+            backgroundPlayer = MediaPlayer.create(getApplication(), sound.resId)
+            backgroundPlayer?.isLooping = true
+            backgroundPlayer?.start()
+        }
+    }
+
+    private fun pauseBackgroundMusic() {
+        if (backgroundPlayer?.isPlaying == true) backgroundPlayer?.pause()
+    }
+
+    private fun stopBackgroundMusic() {
+        backgroundPlayer?.stop()
+        backgroundPlayer?.release()
+        backgroundPlayer = null
+    }
+
+    private fun playEffect(resId: Int) {
+        effectPlayer?.release()
+        effectPlayer = MediaPlayer.create(getApplication(), resId)
+        effectPlayer?.start()
+        effectPlayer?.setOnCompletionListener {
+            it.release()
+            effectPlayer = null
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
         backgroundPlayer?.release()
         effectPlayer?.release()
-    }
-
-    fun onSeedSelected(seed: SeedType) { _uiState.update { it.copy(selectedSeed = seed) } }
-
-    // --- LƯU CÂY VỚI TAG ---
-    fun autoHarvest(currentSession: Int, currentSet: Int) {
-        viewModelScope.launch {
-            repository.addPoints(50)
-            val f = _uiState.value.focusDurationMillis / 60000; val b = _uiState.value.breakDurationMillis / 60000; val s = _uiState.value.sessionsBeforeLongBreak; val l = _uiState.value.longBreakDurationMillis / 60000
-            val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
-            if (today != lastActiveDay) { currentDailySetIndex = 1; lastActiveDay = today }
-
-            repository.addGrownTreeToCloud(
-                _uiState.value.selectedSeed,
-                "$f / $b / $s / $l",
-                currentSet,
-                currentSession + 1,
-                _uiState.value.currentTag // TRUYỀN TAG
-            )
-        }
-    }
-
-    fun onDismissHarvestDialog() { _uiState.update { it.copy(pomodoroState = PomodoroState.Ready, currentSessionCount = 0, isTimerRunning = false) } }
-    fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }
-    fun onDismissSettingsDialog() { _uiState.update { it.copy(showSettingsDialog = false) } }
-    fun onDismissFailedDialog() { _uiState.update { it.copy(showFailedDialog = false) } }
-    fun onSettingsApplied(f: Long, b: Long, l: Long, s: Int) {
-        val newFocusMillis = f * 60 * 1000L; val newBreakMillis = b * 60 * 1000L; val newLongBreakMillis = l * 60 * 1000L
-        _uiState.update { it.copy(focusDurationMillis = newFocusMillis, breakDurationMillis = newBreakMillis, longBreakDurationMillis = newLongBreakMillis, sessionsBeforeLongBreak = s, remainingTimeMillis = newFocusMillis, showSettingsDialog = false) }
     }
 }

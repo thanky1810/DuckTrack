@@ -43,5 +43,7 @@ data class PomodoroUiState(
 
     val selectedSound: BackgroundSound = BackgroundSound.OFF,
     val isVibrationEnabled: Boolean = true,
-    val isKeepScreenOn: Boolean = false
+    val isKeepScreenOn: Boolean = false,
+
+    val pendingTaskCount: Int = 0
 )

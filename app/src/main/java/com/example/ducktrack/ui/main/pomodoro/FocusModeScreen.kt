@@ -3,6 +3,7 @@ package com.example.ducktrack.ui.main.pomodoro
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.PowerManager // Import PowerManager
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -40,6 +41,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.ducktrack.R
 import com.example.ducktrack.utils.formatTime
+import com.example.ducktrack.utils.findActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -59,22 +61,22 @@ fun FocusModeScreen(
     var showConfirmExitDialog by remember { mutableStateOf(false) }
     var isSoundMenuExpanded by remember { mutableStateOf(false) }
 
-    // --- TỰ ĐỘNG THOÁT KHI HOÀN THÀNH ---
-    // Khi trạng thái chuyển sang Finished -> Đợi 2 giây rồi thoát
-    LaunchedEffect(uiState.pomodoroState) {
-        if (uiState.pomodoroState == PomodoroState.Finished) {
-            delay(2000) // Đợi 2 giây để người dùng kịp nhìn thấy chữ "Hoàn thành"
-            viewModel.onDismissHarvestDialog() // Reset trạng thái
-            onExit() // Thoát ra ngoài
-        }
-    }
-    // ------------------------------------
-
+    // --- SỬA LỖI: LẮNG NGHE SỰ KIỆN THOÁT APP (THÔNG MINH HƠN) ---
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Lấy PowerManager để kiểm tra màn hình có đang sáng không
+    val powerManager = remember { currentContext.getSystemService(Context.POWER_SERVICE) as PowerManager }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
-                if (uiState.isTimerRunning && (uiState.pomodoroState == PomodoroState.Running || uiState.pomodoroState == PomodoroState.Break)) {
+                // Kiểm tra xem màn hình có đang sáng không?
+                // isInteractive = true (Màn hình sáng) -> Nghĩa là user bấm Home hoặc đa nhiệm để thoát -> PHẠT
+                // isInteractive = false (Màn hình tắt) -> Nghĩa là user khóa máy -> KHÔNG PHẠT
+                val isScreenOn = powerManager.isInteractive
+
+                if (isScreenOn && uiState.isTimerRunning && (uiState.pomodoroState == PomodoroState.Running || uiState.pomodoroState == PomodoroState.Break)) {
+                    // Chỉ phạt khi màn hình sáng mà app bị dừng (thoát ra ngoài)
                     viewModel.cancelSession(isHomeExit = true)
                 }
             }
@@ -84,7 +86,9 @@ fun FocusModeScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+    // -------------------------------------------------------------
 
+    // Giữ màn hình sáng (Nếu bật trong cài đặt)
     DisposableEffect(uiState.isKeepScreenOn, uiState.isTimerRunning) {
         if (uiState.isKeepScreenOn && uiState.isTimerRunning) {
             activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -96,28 +100,36 @@ fun FocusModeScreen(
         }
     }
 
+    // Xử lý nút Back (Phần cứng)
     BackHandler {
         if (uiState.pomodoroState == PomodoroState.Finished || uiState.pomodoroState == PomodoroState.Failed) {
             onExit()
         } else {
-            if (uiState.isTimerRunning) viewModel.onMainButtonClick()
+            if (uiState.isTimerRunning) viewModel.onMainButtonClick() // Tạm dừng trước
             showConfirmExitDialog = true
         }
     }
 
     LaunchedEffect(uiState.pomodoroState) {
+        // Animation
         scope.launch { duckScale.animateTo(1.2f, tween(150)); duckScale.animateTo(1f, tween(150)) }
         scope.launch { plantScale.animateTo(1.2f, tween(150)); plantScale.animateTo(1f, tween(150)) }
+
+        // Tự động thoát sau 2s khi hoàn thành (nếu muốn)
+        if (uiState.pomodoroState == PomodoroState.Finished) {
+            delay(2000)
+            viewModel.onDismissHarvestDialog()
+            onExit()
+        }
     }
 
     val isBreak = uiState.pomodoroState == PomodoroState.Break
     val currentSessionDisplay = uiState.currentSessionCount + 1
     val targetSession = uiState.sessionsBeforeLongBreak
 
-    // Sửa hiển thị trạng thái khi Finished
-    val statusText = when (uiState.pomodoroState) {
-        PomodoroState.Break -> "ĐANG NGHỈ NGƠI"
-        PomodoroState.Finished -> "HOÀN THÀNH TẤT CẢ!"
+    val statusText = when {
+        uiState.pomodoroState == PomodoroState.Finished -> "HOÀN THÀNH TẤT CẢ!"
+        isBreak -> "ĐANG NGHỈ NGƠI"
         else -> "PHIÊN $currentSessionDisplay / $targetSession"
     }
 
@@ -133,8 +145,8 @@ fun FocusModeScreen(
         modifier = Modifier.fillMaxSize().background(Color.White),
         contentAlignment = Alignment.Center
     ) {
-        // Nút chọn nhạc (Ẩn khi đã xong)
-        if (uiState.pomodoroState != PomodoroState.Finished) {
+        // Nút chọn nhạc
+        if (uiState.pomodoroState != PomodoroState.Finished && uiState.pomodoroState != PomodoroState.Failed) {
             Box(
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 20.dp)
             ) {
@@ -169,6 +181,7 @@ fun FocusModeScreen(
             }
         }
 
+        // Nội dung chính
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -191,7 +204,7 @@ fun FocusModeScreen(
             )
             Spacer(Modifier.height(60.dp))
 
-            // Chỉ hiện nút khi chưa xong
+            // Chỉ hiện nút khi đang chạy hoặc break
             if (uiState.pomodoroState != PomodoroState.Finished && uiState.pomodoroState != PomodoroState.Failed) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -225,16 +238,12 @@ fun FocusModeScreen(
             onConfirmExit = {
                 viewModel.cancelSession(isHomeExit = false)
                 showConfirmExitDialog = false
-                onExit()
             },
             onCancel = { showConfirmExitDialog = false }
         )
     }
 
     if (uiState.showFailedDialog) FailedDialog(onDismiss = { viewModel.onDismissFailedDialog(); onExit() })
-
-    // Bỏ HarvestDialog nếu muốn tự thoát, hoặc giữ lại nếu muốn hiện thông báo xong mới thoát.
-    // Ở đây tôi đã thêm logic tự thoát sau 2s ở trên, nên Dialog này có thể hiện lên trong 2s đó rồi tắt.
     if (uiState.showHarvestDialog) HarvestDialog(onDismiss = { viewModel.onDismissHarvestDialog(); onExit() })
 }
 
@@ -257,13 +266,4 @@ fun ExitConfirmDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit) {
             }
         }
     }
-}
-
-fun Context.findActivity(): Activity? {
-    var context = this
-    while (context is ContextWrapper) {
-        if (context is Activity) return context
-        context = context.baseContext
-    }
-    return null
 }
