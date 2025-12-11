@@ -5,34 +5,44 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
-    // ... (Giữ nguyên các hàm UserProfile và Garden cũ) ...
+    // ... (Giữ nguyên các hàm UserProfile và Seed cũ) ...
     @Upsert
     suspend fun upsertUserProfile(profile: UserProfile)
     @Query("SELECT * FROM user_profile WHERE id = 1")
     fun getUserProfile(): Flow<UserProfile?>
     @Query("UPDATE user_profile SET points = points + :amount WHERE id = 1")
     suspend fun increasePoints(amount: Int)
-
-    // --- THÊM MỚI: Hàm trừ điểm (Không cho xuống dưới 0) ---
     @Query("UPDATE user_profile SET points = MAX(0, points - :amount) WHERE id = 1")
     suspend fun decreasePoints(amount: Int)
 
+    // --- SEED & TREE ---
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertUnlockedSeed(seed: UnlockedSeed)
     @Query("SELECT * FROM unlocked_seeds")
     fun getUnlockedSeeds(): Flow<List<UnlockedSeed>>
+
     @Insert
     suspend fun insertGrownTree(tree: GrownTree)
     @Query("SELECT * FROM grown_trees ORDER BY id ASC")
     fun getGrownTrees(): Flow<List<GrownTree>>
+
+    // [THÊM MỚI] Hàm lấy danh sách cây (One-shot) cho AI đọc
+    @Query("SELECT * FROM grown_trees")
+    suspend fun getAllGrownTreesList(): List<GrownTree>
+
     @Query("SELECT COUNT(*) FROM grown_trees")
     suspend fun getGrownTreeCount(): Int
     @Query("DELETE FROM grown_trees")
     suspend fun deleteAllGrownTrees()
 
-    // --- PHẦN TASK ---
+    // --- TASK ---
     @Query("SELECT * FROM tasks WHERE date >= :start AND date <= :end ORDER BY isPinned DESC, isCompleted ASC, id DESC")
     fun getTasksForDate(start: Long, end: Long): Flow<List<TaskEntity>>
+
+    // [THÊM MỚI] Hàm lấy TOÀN BỘ task (One-shot) cho AI đọc
+    @Query("SELECT * FROM tasks")
+    suspend fun getAllTasksList(): List<TaskEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: TaskEntity)
     @Update

@@ -141,18 +141,18 @@ fun SettingsScreen(
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
 
-                // --- TẠM ẨN TÍNH NĂNG AI (Bọc trong /* ... */) ---
-                /*
-                SettingActionRow(
-                    icon = Icons.Default.AutoAwesome,
-                    title = "Trợ lý Vịt AI",
-                    subtitle = "Tư vấn lộ trình & Trò chuyện thông minh"
-                ) {
-                    onNavigateToAiChat()
-                }
+                // --- TÍNH NĂNG AI ---
 
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                */
+    //                SettingActionRow(
+    //                    icon = Icons.Default.AutoAwesome,
+    //                    title = "Trợ lý Vịt AI",
+    //                    subtitle = "Tư vấn lộ trình & Trò chuyện thông minh"
+    //                ) {
+    //                    onNavigateToAiChat()
+    //                }
+    //
+    //                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+
                 // -------------------------------------------------
 
                 SettingActionRow(
