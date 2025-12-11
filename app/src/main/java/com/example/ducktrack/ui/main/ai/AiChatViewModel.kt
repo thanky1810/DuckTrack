@@ -2,15 +2,26 @@ package com.example.ducktrack.ui.main.ai
 
 import android.app.Application
 import android.content.Context
+import android.speech.tts.TextToSpeech
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ducktrack.data.DataAggregator
 import com.example.ducktrack.data.GeminiHelper
-import com.example.ducktrack.data.UsageRepository
+import com.example.ducktrack.data.UserPreferences
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.util.Locale
 
+// Thêm timestamp mặc định là thời điểm hiện tại
 data class ChatMessage(
     val text: String,
     val isUser: Boolean,
@@ -19,81 +30,142 @@ data class ChatMessage(
 
 class AiChatViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val usageRepo = UsageRepository(application)
+    private val userPrefs = UserPreferences(application)
+    private val dataAggregator = DataAggregator(application)
+    private var tts: TextToSpeech? = null
+    private val chatFile = File(application.filesDir, "chat_history.json")
 
-    private val _messages = MutableStateFlow<List<ChatMessage>>(listOf(
-        ChatMessage("Quạc! Chào bạn, Vịt có thể giúp gì cho việc tập trung hôm nay?", false)
-    ))
+    val duckName = userPrefs.duckName
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Giáo Sư Vịt")
+
+    private val _messages = MutableStateFlow<List<ChatMessage>>(listOf())
     val messages = _messages.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
+    init {
+        initTextToSpeech(application)
+        loadChatHistory() // Tải tin nhắn cũ ngay khi mở
+    }
+
+    // --- XỬ LÝ LƯU TRỮ (PERSISTENCE) ---
+    private fun loadChatHistory() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (chatFile.exists()) {
+                try {
+                    val content = chatFile.readText()
+                    val jsonArray = JSONArray(content)
+                    val list = mutableListOf<ChatMessage>()
+                    for (i in 0 until jsonArray.length()) {
+                        val obj = jsonArray.getJSONObject(i)
+                        list.add(
+                            ChatMessage(
+                                text = obj.getString("text"),
+                                isUser = obj.getBoolean("isUser"),
+                                timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                            )
+                        )
+                    }
+                    _messages.value = list
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            } else {
+                // Nếu chưa có lịch sử, thêm câu chào
+                duckName.collect { name ->
+                    if (_messages.value.isEmpty()) {
+                        val intro = ChatMessage("Quạc! Ta là $name. Ta đang đọc dữ liệu điện thoại của ngươi... Hỏi gì thì hỏi đi!", false)
+                        _messages.value = listOf(intro)
+                        saveChatHistory()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun saveChatHistory() {
+        val currentList = _messages.value
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val jsonArray = JSONArray()
+                currentList.forEach { msg ->
+                    val obj = JSONObject().apply {
+                        put("text", msg.text)
+                        put("isUser", msg.isUser)
+                        put("timestamp", msg.timestamp)
+                    }
+                    jsonArray.put(obj)
+                }
+                chatFile.writeText(jsonArray.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // --- XỬ LÝ TTS (GIỌNG NÓI) ---
+    private fun initTextToSpeech(app: Application) {
+        tts = TextToSpeech(app) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = tts?.setLanguage(Locale("vi", "VN"))
+                if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                    // --- CẤU HÌNH GIỌNG NHẸ NHÀNG (BÌNH THƯỜNG) ---
+                    tts?.setPitch(1.0f) // Giọng trầm ấm, tự nhiên
+                    tts?.setSpeechRate(1.0f) // Tốc độ vừa phải, từ tốn
+                }
+            }
+        }
+    }
+
+    // Hàm gọi thủ công từ nút bấm
+    fun speakMessage(text: String) {
+        val cleanText = text.replace("*", "").replace("#", "")
+        tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+
+    // --- GỬI TIN NHẮN ---
     fun sendMessage(text: String) {
         val currentList = _messages.value.toMutableList()
         currentList.add(ChatMessage(text, true))
         _messages.value = currentList
-
+        saveChatHistory()
         _isLoading.value = true
+        val currentName = duckName.value
 
         viewModelScope.launch {
             try {
-                // Chuyển lịch sử chat sang định dạng Gemini cần (user/model)
-                val history = currentList.dropLast(1).map {
-                    (if (it.isUser) "user" else "model") to it.text
-                }
+                // GỌI HÀM LẤY TOÀN BỘ DỮ LIỆU (Screen + Tree + Task)
+                val fullReport = dataAggregator.getFullDailyReport()
 
-                val response = GeminiHelper.chatWithDuck(history, text)
+                val history = currentList.dropLast(1).map { (if (it.isUser) "user" else "model") to it.text }
 
-                currentList.add(ChatMessage(response, false))
-                _messages.value = currentList
+                // Gửi dữ liệu này cho Gemini 2.5 phân tích
+                val response = GeminiHelper.chatWithDuck(history, text, currentName, fullReport)
+
+                val newList = _messages.value.toMutableList()
+                newList.add(ChatMessage(response, false))
+                _messages.value = newList
+                saveChatHistory()
             } catch (e: Exception) {
-                currentList.add(ChatMessage("Lỗi kết nối: ${e.message}", false))
-                _messages.value = currentList
+                val errorMsg = "Lỗi kỹ thuật: ${e.message}"
+                val newList = _messages.value.toMutableList()
+                newList.add(ChatMessage(errorMsg, false))
+                _messages.value = newList
+                saveChatHistory()
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // TÍNH NĂNG ĐẶC BIỆT: Phân tích thói quen
     fun analyzeMyHabits() {
-        val currentList = _messages.value.toMutableList()
-        currentList.add(ChatMessage("Hãy phân tích thói quen sử dụng của tôi hôm nay!", true))
-        _messages.value = currentList
-        _isLoading.value = true
+        sendMessage("Hãy phân tích nghiêm khắc tình hình sử dụng của tôi hôm nay!")
+    }
 
-        viewModelScope.launch {
-            try {
-                // 1. Lấy dữ liệu Usage thực tế
-                val end = System.currentTimeMillis()
-                val start = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                }.timeInMillis
-
-                // Lấy Top 5 app dùng nhiều nhất
-                val stats = usageRepo.getTopAppsStats(start, end)
-                val top5 = stats.toList().sortedByDescending { it.second }.take(5)
-
-                // Tạo chuỗi báo cáo để gửi cho AI
-                val sb = StringBuilder()
-                top5.forEach { (name, ms) ->
-                    val minutes = ms / 60000
-                    sb.append("- $name: $minutes phút\n")
-                }
-
-                if (sb.isEmpty()) sb.append("Chưa có dữ liệu sử dụng đáng kể.")
-
-                // 2. Gửi cho Gemini
-                val response = GeminiHelper.analyzeUsageAndSuggest(sb.toString())
-
-                currentList.add(ChatMessage(response, false))
-                _messages.value = currentList
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isLoading.value = false
-            }
-        }
+    override fun onCleared() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onCleared()
     }
 }

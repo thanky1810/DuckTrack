@@ -1,6 +1,8 @@
 package com.example.ducktrack.ui.main.ai
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,19 +10,28 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.ui.theme.AppColors
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,21 +45,35 @@ fun AiChatScreen(
 
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val duckName by viewModel.duckName.collectAsState()
+
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // Tự động cuộn xuống cuối khi có tin nhắn mới
+    // Tự động cuộn xuống cuối khi mở màn hình hoặc có tin nhắn mới
     LaunchedEffect(messages.size) {
-        listState.animateScrollToItem(messages.size - 1)
+        if (messages.isNotEmpty()) {
+            listState.scrollToItem(messages.size - 1)
+        }
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize().imePadding(), // Xử lý bàn phím che
         topBar = {
             TopAppBar(
-                title = { Text("Trợ lý Vịt AI 🦆", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text(text = "$duckName 🦆", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(text = "Trợ lý ảo & Giáo viên khó tính", fontSize = 12.sp, color = Color.Gray)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 actions = {
-                    // Nút phân tích nhanh
                     IconButton(onClick = { viewModel.analyzeMyHabits() }) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "Phân tích", tint = AppColors.ButtonGreen)
                     }
@@ -56,18 +81,14 @@ fun AiChatScreen(
             )
         },
         bottomBar = {
-            // Thanh nhập liệu
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .background(Color.White),
+                modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.White),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    placeholder = { Text("Hỏi Vịt cái gì đó...") },
+                    placeholder = { Text("Hỏi thầy Vịt...") },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -97,14 +118,15 @@ fun AiChatScreen(
                 .padding(padding)
                 .background(Color(0xFFF5F5F5))
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             items(messages) { msg ->
-                ChatBubble(msg)
+                ChatBubble(msg, viewModel)
             }
             if (isLoading) {
                 item {
-                    Text("Vịt đang suy nghĩ...", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
+                    Text("$duckName đang suy nghĩ...", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(start = 16.dp))
                 }
             }
         }
@@ -112,28 +134,79 @@ fun AiChatScreen(
 }
 
 @Composable
-fun ChatBubble(message: ChatMessage) {
+fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
     val isUser = message.isUser
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    // Format thời gian: 14:30
+    val timeString = remember(message.timestamp) {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.timestamp))
+    }
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
     ) {
-        Surface(
-            color = if (isUser) AppColors.ButtonGreen else Color.White,
-            shape = RoundedCornerShape(
-                topStart = 16.dp, topEnd = 16.dp,
-                bottomStart = if (isUser) 16.dp else 0.dp,
-                bottomEnd = if (isUser) 0.dp else 16.dp
-            ),
-            shadowElevation = 2.dp,
-            modifier = Modifier.widthIn(max = 280.dp)
-        ) {
-            Text(
-                text = message.text,
-                modifier = Modifier.padding(12.dp),
-                color = if (isUser) Color.White else Color.Black,
-                fontSize = 15.sp
-            )
+        Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
+            Surface(
+                color = if (isUser) AppColors.ButtonGreen else Color.White,
+                shape = RoundedCornerShape(
+                    topStart = 16.dp, topEnd = 16.dp,
+                    bottomStart = if (isUser) 16.dp else 4.dp,
+                    bottomEnd = if (isUser) 4.dp else 16.dp
+                ),
+                shadowElevation = 2.dp,
+                modifier = Modifier.widthIn(max = 280.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = message.text,
+                        color = if (isUser) Color.White else Color.Black,
+                        fontSize = 15.sp
+                    )
+
+                    // Hiển thị thời gian
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = timeString,
+                        color = if (isUser) Color.White.copy(alpha = 0.7f) else Color.Gray,
+                        fontSize = 10.sp,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
+            }
+
+            // --- HÀNG NÚT CHỨC NĂNG (CHỈ HIỆN CHO TIN NHẮN CỦA BOT) ---
+            if (!isUser) {
+                Row(
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Nút Nghe (Loa)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = "Nghe",
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { viewModel.speakMessage(message.text) }
+                    )
+
+                    // Nút Copy
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Sao chép",
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable {
+                                clipboardManager.setText(AnnotatedString(message.text))
+                                Toast.makeText(context, "Đã sao chép!", Toast.LENGTH_SHORT).show()
+                            }
+                    )
+                }
+            }
         }
     }
 }
