@@ -1,42 +1,38 @@
-// FILE: SettingsViewModel.kt
 package com.example.ducktrack.ui.main.settings
 
 import android.app.Application
-import android.content.Intent
-import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.ducktrack.data.LimitsStore
 import com.example.ducktrack.data.UserPreferences
-import com.example.ducktrack.service.UsageMonitorService
+import com.example.ducktrack.service.OverlayService
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SettingsViewModel(app: Application) : AndroidViewModel(app) {
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val limitsStore = LimitsStore(app)
-    private val userPrefs = UserPreferences(app)
+    private val userPrefs = UserPreferences(application)
 
-    val isMonitoringEnabled = limitsStore.isMonitoringEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    // Đã xóa isDarkMode state
-
+    // Các State cũ
     val isVibration = userPrefs.isVibrationEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     val isKeepScreenOn = userPrefs.isKeepScreenOn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    fun setMonitoringEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            limitsStore.setMonitoringEnabled(enabled)
-            if (enabled) startMonitoringService() else stopMonitoringService()
-        }
-    }
+    val isMonitoringEnabled = OverlayService.isServiceRunning
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // Đã xóa setDarkMode function
+    // --- CÁC STATE MỚI CHO THEME ---
+    val isChristmasTheme = userPrefs.isChristmasTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val _isThemeChanging = MutableStateFlow(false)
+    val isThemeChanging = _isThemeChanging.asStateFlow()
+    // --------------------------------
 
     fun setVibration(enabled: Boolean) {
         viewModelScope.launch { userPrefs.setVibration(enabled) }
@@ -46,23 +42,19 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { userPrefs.setKeepScreenOn(enabled) }
     }
 
-    private fun startMonitoringService() {
-        val context = getApplication<Application>()
-        val intent = Intent(context, UsageMonitorService::class.java).apply {
-            action = UsageMonitorService.ACTION_START_MONITORING
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
+    fun setMonitoringEnabled(enabled: Boolean) {
+        if (enabled) OverlayService.startService(getApplication())
+        else OverlayService.stopService(getApplication())
     }
 
-    private fun stopMonitoringService() {
-        val context = getApplication<Application>()
-        val intent = Intent(context, UsageMonitorService::class.java).apply {
-            action = UsageMonitorService.ACTION_STOP_MONITORING
+    // --- HÀM TOGGLE THEME MỚI ---
+    fun toggleChristmasTheme(enabled: Boolean) {
+        viewModelScope.launch {
+            _isThemeChanging.value = true // Bật loading
+            delay(1500) // Giả lập loading để người dùng thấy hiệu ứng
+            userPrefs.setChristmasTheme(enabled)
+            _isThemeChanging.value = false // Tắt loading
         }
-        context.startService(intent)
     }
 }
+

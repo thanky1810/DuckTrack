@@ -45,9 +45,7 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     onNavigateToAbout: () -> Unit,
     onNavigateToAchievements: () -> Unit,
-    // --- MỚI: Callback điều hướng sang AI Chat ---
     onNavigateToAiChat: () -> Unit,
-    // ---------------------------------------------
     authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(LocalContext.current.applicationContext)
     )
@@ -58,8 +56,12 @@ fun SettingsScreen(
     var userInfo by remember { mutableStateOf<UserInfo?>(null) }
     var linkedProviders by remember { mutableStateOf(authViewModel.getLinkedProviders()) }
 
+    // --- LẤY TRẠNG THÁI TỪ VIEWMODEL ---
     val isVibration by settingsViewModel.isVibration.collectAsState()
     val isKeepScreenOn by settingsViewModel.isKeepScreenOn.collectAsState()
+    val isChristmas by settingsViewModel.isChristmasTheme.collectAsState() // SỬA LỖI Ở ĐÂY
+    // -----------------------------------
+
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val selectedTitle = remember(userInfo?.selectedAchievementId) {
@@ -130,6 +132,28 @@ fun SettingsScreen(
         Text("Trải nghiệm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
+
+                // --- NÚT THEME GIÁNG SINH ---
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Chế độ Giáng sinh 🎄", fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Color.Black)
+                        }
+                        Text("Giao diện đỏ, nhạc vui nhộn & tuyết rơi", fontSize = 12.sp, color = Color.Gray)
+                    }
+                    Switch(
+                        checked = isChristmas,
+                        onCheckedChange = { settingsViewModel.toggleChristmasTheme(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFFD32F2F) // Màu đỏ khi bật
+                        )
+                    )
+                }
+
+                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                // ---------------------------------------
+
                 SettingSwitchRow("Rung khi hết giờ", "Rung điện thoại khi hoàn thành phiên", isVibration) { settingsViewModel.setVibration(it) }
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
                 SettingSwitchRow("Giữ màn hình sáng", "Không tắt màn hình khi đang tập trung", isKeepScreenOn) { settingsViewModel.setKeepScreenOn(it) }
@@ -140,20 +164,6 @@ fun SettingsScreen(
         Text("Dữ liệu & Ứng dụng", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
-
-                // --- TÍNH NĂNG AI ---
-
-    //                SettingActionRow(
-    //                    icon = Icons.Default.AutoAwesome,
-    //                    title = "Trợ lý Vịt AI",
-    //                    subtitle = "Tư vấn lộ trình & Trò chuyện thông minh"
-    //                ) {
-    //                    onNavigateToAiChat()
-    //                }
-    //
-    //                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-
-                // -------------------------------------------------
 
                 SettingActionRow(
                     icon = Icons.Default.Download,
@@ -199,11 +209,10 @@ fun SettingsScreen(
         MonitoringControlSection(settingsViewModel)
         Divider(color = Color(0xFFEEEEEE))
 
-        // NÚT ĐĂNG XUẤT (Cũ)
         Button(
-            onClick = onLogout, // Hàm này giờ đã gọi authViewModel.logout() -> clear data
+            onClick = onLogout,
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF757575)), // Đổi màu xám cho nút Đăng xuất
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF757575)),
             shape = RoundedCornerShape(12.dp)
         ) {
             Icon(Icons.Filled.ExitToApp, null); Spacer(Modifier.width(8.dp)); Text("Đăng xuất", fontWeight = FontWeight.Bold)
@@ -211,7 +220,6 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // --- NÚT XÓA TÀI KHOẢN (MỚI - MÀU ĐỎ) ---
         OutlinedButton(
             onClick = { showDeleteDialog = true },
             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -222,10 +230,9 @@ fun SettingsScreen(
             Icon(Icons.Default.DeleteForever, null); Spacer(Modifier.width(8.dp)); Text("Xóa tài khoản vĩnh viễn", fontWeight = FontWeight.Bold)
         }
 
-        Spacer(modifier = Modifier.height(32.dp)) // Padding bottom
+        Spacer(modifier = Modifier.height(32.dp))
     }
 
-    // --- DIALOG XÁC NHẬN XÓA ---
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -238,7 +245,7 @@ fun SettingsScreen(
                         authViewModel.deleteAccount(
                             onSuccess = {
                                 Toast.makeText(context, "Đã xóa tài khoản", Toast.LENGTH_SHORT).show()
-                                onLogout() // Điều hướng về màn hình Login
+                                onLogout()
                             },
                             onError = { msg ->
                                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -259,10 +266,8 @@ fun SettingsScreen(
             shape = RoundedCornerShape(16.dp)
         )
     }
-
 }
 
-// Các Composable phụ trợ (Giữ nguyên)
 @Composable
 fun SettingSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
