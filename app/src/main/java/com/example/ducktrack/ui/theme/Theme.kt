@@ -4,69 +4,81 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Dark Theme dùng màu mặc định (Purple80...) từ file Color.kt
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+// --- 1. ĐỊNH NGHĨA DATA CLASS MÀU SẮC ---
+data class DuckTrackColors(
+    val primary: Color,
+    val background: Color,
+    val surface: Color,
+    val onSurface: Color,
+    val buttonColor: Color,
+    val secondaryText: Color = Color.Gray
 )
 
-// Light Theme dùng màu custom từ AppColors.kt
-private val LightColorScheme = lightColorScheme(
-    primary = AppColors.ButtonGreen,
-    secondary = AppColors.TextGreen,
-    tertiary = Pink40,
+// --- 2. CÁC BẢNG MÀU (PALETTE) ---
+val DefaultPalette = DuckTrackColors(
+    primary = AppColors.TextGreen,
     background = AppColors.BackgroundWhite,
     surface = AppColors.SurfaceColor,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color.Black,
-    onSurface = Color.Black
+    onSurface = Color.Black,
+    buttonColor = AppColors.ButtonGreen
 )
 
+val ChristmasPalette = DuckTrackColors(
+    primary = Color(0xFFD32F2F),       // Đỏ
+    background = Color(0xFFFFF8E1),    // Kem
+    surface = Color(0xFFE0F7FA),       // Xanh băng
+    onSurface = Color(0xFF004D40),     // Xanh thông
+    buttonColor = Color(0xFFC62828),   // Đỏ đậm
+    secondaryText = Color(0xFF5D4037)
+)
+
+val LocalDuckColors = staticCompositionLocalOf { DefaultPalette }
+
+// --- 3. THEME CHÍNH ---
 @Composable
 fun DuckTrackTheme(
-    darkTheme: Boolean = false, // Ép buộc Light Mode
-    dynamicColor: Boolean = false, // Tắt Dynamic Color
+    isChristmas: Boolean = false, // Tham số quan trọng bạn đang thiếu
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val currentPalette = if (isChristmas) ChristmasPalette else DefaultPalette
+
+    val colorScheme = lightColorScheme(
+        primary = currentPalette.buttonColor,
+        onPrimary = Color.White,
+        secondary = currentPalette.primary,
+        onSecondary = Color.White,
+        background = currentPalette.background,
+        onBackground = currentPalette.onSurface,
+        surface = currentPalette.surface,
+        onSurface = currentPalette.onSurface,
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Đặt status bar cùng màu primary
-            window.statusBarColor = colorScheme.primary.toArgb()
-            // Icon status bar màu sáng (trắng) vì nền xanh đậm
+            window.statusBarColor = currentPalette.primary.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = Shapes, // Đảm bảo bạn đã có file Shape.kt
-        content = content
-    )
+    CompositionLocalProvider(LocalDuckColors provides currentPalette) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
