@@ -32,7 +32,11 @@ import com.example.ducktrack.ui.theme.AppColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiChatScreen(
@@ -161,7 +165,7 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = message.text,
+                        text = formatAiText(message.text), // <-- Dùng hàm mình vừa viết
                         color = if (isUser) Color.White else Color.Black,
                         fontSize = 15.sp
                     )
@@ -210,3 +214,41 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
         }
     }
 }
+
+fun formatAiText(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        var currentIndex = 0
+        // Regex này sẽ tìm tất cả các đoạn chữ bị kẹp giữa **...** hoặc __...__
+        val pattern = Regex("\\*\\*(.*?)\\*\\*|__(.*?)__")
+        val matches = pattern.findAll(text)
+
+        for (match in matches) {
+            // 1. Nối phần chữ bình thường (nằm trước ký hiệu) vào
+            append(text.substring(currentIndex, match.range.first))
+
+            // 2. Xử lý phần có ký hiệu
+            if (match.value.startsWith("**")) {
+                // Nhóm 1: Là Thời gian -> In đậm
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(match.groupValues[1])
+                }
+            } else if (match.value.startsWith("__")) {
+                // Nhóm 2: Là Tên App -> In nghiêng + Gạch chân + Màu xanh
+                withStyle(style = SpanStyle(
+                    fontStyle = FontStyle.Italic,
+                    textDecoration = TextDecoration.Underline,
+                    color = Color(0xFF2E7D32), // Màu xanh AppColors.ButtonGreen
+                    fontWeight = FontWeight.Bold // Cho đậm lên chút nhìn cho rõ
+                )) {
+                    append(match.groupValues[2])
+                }
+            }
+            // Cập nhật lại vị trí con trỏ
+            currentIndex = match.range.last + 1
+        }
+
+        // 3. Nối nốt phần chữ bình thường còn sót lại ở cuối câu
+        append(text.substring(currentIndex))
+    }
+}
+
