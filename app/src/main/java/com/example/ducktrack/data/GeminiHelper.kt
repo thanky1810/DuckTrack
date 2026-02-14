@@ -1,15 +1,17 @@
 package com.example.ducktrack.data
 
+import android.util.Log
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.example.ducktrack.BuildConfig
 
 object GeminiHelper {
-    // [QUAN TRỌNG] Giữ nguyên bản 2.5 Flash theo ý bạn
-    private val modelName = "gemini-2.5-pro"
-    private const val API_KEY = "__GIA SU DA CO__" // Thay Key của bạn vào
+    // Giữ nguyên bản 2.5 Pro theo ý bạn
+    private const val modelName = "gemini-2.5-flash"
+    private const val API_KEY = BuildConfig.GEMINI_API_KEY
 
     private val generativeModel = GenerativeModel(
         modelName = modelName,
@@ -72,11 +74,23 @@ object GeminiHelper {
 
                 response.text ?: "Dữ liệu đang được xử lý... Quạc~"
             } catch (e: Exception) {
-                // Xử lý lỗi quá tải server 503 cho model 2.5
-                if (e.localizedMessage?.contains("503") == true) {
-                    "Server của Google đang quá tải một chút. Bạn đợi 1 phút rồi hỏi lại mình nhé! Quạc~"
-                } else {
-                    "Có chút trục trặc kết nối. Bạn kiểm tra mạng giúp mình nha. Quạc~"
+                val errorMsg = e.localizedMessage ?: ""
+                Log.e("GeminiError", "Lỗi chi tiết: $errorMsg") // In ra log để dev tự xem
+
+                // Vịt sẽ "nói" những câu thân thiện này thay vì đọc lỗi tiếng Anh
+                when {
+                    errorMsg.contains("503") -> {
+                        "Đầu mình đang quá tải thông tin mất rồi. Bạn đợi 1 phút rồi hỏi lại nhé! Quạc~"
+                    }
+                    errorMsg.contains("Quota") || errorMsg.contains("exceeded") -> {
+                        "Úi, mình xài hết số lần suy nghĩ miễn phí rồi. Bạn kiểm tra lại API Key nhé! Quạc~"
+                    }
+                    errorMsg.contains("403") -> {
+                        "API Key của bạn bị lỗi hoặc chưa cấp quyền rồi. Kiểm tra lại nha! Quạc~"
+                    }
+                    else -> {
+                        "Có chút trục trặc kết nối... Bạn kiểm tra mạng giúp mình nha! Quạc~"
+                    }
                 }
             }
         }

@@ -1,3 +1,7 @@
+// THÊM 2 DÒNG IMPORT NÀY LÊN TRÊN CÙNG CỦA FILE
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -10,14 +14,24 @@ android {
     namespace = "com.example.ducktrack"
     compileSdk = 36
 
+    // [ĐÃ SỬA] - Bỏ chữ "java.util." và "java.io." đi vì đã import ở trên
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(FileInputStream(localPropertiesFile))
+    }
+    val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+
     defaultConfig {
         applicationId = "com.example.ducktrack"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Gắn Key vào BuildConfig
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     }
 
     buildTypes {
@@ -40,11 +54,13 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
 
 dependencies {
+    // ... (Giữ nguyên toàn bộ phần dependencies của bạn ở dưới này) ...
 
     // --- Image loading (Coil) ---
     // Giữ bản 2.6.0, xóa bản 2.5.0 bị trùng
