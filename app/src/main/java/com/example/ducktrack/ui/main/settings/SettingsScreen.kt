@@ -170,6 +170,15 @@ fun SettingsScreen(
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
 
+                // [CHÈN THÊM ĐOẠN NÀY] - Nút mở màn hình AI Chat
+                SettingActionRow(
+                    icon = Icons.Default.AutoAwesome,
+                    title = "Trợ lý AI - Giáo Sư Vịt",
+                    subtitle = "Phân tích thói quen và trò chuyện"
+                ) { onNavigateToAiChat() }
+
+                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+
                 SettingActionRow(
                     icon = Icons.Default.Download,
                     title = "Xuất dữ liệu & Lịch sử",
