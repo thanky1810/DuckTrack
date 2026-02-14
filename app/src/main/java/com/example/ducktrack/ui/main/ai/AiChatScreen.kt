@@ -32,6 +32,9 @@ import com.example.ducktrack.ui.theme.AppColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,7 +164,7 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = message.text,
+                        text = formatAiText(message.text), // <-- Dùng hàm mình vừa viết
                         color = if (isUser) Color.White else Color.Black,
                         fontSize = 15.sp
                     )
@@ -206,6 +209,24 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
                             }
                     )
                 }
+            }
+        }
+    }
+}
+
+fun formatAiText(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        // Tách chuỗi dựa trên ký hiệu **
+        val parts = text.split("**")
+        for (i in parts.indices) {
+            if (i % 2 == 1) {
+                // Các phần tử ở vị trí lẻ (1, 3, 5...) chính là chữ nằm giữa **
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(parts[i])
+                }
+            } else {
+                // Chữ bình thường
+                append(parts[i])
             }
         }
     }
