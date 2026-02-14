@@ -25,9 +25,9 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.ducktrack.R
 import com.example.ducktrack.ui.AppRoot.Routes
-import com.example.ducktrack.ui.theme.AppColors
+// [QUAN TRỌNG] Import LocalDuckColors
+import com.example.ducktrack.ui.theme.LocalDuckColors
 
-// Model dữ liệu cho Item
 data class BottomNavItem(
     val label: String,
     val iconRes: Int,
@@ -42,6 +42,9 @@ fun BottomNavigationBar(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // [QUAN TRỌNG] Lấy màu Theme
+    val currentThemeColor = LocalDuckColors.current.buttonColor
+
     val leftItems = listOf(
         BottomNavItem("Trang chủ", R.drawable.ic_house, Routes.Dashboard),
         BottomNavItem("Nhiệm vụ", R.drawable.ic_note, Routes.Tasks)
@@ -51,10 +54,9 @@ fun BottomNavigationBar(
         BottomNavItem("Cài đặt", R.drawable.ic_setting, Routes.Settings)
     )
 
-    // --- CHỈNH SỬA KÍCH THƯỚC ---
-    val barHeight = 80.dp // Tăng chiều cao lên 80dp để chứa đủ icon to + chữ
+    val barHeight = 80.dp
     val fabSize = 64.dp
-    val fabOffset = 30.dp // Đẩy FAB lên cao hơn chút cho cân đối
+    val fabOffset = 30.dp
 
     Box(
         modifier = Modifier
@@ -67,7 +69,7 @@ fun BottomNavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight),
-            color = AppColors.ButtonGreen,
+            color = currentThemeColor, // [ĐÃ SỬA] Dùng màu động
             shadowElevation = 8.dp,
             shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp)
         ) {
@@ -75,7 +77,6 @@ fun BottomNavigationBar(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Nhóm bên trái
                 Row(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -92,10 +93,8 @@ fun BottomNavigationBar(
                     }
                 }
 
-                // Khoảng trống ở giữa cho FAB (Rộng hơn chút để không đè chữ)
                 Spacer(modifier = Modifier.width(80.dp))
 
-                // Nhóm bên phải
                 Row(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -118,7 +117,7 @@ fun BottomNavigationBar(
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = 10.dp) // Tinh chỉnh vị trí
+                .offset(y = 10.dp)
                 .size(fabSize)
                 .shadow(6.dp, CircleShape)
                 .background(Color.White, CircleShape)
@@ -135,7 +134,7 @@ fun BottomNavigationBar(
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Pomodoro",
-                tint = AppColors.ButtonGreen,
+                tint = currentThemeColor, // [ĐÃ SỬA] Icon cũng đổi màu theo theme
                 modifier = Modifier.size(36.dp)
             )
         }
@@ -152,7 +151,6 @@ fun navigateTo(navController: NavController, route: String) {
     }
 }
 
-// Item tùy chỉnh
 @Composable
 fun CustomBottomNavItem(
     item: BottomNavItem,
@@ -167,28 +165,25 @@ fun CustomBottomNavItem(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { onClick() }
-            .padding(horizontal = 4.dp, vertical = 8.dp) // Padding vừa phải
-            .width(60.dp) // Cố định chiều rộng tối thiểu để chữ không bị ép dòng
+            .padding(horizontal = 4.dp, vertical = 8.dp)
+            .width(60.dp)
     ) {
-        // Icon
         Icon(
             painter = painterResource(id = item.iconRes),
             contentDescription = item.label,
-            // SỬA: Tăng kích thước Icon lên 32dp
             modifier = Modifier.size(32.dp),
-            tint = Color.Unspecified // Giữ màu gốc
+            tint = Color.Unspecified
         )
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Text
         Text(
             text = item.label,
-            fontSize = 11.sp, // Font nhỏ gọn
+            fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
-            maxLines = 1, // Chỉ 1 dòng
-            softWrap = false // Không xuống dòng
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

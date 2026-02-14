@@ -1,9 +1,12 @@
 package com.example.ducktrack.ui.main.settings
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,14 +38,19 @@ import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
-import com.example.ducktrack.ui.main.settings.AchievementList
 
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToExportHistory: () -> Unit,
-    settingsViewModel: SettingsViewModel = viewModel(),
+
+    // Dùng hàm findActivity() an toàn thay vì ép kiểu
+    settingsViewModel: SettingsViewModel = viewModel(
+        viewModelStoreOwner = LocalContext.current.findActivity()
+            ?: throw IllegalStateException("Không tìm thấy Activity")
+    ),
+
     onNavigateToAbout: () -> Unit,
     onNavigateToAchievements: () -> Unit,
     onNavigateToAiChat: () -> Unit,
@@ -56,11 +64,9 @@ fun SettingsScreen(
     var userInfo by remember { mutableStateOf<UserInfo?>(null) }
     var linkedProviders by remember { mutableStateOf(authViewModel.getLinkedProviders()) }
 
-    // --- LẤY TRẠNG THÁI TỪ VIEWMODEL ---
     val isVibration by settingsViewModel.isVibration.collectAsState()
     val isKeepScreenOn by settingsViewModel.isKeepScreenOn.collectAsState()
-    val isChristmas by settingsViewModel.isChristmasTheme.collectAsState() // SỬA LỖI Ở ĐÂY
-    // -----------------------------------
+    val isChristmas by settingsViewModel.isChristmasTheme.collectAsState()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -133,7 +139,7 @@ fun SettingsScreen(
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
 
-                // --- NÚT THEME GIÁNG SINH ---
+                // NÚT THEME GIÁNG SINH
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -152,7 +158,6 @@ fun SettingsScreen(
                 }
 
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                // ---------------------------------------
 
                 SettingSwitchRow("Rung khi hết giờ", "Rung điện thoại khi hoàn thành phiên", isVibration) { settingsViewModel.setVibration(it) }
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
@@ -199,7 +204,7 @@ fun SettingsScreen(
                 )
                 Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
                 AccountLinkRow(R.drawable.ic_github, "GitHub", linkedProviders.contains("github.com"),
-                    onLink = { val act = context as? Activity; if(act!=null) authViewModel.linkWithGithub(act, { linkedProviders = authViewModel.getLinkedProviders() }, {Toast.makeText(context, it, Toast.LENGTH_SHORT).show()}) },
+                    onLink = { val activity = context.findActivity(); if(activity!=null) authViewModel.linkWithGithub(activity, { linkedProviders = authViewModel.getLinkedProviders() }, {Toast.makeText(context, it, Toast.LENGTH_SHORT).show()}) },
                     onUnlink = { authViewModel.unlinkProvider("github.com", { linkedProviders = authViewModel.getLinkedProviders() }, { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }) }
                 )
             }
@@ -268,6 +273,8 @@ fun SettingsScreen(
     }
 }
 
+// --- CÁC HÀM COMPOSABLE BỊ THIẾU Ở BƯỚC TRƯỚC ---
+
 @Composable
 fun SettingSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -316,11 +323,31 @@ private fun MonitoringControlSection(viewModel: SettingsViewModel) {
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)), shape = RoundedCornerShape(8.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("⚠️ Cần quyền hiển thị overlay", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)); Spacer(Modifier.height(8.dp))
-                        Button(onClick = { PermissionHelper.requestOverlayPermission(context as Activity) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), modifier = Modifier.height(36.dp)) { Text("Cấp quyền ngay", fontSize = 12.sp) }
+                        Button(
+                            onClick = {
+                                val activity = context.findActivity()
+                                if (activity != null) {
+                                    PermissionHelper.requestOverlayPermission(activity)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) { Text("Cấp quyền ngay", fontSize = 12.sp) }
                     }
                 }
             }
             SettingSwitchRow("Kích hoạt giám sát", if (isMonitoring) "Đang hoạt động" else "Tắt", isMonitoring) { viewModel.setMonitoringEnabled(it) }
         }
     }
+}
+
+// Hàm Extension để tìm Activity từ Context an toàn
+fun Context.findActivity(): ComponentActivity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is ComponentActivity) return context
+        context = context.baseContext
+    }
+    return null
 }

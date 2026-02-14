@@ -8,8 +8,8 @@ import kotlinx.coroutines.withContext
 
 object GeminiHelper {
     // [QUAN TRỌNG] Giữ nguyên bản 2.5 Flash theo ý bạn
-    private val modelName = "gemini-2.5-flash"
-    private const val API_KEY = "API_KEY" // Thay Key của bạn vào
+    private val modelName = "gemini-2.5-pro"
+    private const val API_KEY = "__GIA SU DA CO__" // Thay Key của bạn vào
 
     private val generativeModel = GenerativeModel(
         modelName = modelName,

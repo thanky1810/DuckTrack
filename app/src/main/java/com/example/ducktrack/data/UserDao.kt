@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
-    // ... (Giữ nguyên các hàm UserProfile và Seed cũ) ...
+
     @Upsert
     suspend fun upsertUserProfile(profile: UserProfile)
     @Query("SELECT * FROM user_profile WHERE id = 1")
