@@ -35,7 +35,8 @@ import java.util.Locale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiChatScreen(
@@ -216,18 +217,38 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
 
 fun formatAiText(text: String): AnnotatedString {
     return buildAnnotatedString {
-        // Tách chuỗi dựa trên ký hiệu **
-        val parts = text.split("**")
-        for (i in parts.indices) {
-            if (i % 2 == 1) {
-                // Các phần tử ở vị trí lẻ (1, 3, 5...) chính là chữ nằm giữa **
+        var currentIndex = 0
+        // Regex này sẽ tìm tất cả các đoạn chữ bị kẹp giữa **...** hoặc __...__
+        val pattern = Regex("\\*\\*(.*?)\\*\\*|__(.*?)__")
+        val matches = pattern.findAll(text)
+
+        for (match in matches) {
+            // 1. Nối phần chữ bình thường (nằm trước ký hiệu) vào
+            append(text.substring(currentIndex, match.range.first))
+
+            // 2. Xử lý phần có ký hiệu
+            if (match.value.startsWith("**")) {
+                // Nhóm 1: Là Thời gian -> In đậm
                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append(parts[i])
+                    append(match.groupValues[1])
                 }
-            } else {
-                // Chữ bình thường
-                append(parts[i])
+            } else if (match.value.startsWith("__")) {
+                // Nhóm 2: Là Tên App -> In nghiêng + Gạch chân + Màu xanh
+                withStyle(style = SpanStyle(
+                    fontStyle = FontStyle.Italic,
+                    textDecoration = TextDecoration.Underline,
+                    color = Color(0xFF2E7D32), // Màu xanh AppColors.ButtonGreen
+                    fontWeight = FontWeight.Bold // Cho đậm lên chút nhìn cho rõ
+                )) {
+                    append(match.groupValues[2])
+                }
             }
+            // Cập nhật lại vị trí con trỏ
+            currentIndex = match.range.last + 1
         }
+
+        // 3. Nối nốt phần chữ bình thường còn sót lại ở cuối câu
+        append(text.substring(currentIndex))
     }
 }
+
