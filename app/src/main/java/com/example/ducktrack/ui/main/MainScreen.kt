@@ -42,6 +42,8 @@ import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
+// [QUAN TRỌNG] Import LocalDuckColors
+import com.example.ducktrack.ui.theme.LocalDuckColors
 import com.example.ducktrack.utils.PermissionHelper
 import com.example.ducktrack.utils.msToReadable
 import java.util.Date
@@ -84,7 +86,6 @@ fun MainScreen(
         if (isToday) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
     }
 
-    // Xin quyền Thông báo (Android 13+)
     val currentContext = LocalContext.current
     LaunchedEffect(Unit) {
         val activity = currentContext as? android.app.Activity
@@ -114,7 +115,8 @@ fun MainScreen(
                 }
             )
         },
-        containerColor = AppColors.BackgroundWhite
+        // [ĐỔI MÀU NỀN THEO THEME]
+        containerColor = LocalDuckColors.current.background
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             NavHost(
@@ -209,6 +211,11 @@ private fun DashboardScreen(
         mutableStateOf(PermissionHelper.hasOverlayPermission(context))
     }
 
+    // Lấy màu Theme
+    val currentPrimary = LocalDuckColors.current.primary
+    val currentButton = LocalDuckColors.current.buttonColor
+    val currentBackground = LocalDuckColors.current.background
+
     if (!hasPermission) {
         LaunchedEffect(Unit) { onHeaderNoteChange(null) }
         Column(
@@ -222,7 +229,7 @@ private fun DashboardScreen(
                 imageVector = Icons.Filled.Home,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = AppColors.ButtonGreen
+                tint = currentButton // [SỬA] Màu icon theo theme
             )
             Spacer(Modifier.height(12.dp))
 
@@ -234,7 +241,7 @@ private fun DashboardScreen(
 
             Button(
                 onClick = onGoToPermission,
-                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = currentButton) // [SỬA] Màu nút
             ) {
                 Text("Cấp quyền ngay")
             }
@@ -267,7 +274,7 @@ private fun DashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(currentBackground) // [SỬA] Nền theo theme (trắng/kem)
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(8.dp))
@@ -287,7 +294,7 @@ private fun DashboardScreen(
             ) {
                 Pill(
                     text = "Thời gian sử dụng thiết bị",
-                    bg = Color(0xFFE0C378),
+                    bg = Color(0xFFE0C378), // Giữ màu vàng vì hợp cả Giáng sinh
                     fg = Color(0xFF3A2A11),
                     horizontalPadding = 14.dp,
                     verticalPadding = 6.dp,
@@ -297,7 +304,7 @@ private fun DashboardScreen(
 
                 Text(
                     text = totalReadable,
-                    color = AppColors.TextGreen,
+                    color = currentPrimary, // [SỬA] Màu chữ (Xanh lá/Đỏ)
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -321,8 +328,9 @@ private fun DashboardScreen(
             Button(
                 onClick = onNavigateToStatistics,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE3F2FD),
-                    contentColor = Color(0xFF1976D2)
+                    // [SỬA] Đổi màu nút: Nền surface (cyan nhạt), Chữ primary (đỏ đậm) cho Theme Noel
+                    containerColor = LocalDuckColors.current.surface,
+                    contentColor = LocalDuckColors.current.primary
                 ),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
@@ -335,7 +343,7 @@ private fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppColors.BackgroundWhite),
+                .background(currentBackground), // [SỬA] Nền list
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -444,7 +452,7 @@ private fun DayPagerRow(
                 text = currentDateText,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppColors.TextGreen
+                color = LocalDuckColors.current.primary // [SỬA] Màu chữ ngày
             )
         }
 
@@ -470,7 +478,8 @@ private fun RoundIconButton(
     onClick: () -> Unit
 ) {
     Surface(
-        color = Color(0xFFEEE8D6),
+        // [SỬA] Đổi màu nền nút tròn: Trong theme Noel là xanh cyan nhạt
+        color = LocalDuckColors.current.surface,
         shape = CircleShape,
         shadowElevation = 1.dp,
         modifier = Modifier.size(40.dp)
@@ -479,7 +488,8 @@ private fun RoundIconButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF3A2A11)
+                // [SỬA] Đổi màu icon: Trong theme Noel là đỏ đậm
+                tint = LocalDuckColors.current.primary
             )
         }
     }
@@ -547,7 +557,7 @@ private fun TimeLimitDialog(
                 Text(
                     text = "Giới hạn: $preview",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (valid) AppColors.TextGreen else Color.Red
+                    color = if (valid) LocalDuckColors.current.primary else Color.Red // [SỬA] Màu text hợp lệ
                 )
             }
         },
@@ -558,7 +568,7 @@ private fun TimeLimitDialog(
                     if (total > 0) onConfirm(total)
                 },
                 enabled = valid,
-                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = LocalDuckColors.current.buttonColor) // [SỬA] Màu nút Lưu
             ) {
                 Text("Lưu")
             }
@@ -566,7 +576,7 @@ private fun TimeLimitDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = AppColors.TextGray)
+                colors = ButtonDefaults.textButtonColors(contentColor = LocalDuckColors.current.secondaryText) // [SỬA] Màu nút Hủy
             ) {
                 Text("Hủy")
             }

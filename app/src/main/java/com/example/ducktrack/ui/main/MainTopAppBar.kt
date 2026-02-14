@@ -19,7 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.theme.AppColors
+// [QUAN TRỌNG] Import LocalDuckColors để lấy màu theo Theme
+import com.example.ducktrack.ui.theme.LocalDuckColors
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,19 +32,21 @@ fun MainTopAppBar(
 ) {
     val bottomRoundedShape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
 
+    // [QUAN TRỌNG] Lấy màu từ Theme hiện tại (Xanh hoặc Đỏ)
+    val currentThemeColor = LocalDuckColors.current.buttonColor
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            // SỬA: Giảm chiều cao từ 100dp -> 80dp cho gọn
             .height(80.dp)
             .shadow(elevation = 6.dp, shape = bottomRoundedShape),
         shape = bottomRoundedShape,
-        color = AppColors.ButtonGreen
+        color = currentThemeColor // [ĐÃ SỬA] Dùng màu động thay vì AppColors.ButtonGreen
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 4.dp) // Giảm padding dọc
+                .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
             // 1. CỤM BÊN TRÁI: TÊN & NGÀY
             Column(
@@ -53,7 +56,7 @@ fun MainTopAppBar(
                 Text(
                     text = title,
                     color = Color.White,
-                    fontSize = 20.sp, // Giảm font title xíu cho cân đối
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
@@ -72,7 +75,6 @@ fun MainTopAppBar(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .fillMaxHeight()
-                    // SỬA: Giảm độ rộng vịt để vừa chiều cao 80dp (khoảng 60-70dp)
                     .width(70.dp)
                     .offset(y = 4.dp),
                 contentScale = ContentScale.Fit
@@ -80,7 +82,7 @@ fun MainTopAppBar(
 
             // 3. CỤM BÊN PHẢI: ĐIỂM SỐ
             Surface(
-                color = Color(0xFFE0C378),
+                color = Color(0xFFE0C378), // Màu vàng khung điểm giữ nguyên (hoặc đổi nếu thích)
                 shape = RoundedCornerShape(50),
                 shadowElevation = 2.dp,
                 modifier = Modifier.align(Alignment.CenterEnd)
