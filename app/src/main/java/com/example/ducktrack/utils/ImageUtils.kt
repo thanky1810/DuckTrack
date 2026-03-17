@@ -17,7 +17,7 @@ object ImageUtils {
             val originalBitmap = BitmapFactory.decodeStream(inputStream) ?: return null
 
             // 1. Giảm kích thước ảnh xuống (Max 300x300 để nhẹ)
-            val scaledBitmap = getResizedBitmap(originalBitmap, 300)
+            val scaledBitmap = getResizedBitmap(originalBitmap)
 
             // 2. Nén thành JPEG và chuyển sang Byte Array
             val outputStream = ByteArrayOutputStream()
@@ -34,7 +34,8 @@ object ImageUtils {
     }
 
     // Hàm phụ trợ để resize ảnh giữ nguyên tỷ lệ
-    private fun getResizedBitmap(image: Bitmap, maxSize: Int): Bitmap {
+    private fun getResizedBitmap(image: Bitmap): Bitmap {
+        val maxSize = 300
         var width = image.width
         var height = image.height
 

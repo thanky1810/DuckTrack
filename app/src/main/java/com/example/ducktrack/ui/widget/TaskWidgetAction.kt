@@ -25,7 +25,6 @@ class ToggleTaskAction : ActionCallback {
         val repo = app.repository
 
         // 3. Gọi hàm update lên Firestore
-        // (Lưu ý: Đảo ngược trạng thái isCompleted: true -> false, false -> true)
         repo.toggleTaskStatus(taskId, isCompleted)
 
         // 4. Cập nhật lại Widget ngay lập tức để người dùng thấy phản hồi

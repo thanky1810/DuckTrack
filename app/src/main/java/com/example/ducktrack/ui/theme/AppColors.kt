@@ -19,9 +19,6 @@ object AppColors {
     val ButtonGray = Color(0xFFF0F0F0)
     val TextGray = Color(0xFF757575)
 
-    // Màu vàng điểm nhấn (Sửa lỗi thiếu YellowAccent)
-    val YellowAccent = Color(0xFFFFD600)
-
     // Palette cho biểu đồ
     val chartPalette = listOf(
         Color(0xFF43A047),

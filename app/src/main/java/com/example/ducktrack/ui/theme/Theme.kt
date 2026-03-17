@@ -1,8 +1,6 @@
 package com.example.ducktrack.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -47,9 +45,7 @@ val LocalDuckColors = staticCompositionLocalOf { DefaultPalette }
 // --- 3. THEME CHÍNH ---
 @Composable
 fun DuckTrackTheme(
-    isChristmas: Boolean = false, // Tham số quan trọng bạn đang thiếu
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
+    isChristmas: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val currentPalette = if (isChristmas) ChristmasPalette else DefaultPalette
@@ -69,6 +65,7 @@ fun DuckTrackTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            @Suppress("DEPRECATION")
             window.statusBarColor = currentPalette.primary.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }

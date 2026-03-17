@@ -38,8 +38,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(
-    isDataReady: Boolean,
-    onSplashFinished: () -> Unit
+    isDataReady: Boolean, onSplashFinished: () -> Unit
 ) {
     val scale = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
@@ -50,14 +49,12 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         launch {
             scale.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 1200)
+                targetValue = 1f, animationSpec = tween(durationMillis = 1200)
             )
         }
         launch {
             alpha.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 1200)
+                targetValue = 1f, animationSpec = tween(durationMillis = 1200)
             )
         }
 

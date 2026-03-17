@@ -4,7 +4,6 @@ package com.example.ducktrack.utils
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 
 // Bỏ field "exists"
 data class HistoryItem(
@@ -33,14 +32,18 @@ object ExportHistoryManager {
             val jsonArray = JSONArray(jsonString)
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
-                list.add(HistoryItem(
-                    fileName = obj.getString("fileName"),
-                    filePath = obj.getString("filePath"),
-                    dateModified = obj.getLong("dateModified"),
-                    fileSize = obj.getString("fileSize")
-                ))
+                list.add(
+                    HistoryItem(
+                        fileName = obj.getString("fileName"),
+                        filePath = obj.getString("filePath"),
+                        dateModified = obj.getLong("dateModified"),
+                        fileSize = obj.getString("fileSize")
+                    )
+                )
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         return list
     }
 
