@@ -13,19 +13,25 @@ class DataAggregator(private val context: Context) {
 
     // 1. DỮ LIỆU SỬ DỤNG ĐIỆN THOẠI (SCREEN TIME)
     fun getScreenTimeSummary(): String {
-        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val usageStatsManager =
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val calendar = Calendar.getInstance()
         val endTime = calendar.timeInMillis
-        calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(
+            Calendar.SECOND,
+            0
+        )
         val startTime = calendar.timeInMillis
 
-        val usageStatsList = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+        val usageStatsList =
+            usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
         if (usageStatsList.isNullOrEmpty()) return "Không có dữ liệu sử dụng màn hình (hoặc chưa cấp quyền)."
 
         val appUsageMap = HashMap<String, Long>()
         for (usage in usageStatsList) {
             if (usage.totalTimeInForeground > 0) {
-                appUsageMap[usage.packageName] = appUsageMap.getOrDefault(usage.packageName, 0L) + usage.totalTimeInForeground
+                appUsageMap[usage.packageName] =
+                    appUsageMap.getOrDefault(usage.packageName, 0L) + usage.totalTimeInForeground
             }
         }
 
@@ -36,7 +42,11 @@ class DataAggregator(private val context: Context) {
 
         for ((pkg, time) in sortedList) {
             totalTime += time
-            val appName = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (e: Exception) { pkg }
+            val appName = try {
+                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+            } catch (_: Exception) {
+                pkg
+            }
             val minutes = time / 1000 / 60
             if (minutes > 0) sb.append("- $appName: $minutes phút\n")
         }
@@ -95,7 +105,7 @@ class DataAggregator(private val context: Context) {
             """
             - Đã hoàn thành: $completedCount nhiệm vụ.
             - Còn lại: $pendingCount nhiệm vụ chưa xong.
-            - Việc cần làm ngay: ${if (pendingNames.isNotEmpty()) pendingNames else "Đã xong hết!"}
+            - Việc cần làm ngay: ${pendingNames.ifEmpty { "Đã xong hết!" }}
             """.trimIndent()
         } catch (e: Exception) {
             "Lỗi đọc dữ liệu task: ${e.message}"

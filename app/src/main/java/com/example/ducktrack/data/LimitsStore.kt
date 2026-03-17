@@ -13,12 +13,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Extension DataStore phải ở top-level
+
 val Context.limitsDataStore by preferencesDataStore("limits_store")
 
 data class BaselineInfo(
-    val day: String,       // yyyy-MM-dd
-    val baselineMs: Long   // tổng thời gian đã dùng tới lúc set limit (ms)
+    val day: String,
+    val baselineMs: Long
 )
 
 class LimitsStore(private val ctx: Context) {
@@ -29,18 +29,8 @@ class LimitsStore(private val ctx: Context) {
         val BASELINES = stringPreferencesKey("limits_baselines_json")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
 
-        // --- THÊM MỚI: Cờ hiệu Chế độ Siêu Tập Trung ---
-        val DEEP_FOCUS_MODE = booleanPreferencesKey("deep_focus_mode")
-    }
 
-    // ---------------------- GIỚI HẠN ----------------------
-    suspend fun setLimit(pkg: String, minutes: Int) {
-        ctx.limitsDataStore.edit { pref ->
-            val current = pref[Keys.LIMITS] ?: "{}"
-            val map = JSONObject(current)
-            map.put(pkg, minutes)
-            pref[Keys.LIMITS] = map.toString()
-        }
+        val DEEP_FOCUS_MODE = booleanPreferencesKey("deep_focus_mode")
     }
 
     suspend fun setLimitWithBaseline(pkg: String, minutes: Int, baselineMs: Long) {
@@ -92,24 +82,17 @@ class LimitsStore(private val ctx: Context) {
 
         return obj.keys().asSequence().mapNotNull { key ->
             val v = obj.optJSONObject(key) ?: return@mapNotNull null
-            val day = v.optString("day", null) ?: return@mapNotNull null
+            val day = v.optString("day", "") ?: return@mapNotNull null
             val baselineMs = v.optLong("baselineMs", -1L)
             if (baselineMs < 0L) return@mapNotNull null
             key to BaselineInfo(day = day, baselineMs = baselineMs)
         }.toMap()
     }
 
-    // ----------------- TRẠNG THÁI GIÁM SÁT -----------------
+
     val isMonitoringEnabled: Flow<Boolean> = ctx.limitsDataStore.data
         .map { pref -> pref[Keys.MONITORING_ENABLED] ?: false }
 
-    suspend fun setMonitoringEnabled(enabled: Boolean) {
-        ctx.limitsDataStore.edit { pref ->
-            pref[Keys.MONITORING_ENABLED] = enabled
-        }
-    }
-
-    // --- ONBOARDING ---
     val onboardingCompleted: Flow<Boolean> = ctx.limitsDataStore.data
         .map { pref -> pref[Keys.ONBOARDING_COMPLETED] ?: false }
 
@@ -119,7 +102,7 @@ class LimitsStore(private val ctx: Context) {
         }
     }
 
-    // --- MỚI: Hàm Get/Set Deep Focus ---
+
     val isDeepFocusEnabled: Flow<Boolean> = ctx.limitsDataStore.data
         .map { pref -> pref[Keys.DEEP_FOCUS_MODE] ?: false }
 

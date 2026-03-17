@@ -13,12 +13,12 @@ data class UserProfile(
 // 2. Bảng lưu các hạt giống đã mở khóa
 @Entity(tableName = "unlocked_seeds")
 data class UnlockedSeed(
-    @PrimaryKey val seedId: String // "normal", "pine", v.v.
+    @PrimaryKey val seedId: String
 )
 
 // 3. Bảng lưu các cây đã trồng
 @Entity(tableName = "grown_trees")
 data class GrownTree(
     @PrimaryKey(autoGenerate = true) val id: Int = 0, // ID tự tăng
-    val seedId: String // "normal", "pine", v.v.
+    val seedId: String
 )

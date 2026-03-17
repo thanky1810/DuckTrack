@@ -9,20 +9,25 @@ import android.app.usage.UsageStatsManager
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.ducktrack.data.BaselineInfo
 import com.example.ducktrack.data.LimitsStore
 import com.example.ducktrack.utils.usageManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class UsageMonitorService : Service() {
 
-    private val TAG = "UsageMonitorService"
     private val CHANNEL_ID = "usage_monitor_channel"
     private val NOTIFICATION_ID = 1001
 
@@ -50,8 +55,8 @@ class UsageMonitorService : Service() {
         when (action) {
             ACTION_START_MONITORING -> startMonitoring()
             ACTION_STOP_MONITORING -> stopSelf()
-            ACTION_EXTEND_TIME -> intent?.let { handleExtendTime(it) }
-            ACTION_REMOVE_LIMIT -> intent?.let { handleRemoveLimit(it) }
+            ACTION_EXTEND_TIME -> handleExtendTime(intent)
+            ACTION_REMOVE_LIMIT -> handleRemoveLimit(intent)
         }
         return START_STICKY
     }
@@ -164,7 +169,9 @@ class UsageMonitorService : Service() {
                 blockedPackage = null
             }
 
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun getCurrentForegroundAppRaw(): String? {
@@ -177,7 +184,7 @@ class UsageMonitorService : Service() {
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                 if (event.timeStamp > latestTime) {
                     latestTime = event.timeStamp
                     latestPackage = event.packageName
@@ -203,14 +210,19 @@ class UsageMonitorService : Service() {
             } else {
                 startService(intent)
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun hideBlockOverlay() {
         val intent = Intent(this, OverlayService::class.java).apply {
             action = OverlayService.ACTION_HIDE_BLOCK
         }
-        try { startService(intent) } catch (e: Exception) {}
+        try {
+            startService(intent)
+        } catch (_: Exception) {
+        }
     }
 
     private fun handleExtendTime(intent: Intent) {
@@ -248,7 +260,8 @@ class UsageMonitorService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java) ?: return
-            val channel = NotificationChannel(CHANNEL_ID, "Usage Monitor", NotificationManager.IMPORTANCE_LOW)
+            val channel =
+                NotificationChannel(CHANNEL_ID, "Usage Monitor", NotificationManager.IMPORTANCE_LOW)
             manager.createNotificationChannel(channel)
         }
     }
@@ -297,5 +310,7 @@ class UsageMonitorService : Service() {
         skipPrefs().edit().putString("day", todayString()).putStringSet("apps", set.toSet()).apply()
     }
 
-    private fun clearSkipSetIfNewDay() { loadSkipSetForToday() }
+    private fun clearSkipSetIfNewDay() {
+        loadSkipSetForToday()
+    }
 }
