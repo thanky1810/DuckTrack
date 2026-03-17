@@ -2,10 +2,23 @@ package com.example.ducktrack.ui.introducePage
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,41 +43,44 @@ val MainFontFamily = FontFamily(Font(R.font.montserrat_extrabold, FontWeight.Ext
 fun introduceScreen(onGoLogin: () -> Unit = {}) {
     Scaffold { inner ->
         Column(
-                modifier =
-                        Modifier.fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background)
-                                .padding(inner),
-                horizontalAlignment = Alignment.CenterHorizontally
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(inner),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // --- PHẦN 1: LOGO (Chiếm 45% màn hình) ---
             Box(
-                    modifier =
-                            Modifier.weight(
-                                            0.45f
-                                    ) // Giảm trọng số để chừa chỗ cho phần dưới đẩy lên
-                                    .fillMaxWidth(),
-                    contentAlignment =
-                            Alignment.BottomCenter // Đẩy ảnh xuống sát mép dưới của vùng này
+                modifier =
+                    Modifier
+                        .weight(
+                            0.45f
+                        ) // Giảm trọng số để chừa chỗ cho phần dưới đẩy lên
+                        .fillMaxWidth(),
+                contentAlignment =
+                    Alignment.BottomCenter // Đẩy ảnh xuống sát mép dưới của vùng này
             ) {
                 // Ảnh nền bong bóng
                 Image(
-                        painter = painterResource(id = R.drawable.ic_bubble_background),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(0.9f),
-                        contentScale = ContentScale.Fit,
-                        alignment = Alignment.BottomCenter
+                    painter = painterResource(id = R.drawable.ic_bubble_background),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(0.9f),
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomCenter
                 )
                 // Logo con vịt
                 Image(
-                        painter = painterResource(id = R.drawable.ic_duck_logo),
-                        contentDescription = "DuckTrack Logo",
-                        modifier =
-                                Modifier.fillMaxHeight(
-                                                0.85f
-                                        ) // Tăng kích thước vịt lên chút cho cân đối
-                                        .aspectRatio(1f),
-                        contentScale = ContentScale.Fit,
-                        alignment = Alignment.BottomCenter
+                    painter = painterResource(id = R.drawable.ic_duck_logo),
+                    contentDescription = "DuckTrack Logo",
+                    modifier =
+                        Modifier
+                            .fillMaxHeight(
+                                0.85f
+                            ) // Tăng kích thước vịt lên chút cho cân đối
+                            .aspectRatio(1f),
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomCenter
                 )
             }
 
@@ -73,40 +89,41 @@ fun introduceScreen(onGoLogin: () -> Unit = {}) {
 
             // --- PHẦN 2: CHỮ & NÚT BẤM (Chiếm 55% màn hình) ---
             Column(
-                    modifier =
-                            Modifier.weight(0.55f) // Chiếm phần còn lại
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement =
-                            Arrangement.Center // Đẩy nội dung lên sát mép trên (gần ảnh)
+                modifier =
+                    Modifier
+                        .weight(0.55f) // Chiếm phần còn lại
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement =
+                    Arrangement.Center // Đẩy nội dung lên sát mép trên (gần ảnh)
             ) {
                 val textStyleWithShadow =
-                        TextStyle(
-                                fontFamily = MainFontFamily,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 36.sp,
-                                color = AppColors.TextGreen,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 44.sp,
-                                shadow =
-                                        Shadow(
-                                                color = Color.Black.copy(alpha = 0.2f),
-                                                offset =
-                                                        androidx.compose.ui.geometry.Offset(4f, 4f),
-                                                blurRadius = 8f
-                                        )
-                        )
+                    TextStyle(
+                        fontFamily = MainFontFamily,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 36.sp,
+                        color = AppColors.TextGreen,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 44.sp,
+                        shadow =
+                            Shadow(
+                                color = Color.Black.copy(alpha = 0.2f),
+                                offset =
+                                    androidx.compose.ui.geometry.Offset(4f, 4f),
+                                blurRadius = 8f
+                            )
+                    )
 
                 Text(
-                        text = "Plant your Forest,",
-                        style = textStyleWithShadow,
-                        modifier = Modifier.fillMaxWidth()
+                    text = "Plant your Forest,",
+                    style = textStyleWithShadow,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                        text = "Grow your Focus.",
-                        style = textStyleWithShadow,
-                        modifier = Modifier.fillMaxWidth()
+                    text = "Grow your Focus.",
+                    style = textStyleWithShadow,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Khoảng cách giữa chữ và nút
@@ -114,20 +131,23 @@ fun introduceScreen(onGoLogin: () -> Unit = {}) {
 
                 // Nút Bắt đầu
                 Button(
-                        onClick = onGoLogin,
-                        shape = RoundedCornerShape(24.dp),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        containerColor = AppColors.ButtonGreen,
-                                        contentColor = Color.White
-                                ),
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp).height(70.dp)
+                    onClick = onGoLogin,
+                    shape = RoundedCornerShape(24.dp),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = AppColors.ButtonGreen,
+                            contentColor = Color.White
+                        ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .height(70.dp)
                 ) {
                     Text(
-                            "Bắt đầu",
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = MainFontFamily
+                        "Bắt đầu",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = MainFontFamily
                     )
                 }
             }

@@ -3,7 +3,12 @@ package com.example.ducktrack.ui.main.pomodoro
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,9 +62,19 @@ fun SeedChoiceCard(
                 contentScale = ContentScale.Fit
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
                 if (subtitle != null) {
-                    Text(text = subtitle, fontWeight = FontWeight.Normal, fontSize = 12.sp, color = Color.Gray)
+                    Text(
+                        text = subtitle,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
                 }
             }
         }

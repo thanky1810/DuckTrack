@@ -1,9 +1,7 @@
 package com.example.ducktrack.ui.main.ai
 
 import android.app.Application
-import android.content.Context
 import android.speech.tts.TextToSpeech
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.data.DataAggregator
@@ -15,7 +13,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -75,7 +72,10 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
                 // Nếu chưa có lịch sử, thêm câu chào
                 duckName.collect { name ->
                     if (_messages.value.isEmpty()) {
-                        val intro = ChatMessage("Quạc! Ta là $name. Ta đang đọc dữ liệu điện thoại của ngươi... Hỏi gì thì hỏi đi!", false)
+                        val intro = ChatMessage(
+                            "Quạc! Ta là $name. Ta đang đọc dữ liệu điện thoại của ngươi... Hỏi gì thì hỏi đi!",
+                            false
+                        )
                         _messages.value = listOf(intro)
                         saveChatHistory()
                     }
@@ -108,7 +108,7 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
     private fun initTextToSpeech(app: Application) {
         tts = TextToSpeech(app) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                val result = tts?.setLanguage(Locale("vi", "VN"))
+                val result = tts?.setLanguage(Locale.forLanguageTag("vi-VN"))
                 if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
                     // --- CẤU HÌNH GIỌNG NHẸ NHÀNG (BÌNH THƯỜNG) ---
                     tts?.setPitch(1.0f) // Giọng trầm ấm, tự nhiên
@@ -138,7 +138,8 @@ class AiChatViewModel(application: Application) : AndroidViewModel(application) 
                 // GỌI HÀM LẤY TOÀN BỘ DỮ LIỆU (Screen + Tree + Task)
                 val fullReport = dataAggregator.getFullDailyReport()
 
-                val history = currentList.dropLast(1).map { (if (it.isUser) "user" else "model") to it.text }
+                val history =
+                    currentList.dropLast(1).map { (if (it.isUser) "user" else "model") to it.text }
 
                 // Gửi dữ liệu này cho Gemini 2.5 phân tích
                 val response = GeminiHelper.chatWithDuck(history, text, currentName, fullReport)

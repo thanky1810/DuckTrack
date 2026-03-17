@@ -1,5 +1,6 @@
 package com.example.ducktrack.ui.main.ai
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,11 +45,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -61,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.ui.theme.AppColors
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -186,7 +190,8 @@ fun AiChatScreen(
 @Composable
 fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
     val isUser = message.isUser
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // Format thời gian: 14:30
@@ -211,7 +216,7 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = formatAiText(message.text), // <-- Dùng hàm mình vừa viết
+                        text = formatAiText(message.text),
                         color = if (isUser) Color.White else Color.Black,
                         fontSize = 15.sp
                     )
@@ -243,7 +248,7 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
                             .clickable { viewModel.speakMessage(message.text) }
                     )
 
-                    // Nút Copy
+                    // Nút Copy (ĐÃ SỬA API MỚI)
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
                         contentDescription = "Sao chép",
@@ -251,8 +256,14 @@ fun ChatBubble(message: ChatMessage, viewModel: AiChatViewModel) {
                         modifier = Modifier
                             .size(18.dp)
                             .clickable {
-                                clipboardManager.setText(AnnotatedString(message.text))
-                                Toast.makeText(context, "Đã sao chép!", Toast.LENGTH_SHORT).show()
+                                // 3. Mở scope và thực hiện copy
+                                scope.launch {
+                                    val clipData =
+                                        ClipData.newPlainText("Copied Text", message.text)
+                                    clipboard.setClipEntry(ClipEntry(clipData))
+                                    Toast.makeText(context, "Đã sao chép!", Toast.LENGTH_SHORT)
+                                        .show()
+                                }
                             }
                     )
                 }

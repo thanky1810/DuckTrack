@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ducktrack.MyApplication
-import com.example.ducktrack.data.model.GrownTree
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,7 +44,8 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             val treesToday = allTreesFromCloud.filter {
                 it.plantedAt in startOfDay..endOfDay
             }.map { treeFirestore ->
-                val type = SeedType.values().find { it.id == treeFirestore.seedId } ?: SeedType.NORMAL
+                val type =
+                    SeedType.entries.find { it.id == treeFirestore.seedId } ?: SeedType.NORMAL
                 GrownTreeUI(
                     id = treeFirestore.id,
                     seedType = type,
@@ -58,7 +58,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             // 2. TẠO DANH SÁCH CỬA HÀNG (CHECK KHÓA/MỞ TỪ DB)
-            val storeItems = SeedType.values().map { seed ->
+            val storeItems = SeedType.entries.map { seed ->
                 // Kiểm tra xem seed này có trong danh sách đã mở khóa không
                 // Seed NORMAL luôn luôn mở
                 val isUnlocked = (seed == SeedType.NORMAL) || unlockedSeedsSet.contains(seed)
@@ -120,25 +120,37 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun getStartOfDay(time: Long): Long {
         val cal = Calendar.getInstance().apply { timeInMillis = time }
-        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(
+            Calendar.SECOND,
+            0
+        ); cal.set(Calendar.MILLISECOND, 0)
         return cal.timeInMillis
     }
 
     private fun getEndOfDay(time: Long): Long {
         val cal = Calendar.getInstance().apply { timeInMillis = time }
-        cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(Calendar.SECOND, 59); cal.set(Calendar.MILLISECOND, 999)
+        cal.set(Calendar.HOUR_OF_DAY, 23); cal.set(Calendar.MINUTE, 59); cal.set(
+            Calendar.SECOND,
+            59
+        ); cal.set(Calendar.MILLISECOND, 999)
         return cal.timeInMillis
     }
 
     private fun isSameDay(t1: Long, t2: Long): Boolean {
         val c1 = Calendar.getInstance().apply { timeInMillis = t1 }
         val c2 = Calendar.getInstance().apply { timeInMillis = t2 }
-        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) && c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) && c1.get(Calendar.DAY_OF_YEAR) == c2.get(
+            Calendar.DAY_OF_YEAR
+        )
     }
 
     private fun formatDate(time: Long): String {
         val date = java.util.Date(time)
-        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", java.util.Locale("vi", "VN"))
-        return if (isSameDay(time, System.currentTimeMillis())) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
+        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", java.util.Locale.forLanguageTag("vi-VN"))
+        return if (isSameDay(
+                time,
+                System.currentTimeMillis()
+            )
+        ) "Hôm nay, ${fmt.format(date)}" else fmt.format(date)
     }
 }

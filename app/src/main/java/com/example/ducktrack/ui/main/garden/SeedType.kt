@@ -80,6 +80,6 @@ enum class SeedType(
     );
 
     companion object {
-        fun fromId(id: String?): SeedType? = values().find { it.id == id }
+        fun fromId(id: String?): SeedType? = entries.find { it.id == id }
     }
 }

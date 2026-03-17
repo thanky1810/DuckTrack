@@ -38,14 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.AppRoot.AuthViewModelFactory
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.ui.theme.AppColors
 import java.text.SimpleDateFormat
 import java.util.Locale
-import com.example.ducktrack.ui.main.settings.AchievementList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

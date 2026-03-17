@@ -2,15 +2,12 @@ package com.example.ducktrack
 
 import android.app.AppOpsManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
-import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.work.*
-import com.example.ducktrack.ui.AppRoot.AppRoot
+import com.example.ducktrack.ui.approot.AppRoot
 import com.example.ducktrack.ui.components.SnowfallEffect
 import com.example.ducktrack.ui.main.settings.SettingsViewModel
 // [SỬA LỖI] Import đúng file Theme mới

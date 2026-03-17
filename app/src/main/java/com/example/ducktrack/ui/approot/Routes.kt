@@ -1,4 +1,4 @@
-package com.example.ducktrack.ui.AppRoot
+package com.example.ducktrack.ui.approot
 
 object Routes {
     // --- Các màn hình chính (Top Level) ---
@@ -16,7 +16,7 @@ object Routes {
     const val Achievements = "achievements"
     const val Statistics = "statistics"
 
-    // --- MỚI: Màn hình AI Chat ---
+    // --- Màn hình AI Chat ---
     const val AiChat = "ai_chat"
 
     // --- Các màn hình trong Bottom Navigation ---

@@ -2,7 +2,13 @@ package com.example.ducktrack.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
@@ -51,12 +57,9 @@ fun SnowfallEffect() {
         }
     }
 
-    var time by remember { mutableLongStateOf(0L) }
-
     LaunchedEffect(Unit) {
         while (isActive) {
-            withFrameNanos { frameTime ->
-                time = frameTime
+            withFrameNanos { _ ->
                 snowflakes.forEach { flake ->
                     flake.y += flake.speed
                     // Rơi xuống đáy thì reset
@@ -72,8 +75,6 @@ fun SnowfallEffect() {
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val trigger = time
-
         snowflakes.forEach { flake ->
             scale(scale = flake.scale, pivot = Offset(flake.x, flake.y)) {
                 val topLeftX = flake.x - (flake.bitmap.width / 2f)
