@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.ducktrack.ui.main.garden.GardenViewModel
 import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
-import kotlin.jvm.java
 
 /**
  * Factory này "dạy" hệ thống cách tạo AndroidViewModel (như PomodoroViewModel
@@ -19,6 +18,7 @@ class ViewModelFactory(private val application: Application) : ViewModelProvider
             modelClass.isAssignableFrom(PomodoroViewModel::class.java) -> {
                 PomodoroViewModel(application) as T
             }
+
             modelClass.isAssignableFrom(GardenViewModel::class.java) -> {
                 GardenViewModel(application) as T
             }

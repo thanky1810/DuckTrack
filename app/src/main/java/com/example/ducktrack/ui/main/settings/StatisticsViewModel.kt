@@ -20,7 +20,6 @@ data class AppUsageInfo(
 class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo = UsageRepository(application)
-    private val pm = application.packageManager
 
     // Map<Tên hiển thị, Số giờ>
     private val _last7DaysData = MutableStateFlow<Map<String, Float>>(emptyMap())
@@ -54,7 +53,8 @@ class StatisticsViewModel(application: Application) : AndroidViewModel(applicati
                 cal.timeInMillis = System.currentTimeMillis()
                 cal.add(Calendar.DAY_OF_YEAR, -i)
                 val dateMs = cal.timeInMillis
-                val day = cal.get(Calendar.DAY_OF_MONTH); val month = cal.get(Calendar.MONTH) + 1
+                val day = cal.get(Calendar.DAY_OF_MONTH)
+                val month = cal.get(Calendar.MONTH) + 1
                 val key = "$day/$month"
                 val apps = repo.queryUsageForDate(dateMs)
                 map7[key] = apps.sumOf { it.totalForegroundMs } / (1000f * 60 * 60)

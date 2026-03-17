@@ -3,12 +3,24 @@ package com.example.ducktrack.ui.main.tasks
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material3.*
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +67,11 @@ fun TaskItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.1f))
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = Color.Black.copy(alpha = 0.1f)
+            )
             .clip(RoundedCornerShape(16.dp))
             .background(finalBgColor)
             .combinedClickable(
@@ -88,12 +104,15 @@ fun TaskItem(
             )
 
             // Hiển thị thẻ (Chỉ hiện khi chưa hoàn thành để đỡ rối, hoặc bỏ điều kiện !isCompleted nếu muốn hiện luôn)
-            if (tagLabel != null && tagColor != null && !task.isCompleted) {
+            if (!task.isCompleted) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Surface(
                     color = tagColor.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(4.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, tagColor.copy(alpha = 0.3f))
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        tagColor.copy(alpha = 0.3f)
+                    )
                 ) {
                     Text(
                         text = tagLabel,
@@ -110,12 +129,22 @@ fun TaskItem(
 
         if (!task.isCompleted && !isSelected) {
             IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
-                Icon(imageVector = Icons.Default.Edit, contentDescription = "Sửa", tint = Color(0xFF9E9E9E), modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Sửa",
+                    tint = Color(0xFF9E9E9E),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
         if (task.isPinned) {
             IconButton(onClick = onPinClick, modifier = Modifier.size(36.dp)) {
-                Icon(imageVector = Icons.Filled.PushPin, contentDescription = "Ghim", tint = pinColor, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Filled.PushPin,
+                    contentDescription = "Ghim",
+                    tint = pinColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

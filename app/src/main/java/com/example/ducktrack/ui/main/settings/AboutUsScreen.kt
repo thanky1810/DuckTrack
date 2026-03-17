@@ -3,7 +3,16 @@ package com.example.ducktrack.ui.main.settings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,7 +22,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,9 +124,15 @@ fun AboutUsScreen(
                 icon = Icons.Default.Code
             ) {
                 MemberRow("Thân Văn Ký", "Leader / Developer")
-                Divider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(
+                    color = Color(0xFFEEEEEE),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
                 MemberRow("Vũ Trí Dũng", "Developer")
-                Divider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(
+                    color = Color(0xFFEEEEEE),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
                 MemberRow("Nguyễn Thị Hương Giang", "Developer")
             }
 
@@ -158,7 +183,12 @@ fun MemberRow(name: String, role: String) {
                 .background(Color(0xFFE0F2F1), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Person, null, tint = AppColors.TextGreen, modifier = Modifier.size(20.dp))
+            Icon(
+                Icons.Default.Person,
+                null,
+                tint = AppColors.TextGreen,
+                modifier = Modifier.size(20.dp)
+            )
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {

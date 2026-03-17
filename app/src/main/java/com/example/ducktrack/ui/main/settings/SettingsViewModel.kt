@@ -17,18 +17,30 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val userPrefs = UserPreferences(application)
 
     // Các State cũ
-    val isVibration = userPrefs.isVibrationEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val isVibration = userPrefs.isVibrationEnabled.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        true
+    )
 
-    val isKeepScreenOn = userPrefs.isKeepScreenOn
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val isKeepScreenOn = userPrefs.isKeepScreenOn.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
 
-    val isMonitoringEnabled = OverlayService.isServiceRunning
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val isMonitoringEnabled = OverlayService.isServiceRunning.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
 
     // --- CÁC STATE MỚI CHO THEME ---
-    val isChristmasTheme = userPrefs.isChristmasTheme
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val isChristmasTheme = userPrefs.isChristmasTheme.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
 
     private val _isThemeChanging = MutableStateFlow(false)
     val isThemeChanging = _isThemeChanging.asStateFlow()

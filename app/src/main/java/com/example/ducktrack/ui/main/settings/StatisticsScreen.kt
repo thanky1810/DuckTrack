@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +53,12 @@ fun StatisticsScreen(
         containerColor = Color(0xFFF5F5F5)
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = AppColors.ButtonGreen)
             }
         } else {
@@ -126,7 +132,12 @@ fun StatsCardWithZoomList(
             Spacer(modifier = Modifier.height(20.dp))
 
             if (chartData.isEmpty() || chartData.values.all { it == 0f }) {
-                Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("Chưa có dữ liệu", color = Color.LightGray)
                 }
             } else {
@@ -152,16 +163,23 @@ fun StatsCardWithZoomList(
                         "↔ Vuốt/Kéo để Zoom",
                         fontSize = 10.sp,
                         color = Color.LightGray,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Divider(color = Color(0xFFEEEEEE))
+                HorizontalDivider(color = Color(0xFFEEEEEE))
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // --- DANH SÁCH CHI TIẾT ---
-                Text("Chi tiết:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+                Text(
+                    "Chi tiết:",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 listData.forEach { info ->
@@ -176,7 +194,9 @@ fun StatsCardWithZoomList(
                             text = info.name,
                             fontSize = 14.sp,
                             color = Color.DarkGray,
-                            modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp)
                         )
                         Text(
                             text = info.timeDisplay,
@@ -185,7 +205,7 @@ fun StatsCardWithZoomList(
                             color = barColor
                         )
                     }
-                    Divider(color = Color(0xFFF5F5F5))
+                    HorizontalDivider(color = Color(0xFFF5F5F5))
                 }
             }
         }

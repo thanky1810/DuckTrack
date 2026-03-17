@@ -10,15 +10,51 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,9 +68,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.PermissionHelper
 
@@ -89,21 +125,63 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Cài đặt", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
+        Text(
+            "Cài đặt",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         // 1. THẺ USER
         Card(
-            modifier = Modifier.fillMaxWidth().clickable { onNavigateToProfile() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateToProfile() },
             colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.1f)),
             shape = RoundedCornerShape(12.dp),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
-            Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(70.dp)) {
                     val base64Str = userInfo?.photoBase64
-                    val bitmap = remember(base64Str) { try { val b = Base64.decode(base64Str, Base64.DEFAULT); BitmapFactory.decodeByteArray(b, 0, b.size).asImageBitmap() } catch (e: Exception) { null } }
-                    if (bitmap != null) Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape), contentScale = ContentScale.Crop)
-                    else Image(painter = painterResource(R.drawable.duck_waiting), contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape).border(2.dp, primaryColor, CircleShape), contentScale = ContentScale.Crop)
+                    val bitmap = remember(base64Str) {
+                        try {
+                            val b = Base64.decode(
+                                base64Str,
+                                Base64.DEFAULT
+                            ); BitmapFactory.decodeByteArray(
+                                b,
+                                0,
+                                b.size
+                            ).asImageBitmap()
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    if (bitmap != null) Image(
+                        bitmap = bitmap,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, primaryColor, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    else Image(
+                        painter = painterResource(R.drawable.duck_waiting),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(2.dp, primaryColor, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -113,38 +191,82 @@ fun SettingsScreen(
                         Surface(
                             color = Color(0xFFFFF9C4),
                             shape = RoundedCornerShape(50),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBC02D)),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                Color(0xFFFBC02D)
+                            ),
                             modifier = Modifier.padding(bottom = 4.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
-                                Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFF57F17), modifier = Modifier.size(12.dp))
+                                Icon(
+                                    Icons.Default.EmojiEvents,
+                                    null,
+                                    tint = Color(0xFFF57F17),
+                                    modifier = Modifier.size(12.dp)
+                                )
                                 Spacer(Modifier.width(4.dp))
-                                Text(text = selectedTitle, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF57F17))
+                                Text(
+                                    text = selectedTitle,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF57F17)
+                                )
                             }
                         }
                     }
-                    Text(text = userInfo?.name ?: "Đang tải...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Text(text = "Xem hồ sơ chi tiết & thống kê", fontSize = 12.sp, color = primaryColor)
+                    Text(
+                        text = userInfo?.name ?: "Đang tải...",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "Xem hồ sơ chi tiết & thống kê",
+                        fontSize = 12.sp,
+                        color = primaryColor
+                    )
                 }
                 Icon(Icons.Default.ChevronRight, null, tint = primaryColor)
             }
         }
 
         // 2. TRẢI NGHIỆM
-        Text("Trải nghiệm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
+        Text(
+            "Trải nghiệm",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Column(modifier = Modifier.padding(16.dp)) {
 
                 // NÚT THEME GIÁNG SINH
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Chế độ Giáng sinh 🎄", fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Color.Black)
+                            Text(
+                                "Chế độ Giáng sinh 🎄",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            )
                         }
-                        Text("Giao diện đỏ, nhạc vui nhộn & tuyết rơi", fontSize = 12.sp, color = Color.Gray)
+                        Text(
+                            "Giao diện đỏ, nhạc vui nhộn & tuyết rơi",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
                     }
                     Switch(
                         checked = isChristmas,
@@ -156,17 +278,35 @@ fun SettingsScreen(
                     )
                 }
 
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
-                SettingSwitchRow("Rung khi hết giờ", "Rung điện thoại khi hoàn thành phiên", isVibration) { settingsViewModel.setVibration(it) }
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                SettingSwitchRow("Giữ màn hình sáng", "Không tắt màn hình khi đang tập trung", isKeepScreenOn) { settingsViewModel.setKeepScreenOn(it) }
+                SettingSwitchRow(
+                    "Rung khi hết giờ",
+                    "Rung điện thoại khi hoàn thành phiên",
+                    isVibration
+                ) { settingsViewModel.setVibration(it) }
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                SettingSwitchRow(
+                    "Giữ màn hình sáng",
+                    "Không tắt màn hình khi đang tập trung",
+                    isKeepScreenOn
+                ) { settingsViewModel.setKeepScreenOn(it) }
             }
         }
 
         // 3. DỮ LIỆU & ỨNG DỤNG
-        Text("Dữ liệu & Ứng dụng", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
+        Text(
+            "Dữ liệu & Ứng dụng",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Column(modifier = Modifier.padding(16.dp)) {
 
                 // [CHÈN THÊM ĐOẠN NÀY] - Nút mở màn hình AI Chat
@@ -176,7 +316,7 @@ fun SettingsScreen(
                     subtitle = "Phân tích thói quen và trò chuyện"
                 ) { onNavigateToAiChat() }
 
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
                 SettingActionRow(
                     icon = Icons.Default.Download,
@@ -184,7 +324,7 @@ fun SettingsScreen(
                     subtitle = "Tải về và quản lý các file báo cáo CSV"
                 ) { onNavigateToExportHistory() }
 
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
                 SettingActionRow(
                     icon = Icons.Default.EmojiEvents,
@@ -192,7 +332,7 @@ fun SettingsScreen(
                     subtitle = "Xem danh hiệu bạn đã đạt được"
                 ) { onNavigateToAchievements() }
 
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
 
                 SettingActionRow(
                     icon = Icons.Default.Info,
@@ -203,44 +343,87 @@ fun SettingsScreen(
         }
 
         // 4. LIÊN KẾT TÀI KHOẢN
-        Text("Liên kết tài khoản", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp)) {
+        Text(
+            "Liên kết tài khoản",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                AccountLinkRow(R.drawable.ic_google, "Google", linkedProviders.contains("google.com"),
-                    onLink = { Toast.makeText(context, "Đăng nhập Google trước", Toast.LENGTH_SHORT).show() },
-                    onUnlink = { authViewModel.unlinkProvider("google.com", { linkedProviders = authViewModel.getLinkedProviders() }, { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }) }
+                AccountLinkRow(
+                    R.drawable.ic_google, "Google", linkedProviders.contains("google.com"),
+                    onLink = {
+                        Toast.makeText(context, "Đăng nhập Google trước", Toast.LENGTH_SHORT).show()
+                    },
+                    onUnlink = {
+                        authViewModel.unlinkProvider(
+                            "google.com",
+                            { linkedProviders = authViewModel.getLinkedProviders() },
+                            { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() })
+                    }
                 )
-                Divider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
-                AccountLinkRow(R.drawable.ic_github, "GitHub", linkedProviders.contains("github.com"),
-                    onLink = { val activity = context.findActivity(); if(activity!=null) authViewModel.linkWithGithub(activity, { linkedProviders = authViewModel.getLinkedProviders() }, {Toast.makeText(context, it, Toast.LENGTH_SHORT).show()}) },
-                    onUnlink = { authViewModel.unlinkProvider("github.com", { linkedProviders = authViewModel.getLinkedProviders() }, { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }) }
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+                AccountLinkRow(
+                    R.drawable.ic_github, "GitHub", linkedProviders.contains("github.com"),
+                    onLink = {
+                        val activity =
+                            context.findActivity(); if (activity != null) authViewModel.linkWithGithub(
+                        activity,
+                        { linkedProviders = authViewModel.getLinkedProviders() },
+                        { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() })
+                    },
+                    onUnlink = {
+                        authViewModel.unlinkProvider(
+                            "github.com",
+                            { linkedProviders = authViewModel.getLinkedProviders() },
+                            { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() })
+                    }
                 )
             }
         }
 
-        Divider(color = Color(0xFFEEEEEE))
+        HorizontalDivider(color = Color(0xFFEEEEEE))
         MonitoringControlSection(settingsViewModel)
-        Divider(color = Color(0xFFEEEEEE))
+        HorizontalDivider(color = Color(0xFFEEEEEE))
 
         Button(
             onClick = onLogout,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF757575)),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Icon(Icons.Filled.ExitToApp, null); Spacer(Modifier.width(8.dp)); Text("Đăng xuất", fontWeight = FontWeight.Bold)
+            Icon(Icons.AutoMirrored.Filled.ExitToApp, null); Spacer(Modifier.width(8.dp)); Text(
+            "Đăng xuất",
+            fontWeight = FontWeight.Bold
+        )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedButton(
             onClick = { showDeleteDialog = true },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD32F2F)),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Icon(Icons.Default.DeleteForever, null); Spacer(Modifier.width(8.dp)); Text("Xóa tài khoản vĩnh viễn", fontWeight = FontWeight.Bold)
+            Icon(
+                Icons.Default.DeleteForever,
+                null
+            ); Spacer(Modifier.width(8.dp)); Text(
+            "Xóa tài khoản vĩnh viễn",
+            fontWeight = FontWeight.Bold
+        )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -248,16 +431,22 @@ fun SettingsScreen(
 
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Xóa tài khoản?", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)) },
+            onDismissRequest = { },
+            title = {
+                Text(
+                    "Xóa tài khoản?",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFD32F2F)
+                )
+            },
             text = { Text("Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu (Nhiệm vụ, Cây trồng, Thành tựu) của bạn trên máy chủ. Bạn không thể hoàn tác.") },
             confirmButton = {
                 Button(
                     onClick = {
-                        showDeleteDialog = false
                         authViewModel.deleteAccount(
                             onSuccess = {
-                                Toast.makeText(context, "Đã xóa tài khoản", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Đã xóa tài khoản", Toast.LENGTH_SHORT)
+                                    .show()
                                 onLogout()
                             },
                             onError = { msg ->
@@ -271,7 +460,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = {  }) {
                     Text("Hủy", color = Color.Gray)
                 }
             },
@@ -284,19 +473,40 @@ fun SettingsScreen(
 // --- CÁC HÀM COMPOSABLE BỊ THIẾU Ở BƯỚC TRƯỚC ---
 
 @Composable
-fun SettingSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+fun SettingSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Color.Black)
             Text(subtitle, fontSize = 12.sp, color = Color.Gray)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AppColors.ButtonGreen))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = AppColors.ButtonGreen
+            )
+        )
     }
 }
 
 @Composable
-fun SettingActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
+fun SettingActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }) {
         Icon(icon, null, tint = AppColors.TextGreen, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -308,13 +518,40 @@ fun SettingActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, titl
 }
 
 @Composable
-fun AccountLinkRow(iconRes: Int, providerName: String, isLinked: Boolean, onLink: () -> Unit, onUnlink: () -> Unit) {
+fun AccountLinkRow(
+    iconRes: Int,
+    providerName: String,
+    isLinked: Boolean,
+    onLink: () -> Unit,
+    onUnlink: () -> Unit
+) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(24.dp))
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
         Spacer(Modifier.width(12.dp))
-        Text(text = providerName, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), color = Color.Black)
-        if (isLinked) TextButton(onClick = onUnlink) { Text("Đã kết nối", color = AppColors.TextGreen, fontWeight = FontWeight.Bold) }
-        else Button(onClick = onLink, colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), modifier = Modifier.height(36.dp)) { Text("Kết nối", fontSize = 12.sp) }
+        Text(
+            text = providerName,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+            color = Color.Black
+        )
+        if (isLinked) TextButton(onClick = onUnlink) {
+            Text(
+                "Đã kết nối",
+                color = AppColors.TextGreen,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        else Button(
+            onClick = onLink,
+            colors = ButtonDefaults.buttonColors(containerColor = AppColors.ButtonGreen),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.height(36.dp)
+        ) { Text("Kết nối", fontSize = 12.sp) }
     }
 }
 
@@ -322,15 +559,42 @@ fun AccountLinkRow(iconRes: Int, providerName: String, isLinked: Boolean, onLink
 private fun MonitoringControlSection(viewModel: SettingsViewModel) {
     val context = LocalContext.current
     val isMonitoring by viewModel.isMonitoringEnabled.collectAsState()
-    var hasOverlayPermission by remember { mutableStateOf(PermissionHelper.hasOverlayPermission(context)) }
+    var hasOverlayPermission by remember {
+        mutableStateOf(
+            PermissionHelper.hasOverlayPermission(
+                context
+            )
+        )
+    }
     LaunchedEffect(Unit) { hasOverlayPermission = PermissionHelper.hasOverlayPermission(context) }
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(0.dp)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Giám sát thời gian sử dụng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.Black)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                "Giám sát thời gian sử dụng",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
             if (!hasOverlayPermission) {
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)), shape = RoundedCornerShape(8.dp)) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text("⚠️ Cần quyền hiển thị overlay", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)); Spacer(Modifier.height(8.dp))
+                        Text(
+                            "⚠️ Cần quyền hiển thị overlay",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFD32F2F)
+                        ); Spacer(Modifier.height(8.dp))
                         Button(
                             onClick = {
                                 val activity = context.findActivity()
@@ -345,7 +609,11 @@ private fun MonitoringControlSection(viewModel: SettingsViewModel) {
                     }
                 }
             }
-            SettingSwitchRow("Kích hoạt giám sát", if (isMonitoring) "Đang hoạt động" else "Tắt", isMonitoring) { viewModel.setMonitoringEnabled(it) }
+            SettingSwitchRow(
+                "Kích hoạt giám sát",
+                if (isMonitoring) "Đang hoạt động" else "Tắt",
+                isMonitoring
+            ) { viewModel.setMonitoringEnabled(it) }
         }
     }
 }

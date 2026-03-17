@@ -1,10 +1,21 @@
 package com.example.ducktrack.ui.main
 
+// [QUAN TRỌNG] Import LocalDuckColors
 import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -13,8 +24,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +71,6 @@ import com.example.ducktrack.ui.main.pomodoro.PomodoroViewModel
 import com.example.ducktrack.ui.main.settings.SettingsScreen
 import com.example.ducktrack.ui.main.tasks.TasksScreen
 import com.example.ducktrack.ui.theme.AppColors
-// [QUAN TRỌNG] Import LocalDuckColors
 import com.example.ducktrack.ui.theme.LocalDuckColors
 import com.example.ducktrack.utils.PermissionHelper
 import com.example.ducktrack.utils.msToReadable
@@ -67,7 +95,7 @@ fun MainScreen(
 ) {
     val bottomNavController = rememberNavController()
     var currentPageTitle by remember { mutableStateOf("Trang chủ") }
-    var headerNote by remember { mutableStateOf<String?>(null) }
+
 
     val currentBackStack by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = currentBackStack?.destination?.route
@@ -79,7 +107,7 @@ fun MainScreen(
     val dateText = remember(selectedDateMs) {
         val date = Date(selectedDateMs)
         val today = Date()
-        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", Locale("vi", "VN"))
+        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", Locale.forLanguageTag("vi-VN"))
         val fmtCheck = java.text.SimpleDateFormat("yyyyMMdd", Locale.US)
 
         val isToday = fmtCheck.format(date) == fmtCheck.format(today)
@@ -107,11 +135,7 @@ fun MainScreen(
         bottomBar = {
             BottomNavigationBar(
                 navController = bottomNavController,
-                onTabSelected = { title ->
-                    currentPageTitle = title
-                    if (bottomNavController.currentDestination?.route != Routes.Dashboard) {
-                        headerNote = null
-                    }
+                onTabSelected = { _ ->
                 }
             )
         },
@@ -129,7 +153,7 @@ fun MainScreen(
                     DashboardScreen(
                         hasPermission = hasPermission,
                         onGoToPermission = { mainNavController.navigate(Routes.Permission) },
-                        onHeaderNoteChange = { note -> headerNote = note },
+                        onHeaderNoteChange = { _ -> },
                         vm = homeViewModel,
                         onNavigateToStatistics = onNavigateToStatistics
                     )
@@ -137,13 +161,13 @@ fun MainScreen(
 
                 // 2. TASKS
                 composable(Routes.Tasks) {
-                    LaunchedEffect(Unit) { headerNote = null }
+                    LaunchedEffect(Unit) { }
                     TasksScreen()
                 }
 
                 // 3. POMODORO
                 composable(Routes.Pomodoro) {
-                    LaunchedEffect(Unit) { headerNote = null }
+                    LaunchedEffect(Unit) { }
                     key(Routes.Pomodoro + currentRoute) {
                         PomodoroScreen(
                             viewModel = pomodoroViewModel,
@@ -154,7 +178,7 @@ fun MainScreen(
 
                 // 4. GARDEN
                 composable(Routes.Garden) {
-                    LaunchedEffect(Unit) { headerNote = null }
+                    LaunchedEffect(Unit) { }
                     key(Routes.Garden + currentRoute) {
                         GardenScreen(
                             onNavigateToPomodoro = {
@@ -163,7 +187,6 @@ fun MainScreen(
                                     launchSingleTop = true
                                     restoreState = false
                                 }
-                                currentPageTitle = "Pomodoro"
                             }
                         )
                     }
@@ -171,7 +194,7 @@ fun MainScreen(
 
                 // 5. SETTINGS
                 composable(Routes.Settings) {
-                    LaunchedEffect(Unit) { headerNote = null }
+                    LaunchedEffect(Unit) { }
                     SettingsScreen(
                         onLogout = onLogout,
                         onNavigateToProfile = { mainNavController.navigate(Routes.UserProfile) },
@@ -207,9 +230,7 @@ private fun DashboardScreen(
     var editingKey by remember { mutableStateOf<String?>(null) }
     var editingCurrentLimitMinutes by remember { mutableStateOf<Int?>(null) }
 
-    val hasOverlayPermission = remember {
-        mutableStateOf(PermissionHelper.hasOverlayPermission(context))
-    }
+
 
     // Lấy màu Theme
     val currentPrimary = LocalDuckColors.current.primary
@@ -261,9 +282,8 @@ private fun DashboardScreen(
 
     if (showOverlayPermissionDialog) {
         OverlayPermissionDialog(
-            onDismiss = { showOverlayPermissionDialog = false },
+            onDismiss = { },
             onGoToSettings = {
-                showOverlayPermissionDialog = false
                 PermissionHelper.requestOverlayPermission(context as android.app.Activity)
             }
         )
@@ -377,11 +397,9 @@ private fun DashboardScreen(
     if (showLimitDialog && editingApp != null && editingKey != null) {
         TimeLimitDialog(
             initialMinutes = editingCurrentLimitMinutes,
-            onDismiss = { showLimitDialog = false },
+            onDismiss = {
+            },
             onConfirm = { minutes ->
-                if (!hasOverlayPermission.value) {
-                    showOverlayPermissionDialog = true
-                }
                 val app = editingApp!!
                 val key = editingKey!!
                 vm.setLimit(
@@ -389,7 +407,6 @@ private fun DashboardScreen(
                     minutes = minutes,
                     baselineMs = app.totalForegroundMs
                 )
-                showLimitDialog = false
             }
         )
     }

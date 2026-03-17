@@ -4,27 +4,54 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -79,7 +106,7 @@ fun TasksScreen(
                 modifier = Modifier.align(Alignment.CenterStart)
             ) {
                 Icon(
-                    imageVector = if (viewMode == TaskViewMode.LIST) Icons.Default.Dashboard else Icons.Default.List,
+                    imageVector = if (viewMode == TaskViewMode.LIST) Icons.Default.Dashboard else Icons.AutoMirrored.Filled.List,
                     contentDescription = "Switch View",
                     tint = Color(0xFF62B26A)
                 )
@@ -107,7 +134,11 @@ fun TasksScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = { viewModel.previousDay() }, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Trước", tint = Color(0xFF33691E))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Trước",
+                    tint = Color(0xFF33691E)
+                )
             }
             Text(
                 text = dateText,
@@ -116,7 +147,11 @@ fun TasksScreen(
                 color = Color(0xFF33691E)
             )
             IconButton(onClick = { viewModel.nextDay() }, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Sau", tint = Color(0xFF33691E))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Sau",
+                    tint = Color(0xFF33691E)
+                )
             }
         }
 
@@ -149,7 +184,7 @@ fun TasksScreen(
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         Text(
-                            text = if(isToday) "Hôm nay chưa có nhiệm vụ nào" else "Chưa có nhiệm vụ nào",
+                            text = if (isToday) "Hôm nay chưa có nhiệm vụ nào" else "Chưa có nhiệm vụ nào",
                             color = Color.Gray,
                             fontSize = 14.sp
                         )
@@ -157,7 +192,9 @@ fun TasksScreen(
                         Image(
                             painter = painterResource(id = R.drawable.duck_celebrate),
                             contentDescription = null,
-                            modifier = Modifier.size(150.dp).padding(bottom = 32.dp)
+                            modifier = Modifier
+                                .size(150.dp)
+                                .padding(bottom = 32.dp)
                         )
                     }
                 } else {
@@ -198,7 +235,7 @@ fun TasksScreen(
             }
         } else {
             // === GIAO DIỆN MỚI (MA TRẬN EISENHOWER) ===
-            EisenhowerMatrixView(tasks, viewModel, focusManager)
+            EisenhowerMatrixView(tasks, viewModel)
         }
     }
 }
@@ -208,8 +245,7 @@ fun TasksScreen(
 @Composable
 fun EisenhowerMatrixView(
     tasks: List<TodoTask>,
-    viewModel: TasksViewModel,
-    focusManager: androidx.compose.ui.focus.FocusManager
+    viewModel: TasksViewModel
 ) {
     // Dialog thêm nhanh
     var showAddDialog by remember { mutableStateOf<Pair<Boolean, Boolean>?>(null) }
@@ -217,12 +253,12 @@ fun EisenhowerMatrixView(
 
     if (showAddDialog != null) {
         AlertDialog(
-            onDismissRequest = { showAddDialog = null; quickTaskText = "" },
+            onDismissRequest = { },
             title = { Text("Thêm nhiệm vụ", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = quickTaskText,
-                    onValueChange = { quickTaskText = it },
+                    onValueChange = { },
                     label = { Text("Nội dung") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -234,25 +270,34 @@ fun EisenhowerMatrixView(
                         val (imp, urg) = showAddDialog!!
                         viewModel.onNewTaskTextChange(quickTaskText)
                         viewModel.onAddTask(isImportant = imp, isUrgent = urg)
-                        showAddDialog = null
-                        quickTaskText = ""
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF62B26A))
                 ) { Text("Thêm") }
             },
-            dismissButton = { TextButton(onClick = { showAddDialog = null }) { Text("Hủy") } }
+            dismissButton = { TextButton(onClick = { }) { Text("Hủy") } }
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 8.dp)
+    ) {
         // Hàng trên
-        Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
             QuadrantBox(
                 title = "Quan trọng & Khẩn cấp",
                 color = Color(0xFFFFEBEE),
                 headerColor = Color(0xFFD32F2F),
                 tasks = tasks.filter { it.isImportant && it.isUrgent },
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp),
                 onAddTask = { showAddDialog = Pair(true, true) },
                 viewModel = viewModel
             )
@@ -261,19 +306,29 @@ fun EisenhowerMatrixView(
                 color = Color(0xFFE3F2FD),
                 headerColor = Color(0xFF1976D2),
                 tasks = tasks.filter { it.isImportant && !it.isUrgent },
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp),
                 onAddTask = { showAddDialog = Pair(true, false) },
                 viewModel = viewModel
             )
         }
         // Hàng dưới
-        Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
             QuadrantBox(
                 title = "Không quan trọng & Khẩn cấp",
                 color = Color(0xFFFFF3E0),
                 headerColor = Color(0xFFF57C00),
                 tasks = tasks.filter { !it.isImportant && it.isUrgent },
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp),
                 onAddTask = { showAddDialog = Pair(false, true) },
                 viewModel = viewModel
             )
@@ -282,7 +337,10 @@ fun EisenhowerMatrixView(
                 color = Color(0xFFF1F8E9),
                 headerColor = Color(0xFF388E3C),
                 tasks = tasks.filter { !it.isImportant && !it.isUrgent },
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp),
                 onAddTask = { showAddDialog = Pair(false, false) },
                 viewModel = viewModel
             )
@@ -308,7 +366,9 @@ fun QuadrantBox(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -328,9 +388,11 @@ fun QuadrantBox(
                     Icon(Icons.Default.Add, contentDescription = "Add", tint = headerColor)
                 }
             }
-            Divider(color = headerColor.copy(alpha = 0.3f))
+            HorizontalDivider(color = headerColor.copy(alpha = 0.3f))
             LazyColumn(
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp),
                 contentPadding = PaddingValues(vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -342,15 +404,23 @@ fun QuadrantBox(
                         shadowElevation = 1.dp
                     ) {
                         Row(
-                            modifier = Modifier.padding(6.dp).fillMaxWidth(),
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(16.dp)
-                                    .background(if(task.isCompleted) headerColor else Color.Transparent, RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (task.isCompleted) headerColor else Color.Transparent,
+                                        RoundedCornerShape(4.dp)
+                                    )
                                     .clickable { viewModel.onTaskClick(task) }
-                                    .background(Color.Transparent, RoundedCornerShape(4.dp)) // border fix
+                                    .background(
+                                        Color.Transparent,
+                                        RoundedCornerShape(4.dp)
+                                    ) // border fix
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(

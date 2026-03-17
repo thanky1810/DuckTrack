@@ -2,14 +2,44 @@ package com.example.ducktrack.ui.main.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,8 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.AuthViewModel
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.HistoryItem
 import java.text.SimpleDateFormat
@@ -44,10 +74,12 @@ fun ExportHistoryScreen(
 
     // --- HÀM XUẤT FILE ĐƠN GIẢN (CHỈ LƯU) ---
     val performExport = {
-        authViewModel.exportData(context,
+        authViewModel.exportData(
+            context,
             onSuccess = { path ->
                 // Chỉ hiện thông báo và cập nhật danh sách
-                Toast.makeText(context, "Xuất thành công! File đã lưu vào máy.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Xuất thành công! File đã lưu vào máy.", Toast.LENGTH_SHORT)
+                    .show()
                 exportViewModel.onExportSuccess(context, path)
             },
             onError = { err ->
@@ -64,7 +96,14 @@ fun ExportHistoryScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Lịch sử xuất dữ liệu", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            "Back"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
@@ -140,13 +179,22 @@ fun LatestExportCard(item: HistoryItem, onReExport: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Star, null, tint = Color(0xFF1976D2))
                 Spacer(Modifier.width(8.dp))
-                Text("BẢN XUẤT GẦN NHẤT", fontWeight = FontWeight.Bold, color = Color(0xFF1976D2), fontSize = 12.sp)
+                Text(
+                    "BẢN XUẤT GẦN NHẤT",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1976D2),
+                    fontSize = 12.sp
+                )
             }
             Spacer(Modifier.height(12.dp))
 
             Text(item.fileName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             // Hiển thị một phần đường dẫn
-            Text("Đường dẫn: ...${item.filePath.takeLast(35)}", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                "Đường dẫn: ...${item.filePath.takeLast(35)}",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -184,18 +232,40 @@ fun HistoryItemRow(item: HistoryItem) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Description, null, tint = Color.Gray, modifier = Modifier.size(32.dp))
+            Icon(
+                Icons.Default.Description,
+                null,
+                tint = Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.fileName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    item.fileName,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(Modifier.height(4.dp))
                 Row {
-                    Text(dateFormat.format(Date(item.dateModified)), fontSize = 11.sp, color = Color.Gray)
+                    Text(
+                        dateFormat.format(Date(item.dateModified)),
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
                     Text(" • ${item.fileSize}", fontSize = 11.sp, color = Color.Gray)
                 }
                 Spacer(Modifier.height(2.dp))
-                Text(prettyPath, fontSize = 10.sp, color = Color.LightGray, fontStyle = FontStyle.Italic, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    prettyPath,
+                    fontSize = 10.sp,
+                    color = Color.LightGray,
+                    fontStyle = FontStyle.Italic,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
