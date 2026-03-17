@@ -15,6 +15,5 @@ val Shapes = Shapes(
     large = RoundedCornerShape(24.dp),
 
     // Bo tròn cực đại (nhưng cố định dp để không bị thành hình trứng/viên thuốc)
-    // Giảm từ 50 xuống 28.dp để nó chỉ bo góc thôi, không tròn vo.
     extraLarge = RoundedCornerShape(28.dp)
 )

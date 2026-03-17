@@ -51,7 +51,8 @@ class LimitCheckWorker(
         val channelId = "limit"
 
         if (Build.VERSION.SDK_INT >= 26) {
-            val sys = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val sys =
+                applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val ch = NotificationChannel(
                 channelId,
                 "Giới hạn",

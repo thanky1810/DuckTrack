@@ -20,8 +20,8 @@ data class TreeHistoryCsvItem(
     val timestamp: Long,
     val configParam: String,
     val status: String,
-    val setIndex: Int = 0,      // Bộ phiên
-    val sessionIndex: Int = 0   // Thứ tự phiên
+    val setIndex: Int = 0,
+    val sessionIndex: Int = 0
 )
 
 data class AppUsageCsvItem(
@@ -54,7 +54,10 @@ object CsvExporter {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/DuckTrack")
+                    put(
+                        MediaStore.MediaColumns.RELATIVE_PATH,
+                        Environment.DIRECTORY_DOWNLOADS + "/DuckTrack"
+                    )
                 }
 
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
@@ -65,12 +68,14 @@ object CsvExporter {
                     outputStream.write(csvContent.toByteArray(Charsets.UTF_8))
                 }
 
-                val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/DuckTrack/" + fileName
+                val path =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath + "/DuckTrack/" + fileName
                 path
 
             } else {
                 // Android 9-: Dùng File thường
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val downloadsDir =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 val appDir = File(downloadsDir, "DuckTrack")
                 if (!appDir.exists()) appDir.mkdirs()
 
@@ -95,7 +100,7 @@ object CsvExporter {
         treeCounts: Map<String, Int>
     ): String {
         val sb = StringBuilder()
-        val fullDateFormat = SimpleDateFormat("dd/MM/yyyy hh:mm:ss aa", Locale("vi", "VN"))
+        val fullDateFormat = SimpleDateFormat("dd/MM/yyyy hh:mm:ss aa", Locale.forLanguageTag("vi-VN"))
         val simpleDateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
         sb.append("=== THÔNG TIN NGƯỜI DÙNG ===\n")
@@ -129,10 +134,15 @@ object CsvExporter {
                 val timeStr = fullDateFormat.format(Date(tree.timestamp))
 
                 // Tách tổng số phiên từ config (vd 25/5/4/15 -> 4)
-                val totalSessions = try { tree.configParam.split("/")[2] } catch (e: Exception) { "?" }
+                val totalSessions = try {
+                    tree.configParam.split("/")[2]
+                } catch (_: Exception) {
+                    "?"
+                }
 
                 val setStr = if (tree.setIndex > 0) "Bộ ${tree.setIndex}" else "-"
-                val sessionStr = if (tree.sessionIndex > 0) "${tree.sessionIndex}/$totalSessions" else "-"
+                val sessionStr =
+                    if (tree.sessionIndex > 0) "${tree.sessionIndex}/$totalSessions" else "-"
 
                 sb.append("${tree.treeType},$timeStr,$setStr,$sessionStr,${tree.configParam},${tree.status}\n")
             }
@@ -143,7 +153,12 @@ object CsvExporter {
         sb.append("Tên Ứng Dụng,Thời Gian Sử Dụng\n")
         if (monthlyApps.isEmpty()) sb.append("Không có dữ liệu usage stats,0\n")
         else monthlyApps.forEach { app ->
-            val timeStr = String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(app.totalTimeInMonthMs), TimeUnit.MILLISECONDS.toMinutes(app.totalTimeInMonthMs) % 60, TimeUnit.MILLISECONDS.toSeconds(app.totalTimeInMonthMs) % 60)
+            val timeStr = String.format(
+                "%02d:%02d:%02d",
+                TimeUnit.MILLISECONDS.toHours(app.totalTimeInMonthMs),
+                TimeUnit.MILLISECONDS.toMinutes(app.totalTimeInMonthMs) % 60,
+                TimeUnit.MILLISECONDS.toSeconds(app.totalTimeInMonthMs) % 60
+            )
             sb.append("${app.appName},$timeStr\n")
         }
         return sb.toString()

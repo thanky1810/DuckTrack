@@ -20,15 +20,26 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
+import androidx.glance.appwidget.provideContent
 import androidx.glance.background
-import androidx.glance.layout.*
+import androidx.glance.color.ColorProvider
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxHeight
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.color.ColorProvider
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.R
 import com.example.ducktrack.ui.main.tasks.TodoTask
@@ -77,7 +88,8 @@ class DuckWidget : GlanceAppWidget() {
         val repo = (context.applicationContext as MyApplication).repository
 
         provideContent {
-            val tasks by repo.getTasksStream(System.currentTimeMillis()).collectAsState(initial = emptyList())
+            val tasks by repo.getTasksStream(System.currentTimeMillis())
+                .collectAsState(initial = emptyList())
 
             GlanceTheme {
                 Column(
@@ -108,24 +120,56 @@ class DuckWidget : GlanceAppWidget() {
 
     @Composable
     fun EisenhowerWidgetContent(tasks: List<TodoTask>) {
-        val doNow = tasks.filter { it.isImportant && it.isUrgent }.sortedBy { it.isCompleted }.take(5)
-        val schedule = tasks.filter { it.isImportant && !it.isUrgent }.sortedBy { it.isCompleted }.take(5)
-        val delegate = tasks.filter { !it.isImportant && it.isUrgent }.sortedBy { it.isCompleted }.take(5)
-        val delete = tasks.filter { !it.isImportant && !it.isUrgent }.sortedBy { it.isCompleted }.take(5)
+        val doNow =
+            tasks.filter { it.isImportant && it.isUrgent }.sortedBy { it.isCompleted }.take(5)
+        val schedule =
+            tasks.filter { it.isImportant && !it.isUrgent }.sortedBy { it.isCompleted }.take(5)
+        val delegate =
+            tasks.filter { !it.isImportant && it.isUrgent }.sortedBy { it.isCompleted }.take(5)
+        val delete =
+            tasks.filter { !it.isImportant && !it.isUrgent }.sortedBy { it.isCompleted }.take(5)
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
             // Hàng 1
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
-                QuadrantBox("Quan trọng & Khẩn cấp", WidgetBgRed, WidgetTextRed, doNow, R.drawable.duck_waiting, GlanceModifier.defaultWeight())
+                QuadrantBox(
+                    "Quan trọng & Khẩn cấp",
+                    WidgetBgRed,
+                    WidgetTextRed,
+                    doNow,
+                    R.drawable.duck_waiting,
+                    GlanceModifier.defaultWeight()
+                )
                 Spacer(GlanceModifier.width(4.dp))
-                QuadrantBox("Quan trọng & Không khẩn cấp", WidgetBgBlue, WidgetTextBlue, schedule, R.drawable.duck_farming, GlanceModifier.defaultWeight())
+                QuadrantBox(
+                    "Quan trọng & Không khẩn cấp",
+                    WidgetBgBlue,
+                    WidgetTextBlue,
+                    schedule,
+                    R.drawable.duck_farming,
+                    GlanceModifier.defaultWeight()
+                )
             }
             Spacer(GlanceModifier.height(4.dp))
             // Hàng 2
             Row(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
-                QuadrantBox("Không quan trọng & Khẩn cấp", WidgetBgOrange, WidgetTextOrange, delegate, R.drawable.duck_happy, GlanceModifier.defaultWeight())
+                QuadrantBox(
+                    "Không quan trọng & Khẩn cấp",
+                    WidgetBgOrange,
+                    WidgetTextOrange,
+                    delegate,
+                    R.drawable.duck_happy,
+                    GlanceModifier.defaultWeight()
+                )
                 Spacer(GlanceModifier.width(4.dp))
-                QuadrantBox("Không quan trọng & Không khẩn cấp", WidgetBgGreen, WidgetTextGreen, delete, R.drawable.duck_celebrate, GlanceModifier.defaultWeight())
+                QuadrantBox(
+                    "Không quan trọng & Không khẩn cấp",
+                    WidgetBgGreen,
+                    WidgetTextGreen,
+                    delete,
+                    R.drawable.duck_celebrate,
+                    GlanceModifier.defaultWeight()
+                )
             }
         }
     }
@@ -139,22 +183,22 @@ class DuckWidget : GlanceAppWidget() {
         emptyImageRes: Int,
         modifier: GlanceModifier
     ) {
-        Column(
-            modifier = modifier
-                .fillMaxHeight()
-                .background(singleColor(bgColor))
-                .cornerRadius(12.dp)
-                .padding(8.dp)
-        ) {
-            Text(
-                text = title,
-                style = TextStyle(
-                    color = singleColor(textColor),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                ),
-                maxLines = 2
-            )
+            Column(
+                modifier = modifier
+                    .fillMaxHeight()
+                    .background(singleColor(bgColor))
+                    .cornerRadius(12.dp)
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        color = singleColor(textColor),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    ),
+                    maxLines = 2
+                )
             Spacer(GlanceModifier.height(6.dp))
 
             if (tasks.isEmpty()) {
@@ -189,8 +233,8 @@ class DuckWidget : GlanceAppWidget() {
                 checked = task.isCompleted,
                 onCheckedChange = actionRunCallback<ToggleTaskAction>(
                     actionParametersOf(
-                        com.example.ducktrack.ui.widget.ActionTaskKey to task.id,
-                        com.example.ducktrack.ui.widget.ActionIsCompletedKey to task.isCompleted
+                        ActionTaskKey to task.id,
+                        ActionIsCompletedKey to task.isCompleted
                     )
                 )
             )

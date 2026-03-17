@@ -37,25 +37,6 @@ object PermissionHelper {
         }
     }
 
-    /**
-     * Kiểm tra có quyền Usage Stats không
-     */
-    fun hasUsageStatsPermission(context: Context): Boolean {
-        val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
-        val end = System.currentTimeMillis()
-        val start = end - 1000 * 60
-        val stats = usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, start, end)
-        return stats != null && stats.isNotEmpty()
-    }
-
-    /**
-     * Yêu cầu quyền Usage Stats
-     */
-    fun requestUsageStatsPermission(activity: Activity) {
-        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-        activity.startActivity(intent)
-    }
-
     // --- THÊM MỚI: QUYỀN THÔNG BÁO (Android 13+) ---
     fun hasNotificationPermission(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
