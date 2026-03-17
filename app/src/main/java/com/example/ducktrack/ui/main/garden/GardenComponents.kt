@@ -3,11 +3,24 @@ package com.example.ducktrack.ui.main.garden
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ... (SeedStoreCard giữ nguyên) ...
 @Composable
 fun SeedStoreCard(
     storeItems: List<StoreItem>,
@@ -26,7 +38,12 @@ fun SeedStoreCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
+        shape = RoundedCornerShape(
+            topStart = 20.dp,
+            topEnd = 20.dp,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        ),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFFA5D6A7))
     ) {
@@ -96,42 +113,3 @@ fun SeedStoreItem(
         }
     }
 }
-// ----------------------------------
-
-// --- SỬA CHỖ NÀY: GardenPlotItem ---
-@Composable
-fun GardenPlotItem(
-    seed: SeedType?,
-    onPlantNowClick: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5EFE6)),
-        modifier = Modifier.aspectRatio(1f)
-    ) {
-        // Giảm padding để cây to hơn
-        Box(
-            modifier = Modifier.fillMaxSize().padding(4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (seed != null) {
-                Image(
-                    painter = painterResource(id = seed.grownIcon),
-                    contentDescription = seed.displayName,
-                    // SỬA: fillMaxSize() để to hết cỡ
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Button(
-                    onClick = onPlantNowClick,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0C378)),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                ) {
-                    Text("Trồng ngay", fontSize = 11.sp, color = Color.Black)
-                }
-            }
-        }
-    }
-}
-// ----------------------------------

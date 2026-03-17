@@ -20,7 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ducktrack.ui.AppRoot.AuthViewModelFactory
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.theme.AppColors
 import com.example.ducktrack.utils.HistoryItem

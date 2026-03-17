@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.AppRoot.Routes
+import com.example.ducktrack.ui.approot.Routes
 // [QUAN TRỌNG] Import LocalDuckColors
 import com.example.ducktrack.ui.theme.LocalDuckColors
 

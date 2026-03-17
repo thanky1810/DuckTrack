@@ -1,9 +1,7 @@
 package com.example.ducktrack.ui.main.pomodoro
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
-import android.os.PowerManager // Import PowerManager
+import android.os.PowerManager
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -11,18 +9,43 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,7 +53,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,8 +62,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.ducktrack.R
-import com.example.ducktrack.utils.formatTime
 import com.example.ducktrack.utils.findActivity
+import com.example.ducktrack.utils.formatTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -62,10 +84,11 @@ fun FocusModeScreen(
     var isSoundMenuExpanded by remember { mutableStateOf(false) }
 
     // --- SỬA LỖI: LẮNG NGHE SỰ KIỆN THOÁT APP (THÔNG MINH HƠN) ---
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // Lấy PowerManager để kiểm tra màn hình có đang sáng không
-    val powerManager = remember { currentContext.getSystemService(Context.POWER_SERVICE) as PowerManager }
+    val powerManager =
+        remember { currentContext.getSystemService(Context.POWER_SERVICE) as PowerManager }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -113,7 +136,12 @@ fun FocusModeScreen(
     LaunchedEffect(uiState.pomodoroState) {
         // Animation
         scope.launch { duckScale.animateTo(1.2f, tween(150)); duckScale.animateTo(1f, tween(150)) }
-        scope.launch { plantScale.animateTo(1.2f, tween(150)); plantScale.animateTo(1f, tween(150)) }
+        scope.launch {
+            plantScale.animateTo(1.2f, tween(150)); plantScale.animateTo(
+            1f,
+            tween(150)
+        )
+        }
 
         // Tự động thoát sau 2s khi hoàn thành (nếu muốn)
         if (uiState.pomodoroState == PomodoroState.Finished) {
@@ -133,7 +161,7 @@ fun FocusModeScreen(
         else -> "PHIÊN $currentSessionDisplay / $targetSession"
     }
 
-    val (duckImageRes, plantImageRes) = when (uiState.pomodoroState) {
+    val (duckImageRes) = when (uiState.pomodoroState) {
         PomodoroState.Ready -> R.drawable.duck_waiting to R.drawable.plant_chit
         PomodoroState.Running -> R.drawable.duck_watering to R.drawable.plant_sendling
         PomodoroState.Break -> R.drawable.duck_waiting to R.drawable.plant_chit
@@ -142,23 +170,33 @@ fun FocusModeScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(Color.White),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
         // Nút chọn nhạc
         if (uiState.pomodoroState != PomodoroState.Finished && uiState.pomodoroState != PomodoroState.Failed) {
             Box(
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 20.dp)
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 40.dp, end = 20.dp)
             ) {
                 Button(
                     onClick = { isSoundMenuExpanded = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0F2F1), contentColor = Color(0xFF00695C)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE0F2F1),
+                        contentColor = Color(0xFF00695C)
+                    ),
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Icon(Icons.Filled.Audiotrack, "Nhạc", modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    val label = if (uiState.selectedSound == BackgroundSound.OFF) "Nhạc nền" else uiState.selectedSound.displayName.substringBefore(" ")
+                    val label =
+                        if (uiState.selectedSound == BackgroundSound.OFF) "Nhạc nền" else uiState.selectedSound.displayName.substringBefore(
+                            " "
+                        )
                     Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
                 DropdownMenu(
@@ -166,15 +204,28 @@ fun FocusModeScreen(
                     onDismissRequest = { isSoundMenuExpanded = false },
                     modifier = Modifier.background(Color.White)
                 ) {
-                    BackgroundSound.values().forEach { sound ->
+                    BackgroundSound.entries.forEach { sound ->
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(sound.displayName, fontWeight = if (sound == uiState.selectedSound) FontWeight.Bold else FontWeight.Normal, color = if (sound == uiState.selectedSound) Color(0xFF2E7D32) else Color.Black)
-                                    if (sound == uiState.selectedSound) { Spacer(Modifier.width(8.dp)); Icon(Icons.Filled.Check, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(16.dp)) }
+                                    Text(
+                                        sound.displayName,
+                                        fontWeight = if (sound == uiState.selectedSound) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (sound == uiState.selectedSound) Color(0xFF2E7D32) else Color.Black
+                                    )
+                                    if (sound == uiState.selectedSound) {
+                                        Spacer(Modifier.width(8.dp)); Icon(
+                                            Icons.Filled.Check,
+                                            null,
+                                            tint = Color(0xFF2E7D32),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             },
-                            onClick = { viewModel.onSoundSelected(sound); isSoundMenuExpanded = false }
+                            onClick = {
+                                viewModel.onSoundSelected(sound); isSoundMenuExpanded = false
+                            }
                         )
                     }
                 }
@@ -187,19 +238,36 @@ fun FocusModeScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                color = if (isBreak) Color(0xFFE0F7FA) else if (uiState.pomodoroState == PomodoroState.Finished) Color(0xFFFFD700) else Color(0xFFF1F8E9),
+                color = if (isBreak) Color(0xFFE0F7FA) else if (uiState.pomodoroState == PomodoroState.Finished) Color(
+                    0xFFFFD700
+                ) else Color(0xFFF1F8E9),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.padding(bottom = 20.dp)
             ) {
-                Text(statusText, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = if (isBreak) Color(0xFF0097A7) else if (uiState.pomodoroState == PomodoroState.Finished) Color.Black else Color(0xFF388E3C), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    statusText,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = if (isBreak) Color(0xFF0097A7) else if (uiState.pomodoroState == PomodoroState.Finished) Color.Black else Color(
+                        0xFF388E3C
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
             }
             Spacer(Modifier.height(20.dp))
-            Text(uiState.remainingTimeMillis.formatTime(), fontSize = 80.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Text(
+                uiState.remainingTimeMillis.formatTime(),
+                fontSize = 80.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
             Spacer(Modifier.height(16.dp))
             Image(
                 painter = painterResource(id = duckImageRes),
                 contentDescription = null,
-                modifier = Modifier.size(250.dp).graphicsLayer(scaleX = duckScale.value, scaleY = duckScale.value),
+                modifier = Modifier
+                    .size(250.dp)
+                    .graphicsLayer(scaleX = duckScale.value, scaleY = duckScale.value),
                 contentScale = ContentScale.Fit
             )
             Spacer(Modifier.height(60.dp))
@@ -215,18 +283,35 @@ fun FocusModeScreen(
                             if (uiState.isTimerRunning) viewModel.onMainButtonClick()
                             showConfirmExitDialog = true
                         },
-                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFEEEEEE))
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFEEEEEE))
                     ) {
-                        Icon(Icons.Filled.Stop, "Stop", tint = Color(0xFFD32F2F), modifier = Modifier.size(24.dp))
+                        Icon(
+                            Icons.Filled.Stop,
+                            "Stop",
+                            tint = Color(0xFFD32F2F),
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
 
                     Button(
                         onClick = { viewModel.onMainButtonClick() },
-                        modifier = Modifier.height(60.dp).width(160.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF212121), contentColor = Color.White),
+                        modifier = Modifier
+                            .height(60.dp)
+                            .width(160.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF212121),
+                            contentColor = Color.White
+                        ),
                         shape = RoundedCornerShape(30.dp)
                     ) {
-                        Icon(if (uiState.isTimerRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow, null, modifier = Modifier.size(32.dp))
+                        Icon(
+                            if (uiState.isTimerRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            null,
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 }
             }
@@ -237,9 +322,8 @@ fun FocusModeScreen(
         ExitConfirmDialog(
             onConfirmExit = {
                 viewModel.cancelSession(isHomeExit = false)
-                showConfirmExitDialog = false
             },
-            onCancel = { showConfirmExitDialog = false }
+            onCancel = {}
         )
     }
 
@@ -250,17 +334,54 @@ fun FocusModeScreen(
 @Composable
 fun ExitConfirmDialog(onConfirmExit: () -> Unit, onCancel: () -> Unit) {
     Dialog(onDismissRequest = onCancel) {
-        Surface(shape = RoundedCornerShape(24.dp), color = Color.White, modifier = Modifier.padding(16.dp)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Bạn muốn dừng phiên này?", fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Bạn muốn dừng phiên này?",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
                 Spacer(Modifier.height(8.dp))
-                Text("Cây sẽ chết và bạn sẽ bị TRỪ ĐIỂM tương ứng với số phiên chưa hoàn thành!", fontSize = 14.sp, color = Color.Red, textAlign = TextAlign.Center, lineHeight = 20.sp)
+                Text(
+                    "Cây sẽ chết và bạn sẽ bị TRỪ ĐIỂM tương ứng với số phiên chưa hoàn thành!",
+                    fontSize = 14.sp,
+                    color = Color.Red,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
                 Spacer(Modifier.height(24.dp))
-                Button(onClick = onConfirmExit, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
-                    Text("Kết thúc & Chấp nhận phạt", color = Color.White, fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = onConfirmExit,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Text(
+                        "Kết thúc & Chấp nhận phạt",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = onCancel, colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black), border = BorderStroke(1.dp, Color.Black), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
+                    border = BorderStroke(1.dp, Color.Black),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
                     Text("Tiếp tục tập trung", fontWeight = FontWeight.Bold)
                 }
             }

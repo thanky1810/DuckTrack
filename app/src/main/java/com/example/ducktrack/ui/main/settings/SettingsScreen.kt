@@ -1,6 +1,5 @@
 package com.example.ducktrack.ui.main.settings
 
-import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.BitmapFactory
@@ -33,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.AppRoot.AuthViewModelFactory
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
 import com.example.ducktrack.ui.theme.AppColors

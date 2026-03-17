@@ -1,7 +1,7 @@
 package com.example.ducktrack.ui.main.pomodoro
 
-import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.R
+import com.example.ducktrack.ui.main.garden.SeedType
 
 enum class BackgroundSound(val displayName: String, val resId: Int?) {
     OFF("Tắt nhạc", null),

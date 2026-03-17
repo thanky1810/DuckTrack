@@ -4,14 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import com.example.ducktrack.ui.theme.AppColors
-import kotlin.collections.forEachIndexed
-import kotlin.collections.map
-import kotlin.collections.sumOf
-import kotlin.let
 import kotlin.math.max
-import kotlin.to
 
 @Composable
 fun PieChart(

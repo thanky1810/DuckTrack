@@ -32,7 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ducktrack.MyApplication
 import com.example.ducktrack.data.model.AppUsage
-import com.example.ducktrack.ui.AppRoot.Routes
+import com.example.ducktrack.ui.approot.Routes
 import com.example.ducktrack.ui.components.AppUsageRow
 import com.example.ducktrack.ui.components.OverlayPermissionDialog
 import com.example.ducktrack.ui.components.PieChart

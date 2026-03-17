@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.example.ducktrack.ui.login
@@ -8,13 +9,30 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
@@ -30,17 +48,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
 import com.example.ducktrack.ui.AuthViewModel
-import com.example.ducktrack.ui.AppRoot.AuthViewModelFactory
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.tasks.Task
-import kotlinx.coroutines.launch
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.CommonStatusCodes
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.theme.AppColors
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
 
 // --- ĐỊNH NGHĨA FONT FAMILY (Đã đổi sang Montserrat) ---
-// Hãy chắc chắn bạn đã copy file 'montserrat_extrabold.ttf' vào res/font
 val MainFontFamily = FontFamily(
     Font(R.font.montserrat_extrabold, FontWeight.ExtraBold)
 )
@@ -57,7 +72,6 @@ fun LoginScreen(
     )
     val coroutineScope = rememberCoroutineScope()
 
-    // ... (Logic đăng nhập giữ nguyên) ...
     val googleAuthLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -123,7 +137,9 @@ fun LoginScreen(
                 Image(
                     painter = painterResource(id = R.drawable.ic_duck_logo),
                     contentDescription = "DuckTrack Logo",
-                    modifier = Modifier.fillMaxHeight(0.5f).aspectRatio(1f),
+                    modifier = Modifier
+                        .fillMaxHeight(0.5f)
+                        .aspectRatio(1f),
                     contentScale = ContentScale.Fit
                 )
             }
@@ -137,7 +153,6 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val textStyleWithShadow = TextStyle(
-                    // SỬ DỤNG FONT MỚI Ở ĐÂY
                     fontFamily = MainFontFamily,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 40.sp,

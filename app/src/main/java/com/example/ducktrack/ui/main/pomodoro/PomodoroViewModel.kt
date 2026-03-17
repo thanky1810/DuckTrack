@@ -82,7 +82,8 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
             // Chưa chạy
             if (currentState.pomodoroState == PomodoroState.Ready ||
                 currentState.pomodoroState == PomodoroState.Finished ||
-                currentState.pomodoroState == PomodoroState.Failed) {
+                currentState.pomodoroState == PomodoroState.Failed
+            ) {
 
                 // Mở dialog chọn thẻ phân loại (Tag)
                 _uiState.update { it.copy(showTagSelectionDialog = true) }
@@ -264,8 +265,13 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Cảnh báo tập trung", NotificationManager.IMPORTANCE_HIGH)
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                channelId,
+                "Cảnh báo tập trung",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            val manager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
 
@@ -312,20 +318,31 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
                 configStr,
                 currentSet,
                 currentSession + 1,
-//                _uiState.value.currentTag // Lưu kèm Tag
             )
         }
     }
 
     fun onDismissHarvestDialog() {
         _uiState.update {
-            it.copy(pomodoroState = PomodoroState.Ready, currentSessionCount = 0, isTimerRunning = false)
+            it.copy(
+                pomodoroState = PomodoroState.Ready,
+                currentSessionCount = 0,
+                isTimerRunning = false
+            )
         }
     }
 
-    fun onSettingsClick() { _uiState.update { it.copy(showSettingsDialog = true) } }
-    fun onDismissSettingsDialog() { _uiState.update { it.copy(showSettingsDialog = false) } }
-    fun onDismissFailedDialog() { _uiState.update { it.copy(showFailedDialog = false) } }
+    fun onSettingsClick() {
+        _uiState.update { it.copy(showSettingsDialog = true) }
+    }
+
+    fun onDismissSettingsDialog() {
+        _uiState.update { it.copy(showSettingsDialog = false) }
+    }
+
+    fun onDismissFailedDialog() {
+        _uiState.update { it.copy(showFailedDialog = false) }
+    }
 
     fun onSettingsApplied(f: Long, b: Long, l: Long, s: Int) {
         val newFocusMillis = f * 60 * 1000L
