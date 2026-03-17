@@ -13,7 +13,6 @@ import kotlin.math.max
 class UsageRepository(private val ctx: Context) {
 
     private val TAG = "UsageRepository"
-    // Cache tên app để load nhanh hơn
     private val labelCache = HashMap<String, String>()
 
     /* =========================================================
@@ -28,7 +27,7 @@ class UsageRepository(private val ctx: Context) {
             val label = pm.getApplicationLabel(appInfo).toString()
             labelCache[packageName] = label
             label
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             packageName
         }
     }
@@ -40,7 +39,8 @@ class UsageRepository(private val ctx: Context) {
         if (packageName.startsWith("com.android.") ||
             packageName.startsWith("com.google.android.overlay") ||
             packageName.contains("nexuslauncher") ||
-            packageName.contains("systemui")) {
+            packageName.contains("systemui")
+        ) {
             return false
         }
         return pm.getLaunchIntentForPackage(packageName) != null
@@ -59,7 +59,7 @@ class UsageRepository(private val ctx: Context) {
         val acc = HashMap<String, Long>()
 
         for (s in stats) {
-            if (s.lastTimeUsed < start) continue // Bỏ qua dữ liệu cũ
+            if (s.lastTimeUsed < start) continue
 
             val pkg = s.packageName
             val ms = max(0L, s.totalTimeInForeground)
@@ -79,7 +79,7 @@ class UsageRepository(private val ctx: Context) {
         val events = usm.queryEvents(start, end)
 
         val acc = HashMap<String, Long>()
-        val startTimes = HashMap<String, Long>() // Map lưu thời điểm mở của từng app
+        val startTimes = HashMap<String, Long>()
 
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
@@ -88,11 +88,10 @@ class UsageRepository(private val ctx: Context) {
 
             if (!isUserApp(pm, pkg)) continue
 
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+            if (event.eventType == 1) {
                 // App hiện lên màn hình -> Bắt đầu tính giờ
                 startTimes[pkg] = event.timeStamp
-            }
-            else if (event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND) {
+            } else if (event.eventType == 1) {
                 // App ẩn đi -> Kết thúc tính giờ
                 val startTime = startTimes[pkg]
                 if (startTime != null) {
@@ -126,13 +125,19 @@ class UsageRepository(private val ctx: Context) {
         // Xác định đầu ngày và cuối ngày
         val startCalendar = Calendar.getInstance().apply {
             timeInMillis = dateTimestamp
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(
+            Calendar.MILLISECOND,
+            0
+        )
         }
         val startTime = startCalendar.timeInMillis
 
         val endCalendar = Calendar.getInstance().apply {
             timeInMillis = dateTimestamp
-            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999)
+            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(
+            Calendar.MILLISECOND,
+            999
+        )
         }
 
         // Không lấy tương lai
@@ -165,29 +170,8 @@ class UsageRepository(private val ctx: Context) {
     }
 
     /* =========================================================
-       5. CÁC HÀM THỐNG KÊ BIỂU ĐỒ (GIỮ NGUYÊN ĐỂ KHÔNG LỖI)
+       5. CÁC HÀM THỐNG KÊ BIỂU ĐỒ
        ========================================================= */
-
-    fun getDailyStats(startTime: Long, endTime: Long): Map<String, Long> {
-        val usm = usageManager(ctx)
-        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
-        val resultMap = LinkedHashMap<String, Long>()
-        val calendar = Calendar.getInstance()
-
-        if (stats != null) {
-            for (usage in stats) {
-                if (usage.totalTimeInForeground > 0) {
-                    calendar.timeInMillis = usage.firstTimeStamp
-                    val day = calendar.get(Calendar.DAY_OF_MONTH)
-                    val month = calendar.get(Calendar.MONTH) + 1
-                    val key = "$day/$month"
-                    val current = resultMap[key] ?: 0L
-                    resultMap[key] = current + usage.totalTimeInForeground
-                }
-            }
-        }
-        return resultMap
-    }
 
     fun getMonthlyStats(startTime: Long, endTime: Long): Map<String, Long> {
         val usm = usageManager(ctx)

@@ -10,10 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    // THÊM TaskEntity::class VÀO ĐÂY
     entities = [UserProfile::class, UnlockedSeed::class, GrownTree::class, TaskEntity::class],
-    version = 2, // TĂNG VERSION TỪ 1 LÊN 2
-    exportSchema = false // Tắt lỗi schema export
+    version = 2,
+    exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -31,7 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "ducktrack_database"
                 )
                     .addCallback(DatabaseCallback(context))
-                    .fallbackToDestructiveMigration() // Cho phép xóa dữ liệu cũ nếu đổi version
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

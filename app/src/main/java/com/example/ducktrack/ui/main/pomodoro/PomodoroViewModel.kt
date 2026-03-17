@@ -312,7 +312,7 @@ class PomodoroViewModel(application: Application) : AndroidViewModel(application
                 configStr,
                 currentSet,
                 currentSession + 1,
-                _uiState.value.currentTag // Lưu kèm Tag
+//                _uiState.value.currentTag // Lưu kèm Tag
             )
         }
     }

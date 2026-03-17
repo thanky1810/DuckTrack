@@ -1,5 +1,6 @@
 package com.example.ducktrack.service
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -82,6 +83,7 @@ class OverlayService : Service() {
         return START_STICKY
     }
 
+    @SuppressLint("InflateParams")
     private fun showBlockScreen(packageName: String, limitMinutes: Int, isDeepFocus: Boolean) {
         if (!PermissionHelper.hasOverlayPermission(this)) return
         if (overlayView != null) return
@@ -104,13 +106,16 @@ class OverlayService : Service() {
         // --- XỬ LÝ GIAO DIỆN THEO CHẾ ĐỘ ---
         if (isDeepFocus) {
             // Chế độ Siêu Tập Trung: Chặn cứng, chữ đỏ, ẩn nút thoát
-            txtLimit.text = "🔒 Đang trong chế độ SIÊU TẬP TRUNG!\nBạn không thể sử dụng ứng dụng này."
+            @SuppressLint("SetTextI18n")
+            txtLimit.text =
+                "🔒 Đang trong chế độ SIÊU TẬP TRUNG!\nBạn không thể sử dụng ứng dụng này."
             txtLimit.setTextColor(Color.RED)
 
             btnExtend.visibility = View.GONE
             btnRemove.visibility = View.GONE
         } else {
             // Chế độ thường
+            @SuppressLint("SetTextI18n")
             txtLimit.text = "Giới hạn: $limitMinutes phút/ngày"
             // Reset màu về mặc định (thường là trắng hoặc theo theme)
             txtLimit.setTextColor(Color.WHITE)
@@ -141,7 +146,7 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.MATCH_PARENT,
             type,
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS  or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.CENTER }

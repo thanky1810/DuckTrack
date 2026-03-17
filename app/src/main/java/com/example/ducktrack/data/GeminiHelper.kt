@@ -1,15 +1,14 @@
 package com.example.ducktrack.data
 
 import android.util.Log
+import com.example.ducktrack.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.example.ducktrack.BuildConfig
 
 object GeminiHelper {
-    // Giữ nguyên bản 2.5 Pro theo ý bạn
     private const val modelName = "gemini-2.5-flash"
     private const val API_KEY = BuildConfig.GEMINI_API_KEY
 
@@ -17,7 +16,7 @@ object GeminiHelper {
         modelName = modelName,
         apiKey = API_KEY,
         generationConfig = generationConfig {
-            temperature = 0.6f // Giảm độ sáng tạo để AI phân tích logic và điềm đạm hơn
+            temperature = 0.6f
             topK = 64
             topP = 0.95f
         }
@@ -56,7 +55,7 @@ object GeminiHelper {
     ): String {
         return withContext(Dispatchers.IO) {
             try {
-                // Tạo Prompt chứa dữ liệu
+
                 val systemInstruction = content("user") {
                     text(getSystemPrompt(duckName, currentData))
                 }
@@ -65,7 +64,7 @@ object GeminiHelper {
                     content(role) { text(text) }
                 }.toMutableList()
 
-                // Nhét Prompt vào đầu
+
                 chatHistory.add(0, systemInstruction)
 
                 val chat = generativeModel.startChat(chatHistory)
@@ -74,19 +73,22 @@ object GeminiHelper {
                 response.text ?: "Dữ liệu đang được xử lý... Quạc~"
             } catch (e: Exception) {
                 val errorMsg = e.localizedMessage ?: ""
-                Log.e("GeminiError", "Lỗi chi tiết: $errorMsg") // In ra log để dev tự xem
+                Log.e("GeminiError", "Lỗi chi tiết: $errorMsg")
 
-                // Vịt sẽ "nói" những câu thân thiện này thay vì đọc lỗi tiếng Anh
+
                 when {
                     errorMsg.contains("503") -> {
                         "Đầu mình đang quá tải thông tin mất rồi. Bạn đợi 1 phút rồi hỏi lại nhé! Quạc~"
                     }
+
                     errorMsg.contains("Quota") || errorMsg.contains("exceeded") -> {
                         "Úi, mình xài hết số lần suy nghĩ miễn phí rồi. Bạn kiểm tra lại API Key nhé! Quạc~"
                     }
+
                     errorMsg.contains("403") -> {
                         "API Key của bạn bị lỗi hoặc chưa cấp quyền rồi. Kiểm tra lại nha! Quạc~"
                     }
+
                     else -> {
                         "Có chút trục trặc kết nối... Bạn kiểm tra mạng giúp mình nha! Quạc~"
                     }

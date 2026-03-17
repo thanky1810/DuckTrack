@@ -36,10 +36,6 @@ class UserPreferences(private val context: Context) {
         it[Keys.CHRISTMAS_THEME] ?: false
     }
 
-    suspend fun setDuckName(name: String) {
-        context.userPrefsDataStore.edit { it[Keys.DUCK_NAME] = name }
-    }
-
     suspend fun setVibration(enabled: Boolean) {
         context.userPrefsDataStore.edit { it[Keys.VIBRATION] = enabled }
     }
