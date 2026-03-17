@@ -1,13 +1,29 @@
 package com.example.ducktrack.ui.main
 
+// [QUAN TRỌNG] Import LocalDuckColors để lấy màu theo Theme
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ducktrack.R
-// [QUAN TRỌNG] Import LocalDuckColors để lấy màu theo Theme
 import com.example.ducktrack.ui.theme.LocalDuckColors
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -41,7 +56,7 @@ fun MainTopAppBar(
             .height(80.dp)
             .shadow(elevation = 6.dp, shape = bottomRoundedShape),
         shape = bottomRoundedShape,
-        color = currentThemeColor // [ĐÃ SỬA] Dùng màu động thay vì AppColors.ButtonGreen
+        color = currentThemeColor
     ) {
         Box(
             modifier = Modifier
@@ -82,7 +97,7 @@ fun MainTopAppBar(
 
             // 3. CỤM BÊN PHẢI: ĐIỂM SỐ
             Surface(
-                color = Color(0xFFE0C378), // Màu vàng khung điểm giữ nguyên (hoặc đổi nếu thích)
+                color = Color(0xFFE0C378),
                 shape = RoundedCornerShape(50),
                 shadowElevation = 2.dp,
                 modifier = Modifier.align(Alignment.CenterEnd)

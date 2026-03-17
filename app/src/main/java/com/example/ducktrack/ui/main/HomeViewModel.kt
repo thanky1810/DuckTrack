@@ -4,11 +4,12 @@ import android.app.Application
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.os.Build
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.ducktrack.MyApplication
 import com.example.ducktrack.data.LimitsStore
 import com.example.ducktrack.data.UsageRepository
 import com.example.ducktrack.data.model.AppUsage
@@ -17,11 +18,7 @@ import com.example.ducktrack.utils.PermissionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.Calendar
-import com.example.ducktrack.MyApplication
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -152,13 +149,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 context.startService(intent)
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     fun getDateText(): String {
         val date = java.util.Date(selectedDateMs)
         val today = java.util.Date()
-        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", java.util.Locale("vi", "VN"))
+        val fmt = java.text.SimpleDateFormat("dd 'tháng' MM", java.util.Locale.forLanguageTag("vi-VN"))
         val fmtCheck = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
 
         val isToday = fmtCheck.format(date) == fmtCheck.format(today)

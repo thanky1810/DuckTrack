@@ -15,7 +15,7 @@ import kotlinx.coroutines.tasks.await
 class AchievementsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as MyApplication).repository
-    // Cần thêm Firestore để lấy selectedId (hoặc truyền từ AuthVM, nhưng gọi trực tiếp cho nhanh gọn ở màn này)
+
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
@@ -46,7 +46,9 @@ class AchievementsViewModel(application: Application) : AndroidViewModel(applica
                 try {
                     val doc = firestore.collection("users").document(uid).get().await()
                     _selectedId.value = doc.getString("selectedAchievementId")
-                } catch (e: Exception) { e.printStackTrace() }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
 
             _isLoading.value = false

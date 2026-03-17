@@ -11,20 +11,53 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Login
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,9 +71,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ducktrack.R
-import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.AuthViewModel
 import com.example.ducktrack.ui.UserInfo
+import com.example.ducktrack.ui.approot.AuthViewModelFactory
 import com.example.ducktrack.ui.main.garden.SeedType
 import com.example.ducktrack.ui.theme.AppColors
 import java.text.SimpleDateFormat
@@ -78,7 +111,8 @@ fun UserProfileScreen(
             authViewModel.updateAvatar(
                 uri = uri,
                 onSuccess = {
-                    Toast.makeText(context, "Cập nhật Avatar thành công!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Cập nhật Avatar thành công!", Toast.LENGTH_SHORT)
+                        .show()
                     authViewModel.loadUserInfo { info -> userInfo = info }
                 },
                 onError = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
@@ -99,7 +133,7 @@ fun UserProfileScreen(
                 title = { Text("Hồ sơ cá nhân", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -133,7 +167,10 @@ fun UserProfileScreen(
                         Surface(
                             color = Color(0xFFFFF9C4), // Màu vàng nhạt
                             shape = RoundedCornerShape(50),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBC02D)),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                Color(0xFFFBC02D)
+                            ),
                             modifier = Modifier.padding(bottom = 8.dp)
                         ) {
                             Row(
@@ -163,7 +200,11 @@ fun UserProfileScreen(
                         modifier = Modifier
                             .size(110.dp)
                             .clickable {
-                                photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
                             }
                     ) {
                         if (isUploading) {
@@ -174,25 +215,46 @@ fun UserProfileScreen(
                                 try {
                                     val b = Base64.decode(base64Str, Base64.DEFAULT)
                                     BitmapFactory.decodeByteArray(b, 0, b.size).asImageBitmap()
-                                } catch (e: Exception) { null }
+                                } catch (_: Exception) {
+                                    null
+                                }
                             }
 
                             if (bitmap != null) {
                                 Image(
                                     bitmap = bitmap, contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape).border(3.dp, AppColors.TextGreen, CircleShape),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .border(3.dp, AppColors.TextGreen, CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
                                 Image(
-                                    painter = painterResource(R.drawable.duck_waiting), contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape).border(3.dp, AppColors.TextGreen, CircleShape),
+                                    painter = painterResource(R.drawable.duck_waiting),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .border(3.dp, AppColors.TextGreen, CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             }
 
-                            Box(modifier = Modifier.align(Alignment.BottomEnd).size(32.dp).background(Color.White, CircleShape).border(1.dp, Color.Gray, CircleShape).padding(6.dp)) {
-                                Icon(Icons.Default.CameraAlt, null, tint = Color.Gray, modifier = Modifier.fillMaxSize())
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(32.dp)
+                                    .background(Color.White, CircleShape)
+                                    .border(1.dp, Color.Gray, CircleShape)
+                                    .padding(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CameraAlt,
+                                    null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         }
                     }
@@ -209,7 +271,12 @@ fun UserProfileScreen(
                             fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black
                         )
                         Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Default.Edit, null, tint = AppColors.TextGreen, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Edit,
+                            null,
+                            tint = AppColors.TextGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     // EMAIL
@@ -229,11 +296,18 @@ fun UserProfileScreen(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Login, null, tint = Color(0xFF00695C), modifier = Modifier.size(14.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.Login,
+                                null,
+                                tint = Color(0xFF00695C),
+                                modifier = Modifier.size(14.dp)
+                            )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = "Đăng nhập: ${userInfo?.provider}",
-                                fontSize = 12.sp, color = Color(0xFF00695C), fontWeight = FontWeight.Bold
+                                fontSize = 12.sp,
+                                color = Color(0xFF00695C),
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -249,7 +323,9 @@ fun UserProfileScreen(
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth().clickable { showDuckNameDialog = true }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDuckNameDialog = true }
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -263,7 +339,12 @@ fun UserProfileScreen(
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Tên trợ lý Vịt", fontSize = 12.sp, color = Color(0xFFEF6C00))
-                            Text(userInfo?.duckName ?: "Vịt con", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(
+                                userInfo?.duckName ?: "Vịt con",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
                         }
                         Icon(Icons.Default.Edit, null, tint = Color(0xFFEF6C00))
                     }
@@ -274,7 +355,7 @@ fun UserProfileScreen(
                 // Card Ngày tham gia
                 val joinedDate = userInfo?.createdAt ?: 0L
                 val dateStr = if (joinedDate > 0L) {
-                    SimpleDateFormat("dd 'tháng' MM, yyyy", Locale("vi", "VN")).format(joinedDate)
+                    SimpleDateFormat("dd 'tháng' MM, yyyy", Locale.forLanguageTag("vi-VN")).format(joinedDate)
                 } else "..."
 
                 Card(
@@ -286,11 +367,21 @@ fun UserProfileScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.CalendarMonth, null, tint = AppColors.TextGreen, modifier = Modifier.size(28.dp))
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            null,
+                            tint = AppColors.TextGreen,
+                            modifier = Modifier.size(28.dp)
+                        )
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text("Thành viên từ", fontSize = 12.sp, color = Color.Gray)
-                            Text(dateStr, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(
+                                dateStr,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
                         }
                     }
                 }
@@ -302,20 +393,39 @@ fun UserProfileScreen(
             Text(
                 text = "Thành tích làm vườn 🌳",
                 fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.TextGreen,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             )
             Spacer(Modifier.height(12.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val counts = userInfo?.treeCounts ?: emptyMap()
-                TreeStatItem(SeedType.NORMAL.grownIcon, "Cây thường", counts[SeedType.NORMAL.id] ?: 0, Modifier.weight(1f))
+                TreeStatItem(
+                    SeedType.NORMAL.grownIcon,
+                    "Cây thường",
+                    counts[SeedType.NORMAL.id] ?: 0,
+                    Modifier.weight(1f)
+                )
                 Spacer(Modifier.width(8.dp))
-                TreeStatItem(SeedType.PINE.grownIcon, "Cây thông", counts[SeedType.PINE.id] ?: 0, Modifier.weight(1f))
+                TreeStatItem(
+                    SeedType.PINE.grownIcon,
+                    "Cây thông",
+                    counts[SeedType.PINE.id] ?: 0,
+                    Modifier.weight(1f)
+                )
                 Spacer(Modifier.width(8.dp))
-                TreeStatItem(SeedType.RED_LEAF.grownIcon, "Cây lá đỏ", counts[SeedType.RED_LEAF.id] ?: 0, Modifier.weight(1f))
+                TreeStatItem(
+                    SeedType.RED_LEAF.grownIcon,
+                    "Cây lá đỏ",
+                    counts[SeedType.RED_LEAF.id] ?: 0,
+                    Modifier.weight(1f)
+                )
             }
 
             Spacer(Modifier.height(24.dp))
@@ -324,12 +434,16 @@ fun UserProfileScreen(
             Text(
                 text = "Tiến độ công việc 📊",
                 fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.TextGreen,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             )
             Spacer(Modifier.height(12.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Card Tổng số
@@ -368,13 +482,13 @@ fun UserProfileScreen(
     if (showRenameDialog) {
         ChangeNameDialog(
             currentName = userInfo?.name ?: "",
-            onDismiss = { showRenameDialog = false },
+            onDismiss = { },
             title = "Đổi tên người dùng",
             onConfirm = { newName ->
-                authViewModel.updateUserName(newName,
+                authViewModel.updateUserName(
+                    newName,
                     onSuccess = {
                         authViewModel.loadUserInfo { i -> userInfo = i }
-                        showRenameDialog = false
                     },
                     onError = { }
                 )
@@ -385,13 +499,13 @@ fun UserProfileScreen(
     if (showDuckNameDialog) {
         ChangeNameDialog(
             currentName = userInfo?.duckName ?: "",
-            onDismiss = { showDuckNameDialog = false },
+            onDismiss = {},
             title = "Đặt tên cho Vịt",
             onConfirm = { newName ->
-                authViewModel.updateDuckName(newName,
+                authViewModel.updateDuckName(
+                    newName,
                     onSuccess = {
                         authViewModel.loadUserInfo { i -> userInfo = i }
-                        showDuckNameDialog = false
                     },
                     onError = { }
                 )
@@ -410,13 +524,29 @@ fun TreeStatItem(iconRes: Int, name: String, count: Int, modifier: Modifier = Mo
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(40.dp))
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp)
+            )
             Spacer(Modifier.height(8.dp))
-            Text(count.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppColors.TextGreen)
-            Text(name, fontSize = 11.sp, color = Color.Gray, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(
+                count.toString(),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.TextGreen
+            )
+            Text(
+                name,
+                fontSize = 11.sp,
+                color = Color.Gray,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }
@@ -435,7 +565,7 @@ fun ChangeNameDialog(
         text = {
             OutlinedTextField(
                 value = textState,
-                onValueChange = { textState = it },
+                onValueChange = { },
                 label = { Text("Tên mới") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -463,7 +593,9 @@ fun TaskStatItem(label: String, count: Int, color: Color, modifier: Modifier = M
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
